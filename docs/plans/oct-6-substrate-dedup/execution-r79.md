@@ -1041,12 +1041,13 @@ No Semantica partial WIP bundle is staged or committed by this root. Local-main
 source integration, installed Linux CHECK/product proof, hosted CI and push
 remain distinct; hosted execution and push are not requested.
 
-<a id="r79-root-r121r128-successor-closure"></a>
-
 ## W014 parallel implementation and first owner cut — 2026-10-09
 
-Input: QGLang `c411d60c7627`, Semantica `a63f536b1b3` plus explicitly
-captured shared WIP. Three implementation workers own SDK generation,
+First input: QGLang `c411d60c7627`, Semantica `a63f536b1b3` plus explicitly
+captured shared WIP. Latest live main is Semantica `8217a38bf04d`; another
+owner's commit imports earlier shared staged source, including some W014
+repairs. This source integration does not establish W014 acceptance.
+Three implementation workers own SDK generation,
 PTA/DFG/facts and Runtime trace; the root serializes builds and integration.
 Evidence root: `~/.codex/task-evidence/oct8-closeout-execution-r79/`.
 
@@ -1089,11 +1090,153 @@ Exact artifacts: `source-capture-w014-cut1.json`,
 Subsequent worker postimages require a successor capture; do not rebind this
 failed tuple to later source.
 
+### Successor cuts and producer/consumer boundaries
+
+- **Cut2:** Semantica `8217a38bf04d` plus overlay, source
+  `d379feb40adac166ecf8829d9a7efe89af7a5d2c1c3681ff69980aee9d3a89ac`.
+  All31 selected hashes match under the lease. Six actual owner requests stop
+  at dependency compilation, zero tests; ordinary Runtime trace is NOT_RUN on
+  the same compile closure. SourceWire reaches Core retained-header E0599;
+  DFG/PTA/Runtime reach CFG child-module E0583. Postflight SHA256
+  `67c9ee77add3e3475bd6e558acd86c4ae51f8bb515ba66414b6039cd55f7d59c`.
+- **W0 source repair:** Core retained input/header birth and native BTree entry
+  helper retain pending/replaced values and funding in external slots; SDK rows
+  own both input and birth. Existing CFG child mount is fixed in place.
+  Foundation history maps/header banks/replacement escrow and SDK publication
+  still need their coupled external-bank migration; no local-birth shim qualifies.
+- **Cut3 prerequisite only:** source
+  `cdf910d9fa471040d3b36376e53b39d12d5aa665d1f7a428f3ef7eb4cddc2143`,
+  all four Core/mount hashes match. SourceWire stops before Rust on fresh local
+  lock edges from later feature manifests, zero tests. Postflight SHA256
+  `192247f3d22b3560bcd6e9904a38777fd0103c138a8753a6202b9f97bf018906`.
+  Full offline metadata subsequently repairs root lock without registry version
+  or checksum changes (`w0-lock-cut3-recovery.json`); this is not owner proof.
+- **W1:** genuine lower pair and Original receipt frontdoor are authored. Raw
+  generation variant, admitted assembly/rows/evidence and SDK build context
+  remain required; ordinary receipt admission cannot close these paths.
+- **W2/W3:** genuine pinned binary/World/Parser fixture and narrow one-copy-
+  assignment Source CFG/facts issuer are authored. External Parser/DFG builder
+  births retain partial data and failures. V4 reads typed source pairs with
+  complete ordered census; QRA direct consumer and both generation wrappers
+  are authored. Existing worker `FileDfgGenerationV1` stores ordinary DTOs;
+  retained worker storage, selection and native constraints are still open.
+- **W4:** Native finalizer/read is released in source. Product pre-key/owned
+  context/one-owner poll scope/provider binding are being propagated through
+  registry/Core execution, memo, deferred persistence and packets. Genuine
+  SDK regressions are authored, not executed on a compatible closure.
+
+### Latest local checks and released source — W014 successor
+
+Current QGLang main is `d8e7417eb40b`; the two commits since the executed local
+CI input modify documentation only. Semantica remains `8217a38bf04d` plus
+separately owned concurrent WIP. Source imported by another owner is not accepted
+execution or complete-bundle integration.
+
+- **Frontend local CI:** `just ci` exits0 at QGLang `2d5b1852f077` plus seven
+  document changes. Nextest1514/1514, skipped0/leaked0; MSRV clippy and all local
+  groups pass. The before/after tracked-content digest is identical:
+  `ced543554ca06231468644b5ad2725891f03f0136e0b2a0ea4bf83a9a53fb2fd`.
+  CI reports source snapshot
+  `dc936ad4f2ff5617ad440349a7cd188a817f48a35fefede8baf482aae4b8378e`.
+  Log SHA256 `ae537a6f23d7c4c79000b774a1ae34238e347ca0bfed6cee74039772df2bdde1`;
+  artifacts `w014-gqlang-local-ci-before.json`, `w014-gqlang-local-ci-result.json`
+  and `w014-gqlang-local-ci.log`. This is local frontend CI, not installed
+  acceptance or a clean committed-HEAD receipt.
+- **Cut4:** exact source
+  `153e85a1192d1e61ef8278aa5b2fefd9ae16feb20d8b48c944f545cae1460241`
+  stops at eight rustix public `missing_docs` diagnostics, zero tests. Existing
+  Darwin docs are preserved; missing Linux/close-method docs are repaired with
+  no lint relaxation. Postflight SHA256
+  `daee03fd8850b4ea4379a531dc77422ef0796a8db7b8209f6315f7e2dbc489e3`.
+- **Cut5:** exact source
+  `6b66c98edaef8d36f0d96bf7bbe6e750ff6ff04794d87640173fb92bf4495cf7`
+  matches all eight prerequisite postimages, then stops at CFG Kernel E0432:
+  `OnlineMapRemovalDataV3` exists in the native owner but is absent from its
+  root reexport. Root restores that canonical reexport; no new map or algorithm.
+  Zero tests/no publication. Postflight SHA256
+  `53c1a03905ac0f01f5302c0fba6a53ed5b9a83d16520a739713144dfa33017c4`.
+- **SDK static prerequisite:** fourteen stale taxonomy signatures are aligned
+  with existing recovered-input error types. Guard logic/projection markers
+  remain unchanged. Current taxonomy check has zero findings and all twelve
+  existing guard regressions pass. This does not prove Rust API compatibility.
+- **W1 released:** initial unpublished Original history preparation has external
+  map/header/replacement banks and a concrete SDK caller. Its parent is624 LOC;
+  the new canonical initial owner is475 LOC. Three-file god-surface check passes
+  with zero allowances. Noninitial/delta/replay and actual retained SDK raw
+  capture→assembly→producer→build context remain open.
+- **W2/W3 released static candidate:** genuine pinned fixture lifecycle is split;
+  exact Parser empty-void-body proof feeds an external two-block/one-edge CFG
+  and zero-row facts. Call-only/nonvoid-return rejection and generated three-row
+  publication/refund tests are authored. The25-path manifest is
+  `w2-w3-noop-generated-static-cut.json`. Narrow Copy/noop/generated support
+  does not establish general Java/PTA publication. Nonzero Source FunctionRef
+  binding inventory and ordinary worker storage migration remain open.
+- **W4 current:** the exact existing outer `Arc<RuntimeCtx>` now reaches typed
+  registry dispatch. QRE memo/Core still needs the same-owner carrier and
+  borrowed prepared Original entry; deferred/persist/packet remains fenced.
+  Native Map parent/read changes stay with owner72; no parallel duplicate cut.
+- **Independent audit:** [R343–R345](peer-audit-r343.md) records workspace digest
+  partial custody, Source binding/consumer closure and strict pre-final topology
+  oracles. Owner92 owns the coupled workspace repair. Four actual topology
+  tests need execution; upstream refusal cannot satisfy a positive or a strict
+  `UnexpectedRelationTopology` oracle.
+
+Cut6 source `00ad67aa7894be449cb5bbfb0c497f56a60657841f681f4db074efcb5fdbddd6`
+matches all nine prerequisite inputs and stops at Repo identity E0583 for
+`path_data_v3`, zero tests/no publication. Root corrects the existing child's
+explicit module path. Postflight SHA256
+`18840611497b25cc1c010d860fb171da00a8c38987ff5ca2f4e3f120666b491a`.
+Root and nested full locked offline metadata still pass with unchanged locks and
+registry pins (`w0-lock-cut7-metadata.json`). Cut7 source
+`5e04c3a544710f923384f7b789c6f49b426165e0f91f001692efc87c900e61ec`
+matches all ten prerequisite inputs and reaches SourceWire lib-test compilation.
+It stops at52 diagnostics, zero tests/no publication. Exact diagnostic census:
+`w0-source-wire-cut7-error-census.json`; postflight SHA256
+`ff1871d6261341879e1cf99f9179de0dd35d6bce015b10508791bb02dd4afc89`.
+This is a frozen-source diagnostic count, not a refreshed live defect count.
+
+Root repairs eight existing module/test mounts across six files, canonical
+permit/budget/test error imports, and crate-private checked auxiliary-row receiver
+visibility. The ten-path scoped rustfmt and diff-check pass
+(`w0-sourcewire-prerequisite-static-check-final.json`). Retired return-shaped text
+copy and retain consumers still need external DATA migration; no old unsafe API
+is reintroduced to make compilation succeed. Dependent consumers remain NOT_RUN.
+
+W2 custody review finds an earlier prerequisite beyond the fixture split:
+retained output completion must transfer after Source, and Parser sealed files/
+inventory materialization must retain partial DATA externally. A owns the
+canonical sealed/files/inventory into-birth API; B holds the fixture capture until
+that supplier is coherent. A's new Java receipt map/cohort branch is source-only,
+not a genuine positive while this prerequisite is open.
+
+W4 now authors the same-owner registry/no-runtime memo/borrowed prepared Core and
+actual owned IntegratedExecutor entry. Its genuine SDK negative regression uses
+that entry and rejects ordinary request bytes under Original. FileTextArgs lacks
+an authentic selected Original typed-input supplier; ordinary Clone/CBOR cannot
+substitute. Registered handler ownership, final snapshot and deferred/persist/
+packet remain coupled gaps. Public FileText direct Foundation behavior is preserved.
+
+
+The QRA Source consumer now uses a borrowed four-axis input carrier; selected
+leaf god-surface passes without allowances. The W2 fixture's remaining oversized
+helpers have been split in source and need the mandatory gate result. Source
+ExactZero FunctionRef evidence is restricted to a Parser-proved complete empty
+void body or exactly one Copy declaration. Copy plus a call is rejected; zero
+facts alone cannot prove absence of lambda bindings. Production declaration and
+function semantic-identity consumers still need the canonical Source read.
+
+
+No current-source Rust GREEN, owner publication or complete local-main bundle
+acceptance is inferred from these cuts. Root runs the common prerequisite
+before broadening to dependent consumer requests.
+
 W7 preflight records Darwin arm64 and all10 required installed process inputs
 unset in `w7-installed-prerequisite-preflight-20261009.json`. Linux positive
 CHECK remains an external release prerequisite; non-Linux installed refusal is
 also NOT_RUN without its actual artifact tuple. No worker/product verdict is
 inferred from metadata, source edits or host inspection.
+
+<a id="r79-root-r121r128-successor-closure"></a>
 
 ## R79 root R121–R146 successor closure
 

@@ -14,10 +14,18 @@ executes zero tests because `--locked` rejects the root lockfile. After the
 version-preserving root/nested repair, run a successor locked capture. Include
 the actual SDK pair/store-drop, pre-key/nested guard, unpublished source-facts
 keeper/rejection and genuine binary/cohort/inventory targets; none is accepted
-from source presence. General facts/PTA/DFG publication requires actual consumers.
+from source presence. Cut2 executes zero tests on Core/CFG dependency compile
+failure; Cut3 executes zero on fresh lock edges. Both retain separate exact
+inputs. Next run the common SourceWire/Core prerequisite, then genuine V4
+QRA consumer/foreign/late-refusal oracles. General facts/PTA/DFG publication
+also requires retained worker storage, selection and actual native constraints.
 The nine C-lane resolves are request discovery only. F2 minimal has two required
 witnesses; parser checks are compilation only. The generated-getter facts keeper
 does not cover general callable, DFG source-world/Tree C or PTA transaction output.
+
+Latest local frontend CI:1514/1514 at `2d5b1852f077` plus document WIP.
+Current `d8e7417eb40b` adds documentation only. Cut4/Cut5 downstream compiler
+failures and released W1/W2/W3 source are recorded in the [W014 successor](execution-r79.md#latest-local-checks-and-released-source--w014-successor); current Rust/product acceptance remains pending.
 
 ## Current acceptance matrix — 2026-10-09
 

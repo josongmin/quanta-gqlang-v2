@@ -14,10 +14,18 @@ the later complete resolution and two reached pretest failures have separate inp
 ## Successor cause reconciliation
 
 Current source and plan: [W0–W7 completion](parallel-dispatch.md#current-completion-plan--2026-10-09),
-QGLang `c411d60c7627`, Semantica `a63f536b1b3` plus shared WIP.
+QGLang `d8e7417eb40b`, Semantica `8217a38bf04d` plus shared WIP.
 [W014 execution](execution-r79.md#w014-parallel-implementation-and-first-owner-cut--2026-10-09)
 separates the released lower source from zero-test locked Cargo refusal and
 the subsequent version-preserving lock repair.
+Cut2 reaches shared Core E0599 and CFG module E0583 before tests; both have
+source repairs. Cut3 stops before Rust on a fresh locked dependency graph.
+Cut7 reaches SourceWire lib-test and stops at52 fixed-input diagnostics with zero
+tests. Root authors eight existing mount repairs and canonical imports/checked
+receiver visibility. Return-shaped text/retain consumers remain a migration gap.
+New W2 custody review requires Parser sealed/files/inventory external births;
+W4 additionally needs genuine FileText selected typed input and consuming
+registered handler ownership before final snapshot/packet support.
 The remaining causes are:
 
 - **Original objective:** Shape/SCC canonical owner routing is committed and its
@@ -58,6 +66,11 @@ The remaining causes are:
 - **Evidence/integration gap:** lower and newer Java/Python GREEN receipts have
   different source tuples. Shared WIP/index moves during the audit. Freeze a
   compatible tuple before current acceptance and record complete committed paths.
+- **Retained receiver mismatch:** V4 genuine Source CFG/facts loan exists in
+  source, but worker `FileDfgGenerationV1` retains ordinary DTOs. Direct QRA
+  consumption does not complete retained storage, selection or native constraints.
+  Foundation history preparation similarly needs external maps/header births/
+  replaced-value escrow through the concrete SDK caller.
 
 R333 terminal guards and observed-first-cause selection are authored;8/9 recorded
 postimages match current readback. The SDK joined-owner file has a foreign

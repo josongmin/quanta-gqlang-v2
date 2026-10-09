@@ -11,6 +11,10 @@ Latest execution: [W014 parallel implementation and owner cut](execution-r79.md#
 Three workers have released lower SDK pair, trace/guard and facts/fixture source.
 The first captured owner request executes zero tests on stale `Cargo.lock`;
 root/nested recovery preserves all versions/checksums and passes locked metadata.
+Successor main `8217a38bf04d` imports source. Cut2 stops at Core retained-header
+and CFG child-module compile causes; Cut3 stops at fresh local lock edges, both
+with zero tests. External Foundation births, typed worker consumers and owned
+registry/memo/persist still require implementation and current owner proof.
 Successor compiler/tests, complete consumer implementation and main integration
 remain pending. Installed Linux trust/artifact inputs are unavailable on this
 Darwin arm64 host; no installed positive result is claimed.
@@ -114,6 +118,10 @@ exclusive write sets, immutable capture and one heavy Rust build queue. Existing
 child-agent errors describe the planning input. Three replacement workers
 executed supplier, Original and consumer lanes from R79 onward. Local-main
 integration is serial per complete compatible bundle.
+
+Latest local frontend CI:1514/1514 at `2d5b1852f077` plus document WIP.
+Current `d8e7417eb40b` adds documentation only. Cut4/Cut5 downstream compiler
+failures and released W1/W2/W3 source are recorded in the [W014 successor](execution-r79.md#latest-local-checks-and-released-source--w014-successor); current Rust/product acceptance remains pending.
 
 ## Historical remaining audit — R77
 

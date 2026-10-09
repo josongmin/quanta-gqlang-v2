@@ -6,8 +6,9 @@ The [R77 RCA](../plans/oct-6-substrate-dedup/rca.md) owns the cause/dependency
 analysis; this file owns the 18 active states.
 
 Latest plan/source: [W0–W7 completion plan](../plans/oct-6-substrate-dedup/parallel-dispatch.md#current-completion-plan--2026-10-09),
-QGLang `c411d60c7627` and Semantica `a63f536b1b3` plus separately inventoried WIP,
-read back at16:48 KST. The original16:18 audit retains its own input.
+QGLang `d8e7417eb40b` and Semantica `8217a38bf04d` plus separately inventoried WIP.
+The16:18/16:48 audits retain their own inputs. The later main commit imports
+source; current owner acceptance remains pending.
 The audit distinguishes committed source, authored source and accepted execution.
 Native topology receiving is source-authored at [R337–R338](../plans/oct-6-substrate-dedup/native-identity-boundary.md#retained-topology-receiving--r337r338), against QGLang `c411d60c7627` and Semantica `a63f536b1b3` plus exact six-path WIP. The earlier [R333 source reconciliation](../plans/oct-6-substrate-dedup/native-identity-boundary.md#current-source-reconciliation-and-remaining-work--r333) retains its input. QGLang local CI R334 passes1,514 tests and facade1/23 before the receipt note. Downstream compiler/tests/QBC/publication are NOT_RUN for R338.
 
@@ -30,11 +31,21 @@ Native topology receiving is source-authored at [R337–R338](../plans/oct-6-sub
 Current execution: [W014 parallel implementation](../plans/oct-6-substrate-dedup/execution-r79.md#w014-parallel-implementation-and-first-owner-cut--2026-10-09).
 Three workers are implementing SDK generation, PTA/DFG/facts and trace/context.
 Lower genuine pair/TARGET, pre-key/guard, source-facts and fixture inventory cuts
-are authored. First canonical owner capture runs zero tests on stale root lock;
-root/nested recovery preserves all registry pins and passes locked metadata.
-This does not establish Rust acceptance. Earliest W1 product gap is raw receipt
-frontdoor/admitted generation assembly; general nonempty facts/PTA/DFG and
-owned context/final packet remain. W7 installed inputs are unset on Darwin arm64.
+are authored. Cut2 runs zero tests at shared Core API/CFG module compilation;
+both causes are repaired in source. Cut3 stops before Rust on fresh lock edges,
+now recovered without registry changes. W1 still needs genuine raw generation
+and admitted assembly. W3's typed V4 loan/QRA consumer do not migrate ordinary
+worker storage/selection or native constraints. Foundation external history/
+commit banks and W4 owned registry/memo/persist/packet remain. W7 installed
+inputs are unset on Darwin arm64. Current Rust acceptance remains pending.
+Latest completed Cut7 reaches SourceWire lib-test with52 fixed-input diagnostics
+and zero tests; eight mounts and canonical import/receiver fixes are authored.
+W2 fixture completion/seal custody remains RED until the external Parser owner
+is connected. W4's owned Integrated entry/registry/Core source and genuine SDK
+ordinary-input rejection are authored; FileText selected Original typed input,
+registered handler ownership, snapshot/persist/packet remain open. See the
+[W014 successor](../plans/oct-6-substrate-dedup/execution-r79.md#latest-local-checks-and-released-source--w014-successor)
+for exact source and receipt boundaries.
 
 Historical root successor: [R121–R146](../plans/oct-6-substrate-dedup/execution-r79.md#r79-root-r121r128-successor-closure).
 Original Shape/SCC is committed; five selected canonical files are clean and

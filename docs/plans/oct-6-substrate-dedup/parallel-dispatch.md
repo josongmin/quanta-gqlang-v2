@@ -5,6 +5,10 @@ All execution is local. [R77 RCA](rca.md) owns cause analysis;
 [tickets](tickets.md) own scope/DoD and [remaining work](../../work/remaining.md)
 owns current states.
 
+Latest local frontend CI:1514/1514 at `2d5b1852f077` plus document WIP.
+Current `d8e7417eb40b` adds documentation only. Cut4/Cut5 downstream compiler
+failures and released W1/W2/W3 source are recorded in the [W014 successor](execution-r79.md#latest-local-checks-and-released-source--w014-successor); current Rust/product acceptance remains pending.
+
 ## Current completion plan — 2026-10-09
 
 Objective: finish the existing Native/Original producer-to-consumer chain, accept
@@ -14,6 +18,11 @@ plan. Implementation is now dispatched to three workers; the root owns one
 serial verification queue. [W014 execution](execution-r79.md#w014-parallel-implementation-and-first-owner-cut--2026-10-09)
 records actual released source, the first zero-test lockfile refusal and repair.
 Dispatch does not establish owner acceptance or integration.
+Latest main is Semantica `8217a38bf04d` plus successor WIP; previous readbacks
+below are historical. Cut2/Cut3 run zero tests on distinct dependency/lock
+prerequisites. Keep A on SDK/Foundation external births, B on genuine Source
+CFG/facts/V4 publication, C on owned execution/registry/memo/persist, and root
+on typed QRA consumption and one serial owner queue.
 
 ### Current source and changed assignments
 

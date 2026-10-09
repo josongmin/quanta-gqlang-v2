@@ -56,6 +56,12 @@ locked owner executes zero tests; both locks are now repaired with unchanged
 registry pins and locked metadata PASS. Consumer tests/publication and complete
 main integration remain pending. W1's earliest open owner is raw Original receipt
 frontdoor plus admitted generation assembly, not only exact-route cloning.
+Latest main `8217a38bf04d` imports some earlier source. Cut2/Cut3 execute zero
+tests on dependency compile/fresh lock causes; source fixes remain unaccepted.
+Current open owner work includes Foundation external history/commit banks,
+genuine SDK generation assembly, typed worker storage/selection/constraints,
+and owned Runtime registry/memo/persist/packet. V4 loan presence is not a solver
+or Product verdict.
 
 ## Current completion package map — 2026-10-09
 
@@ -115,7 +121,7 @@ scope. Implementation, frozen owner proof and product qualification are separate
 | D4/D5-CUSTODY | P1 | SCOPED_ACCEPTED | SCV2 34 + solver225/API2 accepted; active source closures match main f574 |
 | SUBSTRATE-POLICY | P1 | INCOMPLETE | Scoped Honesty/GOD/boundary checks pass; Python-search floor policy bundle integrated as3b8f86d; whole affected policy closure remains |
 | F2 | P1 | PROOF_PENDING | Native registry and real Preview path |
-| FCP-COMPILE | P0 | ACCEPTANCE_PENDING | Compatible Native caller/authority bundle remains unaccepted. Current JSON callers, SQLite imports and checkpoint TaskLocal formatting are repaired in source. W014 first owner runs zero tests on stale lockfile; root/nested repair preserves registry pins and passes locked metadata, with successor QBC pending. SDK lower pair/TARGET and trace/pre-key/guard are authored; admitted generation assembly/receipt/context, final trace and complete actual consumer proof remain open. Historical R98/R99/R103/R183/R192 and separate Java76/Python7 retain their exact inputs; old 34/33/23 errors are not current defect totals. |
+| FCP-COMPILE | P0 | ACCEPTANCE_PENDING | Latest main8217 imports source; no current owner acceptance. W014 Cut2 reaches Core retained-header E0599 and CFG child-module E0583, both repaired in source; Cut3 stops before Rust at fresh local lock edges, recovered with unchanged registry pins. Cut4 reaches rustix public-doc denial and Cut5 reaches a native map reexport E0432; both are repaired in source. Cut6 reaches Repo identity child-mount E0583, repaired in source. All completed cuts execute zero tests. Cut7 reaches SourceWire lib-test and stops at52 diagnostics on its fixed input; Root repairs eight mounts plus canonical imports/receiver visibility in source, while retired copy/retain consumer migration remains open. W2 custody review also requires external Parser sealed/files/inventory births; fixture capture is held. Foundation external history/commit banks, SDK admitted generation assembly, typed worker consumers and owned registry/memo/persist/packet remain coupled implementation gaps. Historical error counts and separate Java76/Python7 receipts retain their inputs. |
 | FCP-PTA | P1 | REVERIFY | Historical PTA bootstrap refusal; reproduce on current source |
 | FCP-PROCESS | P1 | NOT_RUN | Real Graph/CHECK daemon process results |
 | FCP-INSTALL | P1 | EXTERNAL_PREREQUISITE | Release-owned installed Linux CHECK trust |
