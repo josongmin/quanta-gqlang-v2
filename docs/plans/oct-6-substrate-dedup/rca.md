@@ -87,10 +87,21 @@ therefore identifies early paid-partial destruction. Root keeps the observer,
 completed candidate and full allocator/error state in the exterior Census bank;
 all rejection checks precede moves. The original predecessor-before-root-field
 error priority remains. Same CBOR framing, native births and canonical digest
-validator are reused. Eight structural/canonical regressions are authored;
-none has executed. The digest owner attempt is admission-blocked by foreign
-source drift during hashing, without Rust/tests/publication. The unrelated
+validator are reused. Eight structural/canonical regressions are authored.
+After the initial broad source-capture refusal, the focused Kernel-only
+successor executes digest4/4 (both new cases pass), with verified publication
+and archive8. Six SourceWire regressions remain NOT_RUN. The unrelated
 SourceWire owned copy/retain and C2/C6 supplier gaps remain real prerequisites.
+
+C2 RCA: one erased backend DATA cannot represent the actual five-role
+managed copy, seven-role ItemIndex wrapper or four distinct validation phases.
+The stored owner already captures the source-free descriptor before Shared;
+Root routes that same descriptor through the prebuilt constructors and erased
+visitor, leaving each concrete family to create its actual named banks before
+highest Source. No Source/current/auth read is added to routing. Constructor
+and read/transfer unit policy stay separate from genuine capability admission.
+The generic source4 cut is authored; concrete factories/owner proof remain open.
+Unchanged Query29/baseline27 God debt is separately recorded without waiver.
 
 SSA dependency RCA: `OriginalCfgDfgBatchReadV4::with_member_v4` already supplies
 the genuine AdmittedCfg/facts pair with actual member admission/native control.

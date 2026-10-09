@@ -105,11 +105,14 @@ open. All18 active ticket states are preserved.
 
 Oct10 follow-up: [private source-index receiving](execution-r79.md#source-index-exterior-receiving--2026-10-10)
 is source-authored in9 paths; an unused retired output text method is removed.
-God8/AST9/LLM9/format/diff pass without new allowances. Eight new tests are
-NOT_RUN: the narrow digest owner cannot capture changing foreign source and
-starts no Rust executor. Complete issuer/pin/workspace/SDK caller migration,
-C2 path-specific factory agreement, C6 OriginalPaid prekey/token and consumer
-acceptance remain open. This does not reduce the18 ticket states or promote
+God8/AST9/LLM9/format/diff pass without new allowances. The initial broad
+capture starts no Rust; the [focused Kernel successor](execution-r79.md#typed-input-descriptor-co-cut-and-focused-kernel-proof--2026-10-10)
+now accepts digest4/4, including both new regressions, with verified publication
+and archive8. Six SourceWire regressions remain NOT_RUN. Complete issuer/pin/workspace/SDK caller migration,
+C2 generic descriptor constructor/visitor source4 is authored under agreed
+Parent/D4/31/92 literals; concrete path factories and Rust proof remain open.
+Its God scope retains the unchanged Query29/baseline27 finding without waiver.
+C6 OriginalPaid prekey/token and consumer acceptance remain open. This does not reduce the18 ticket states or promote
 foreign staging to accepted integration.
 
 All18 active IDs map to the current W0–W7 packages. QG-DIAG remains RESOLVED and

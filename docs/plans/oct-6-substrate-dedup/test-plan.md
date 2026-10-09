@@ -28,11 +28,18 @@ lifetime and final refund. Those oracles remain unexecuted and are not supplied
 by an ordinary diagnostic positive. Final SSA proof starts from the actual V4
 CFG/facts pair; definition handles are expected results, not test prerequisites.
 
-Oct10 source-index follow-up: eight new tests, all **NOT_RUN**. Canonical
-QBC digest module request `c5fa79acb0a3618f6cfb6a905cfce986` was admission-blocked
-by foreign source drift, before Rust. Execute its existing/new digest tests
-on a stable source, then the SourceWire index tests after the remaining API
-closure compiles. Do not report static rails as behavior proof.
+Oct10 source-index follow-up: the initial broad capture was admission-blocked
+before Rust. The [focused Kernel successor](execution-r79.md#typed-input-descriptor-co-cut-and-focused-kernel-proof--2026-10-10)
+now accepts the digest module4/4, including both new regressions, with canonical
+publication/archive8. Its source scope is current Kernel WIP plus committed
+external source/manifests, not full current-main qualification. Six new
+SourceWire index tests remain NOT_RUN until the full API closure compiles.
+C2 descriptor ctor/visitor source4 has AST/LLM/changed-format/diff proof only;
+its whole God scope is RED on unchanged Query29/baseline27. Require actual
+named-bank identity/distinct-phase, wrong-descriptor/occupied/repeated/ignored
+callback, full-cause/first-refusal and partial-retention owner tests after the
+concrete Parse/Symbol/ItemIndex co-cut. Do not report static rails as behavior
+proof.
 
 | Owner/module | Required new oracle |
 | --- | --- |

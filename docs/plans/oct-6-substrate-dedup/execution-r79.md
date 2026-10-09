@@ -1393,7 +1393,8 @@ Static result: God8 passes with no allowance/baseline edit; AST9, scoped
 rustfmt9/diff and LLM9 pass. Eight new regression tests cover exact digest
 backing, malformed digest preservation, unordered/incomplete member partials,
 ordered same-backing movement, predecessor error priority, occupied/repeated
-index transfer and first full-cause recovery. All eight are **NOT_RUN**.
+index transfer and first full-cause recovery. The focused Kernel successor below
+accepts the two new digest cases; six SourceWire regressions remain **NOT_RUN**.
 
 A narrow canonical QBC digest-module request resolves as
 `c5fa79acb0a3618f6cfb6a905cfce986`. The historical base lane is unregistered;
@@ -1428,6 +1429,56 @@ callers, C2/C6 agreed suppliers/receivers, final SSA/DFG identity joins and
 retained output consumers; then freeze a compatible source for owning tests,
 publication and complete local-main integration. Public TARGET/Portable and
 installed product qualification remain HOLD. All18 active states stay open.
+
+### Typed input descriptor co-cut and focused Kernel proof — 2026-10-10
+
+Root follows `6c168c985d15` frontend documents and Semantica `e234efb0c1b`
+plus shared WIP. Four generic source paths now replace the single-backend/
+zero-backend prebuilt contract with the existing producer-captured
+`CopyBankDescriptorV3`: the Kernel input-copy trait, erased reader visitor,
+copy driver and Foundation stored-input owner. The descriptor is passed by
+value before the concrete workarea visitor/highest Source; the stored owner
+creates no generic backend DATA. Source-aware variants, downcast/authentication,
+copy and full-cause recovery policies retain their existing owners.
+
+The exact constructor/visitor direction is agreed by Parent/D4/31/92. D4 owns
+the canonical five-role managed copy compositor and Parse constructors;31
+reuses that helper for HIR and adds ItemIndex's two actual outer occurrences
+(seven total). Each existing validation phase gets distinct DATA. The four
+phases are FoundationBefore, KernelBefore, KernelAfter, FoundationAfter.
+Other execution/provenance/cache/prekey/output families keep their own census;
+there is no global pool or fixed global count. Actual `FileTextArgs` remains
+ordinary Clone through the blanket implementation; no new Original input is
+invented. Its separate source B/output A consuming path remains open.
+
+Static: AST4, LLM4 (149 added lines), diff and changed-function formatting pass.
+Three complete files pass rustfmt; Foundation retains one unchanged foreign
+retain-method formatting delta. Whole-scope God is RED on the unchanged
+`Query` trait (29 methods, baseline27, threshold12). Its preimage/postimage bytes
+match exactly; no Root finding or allowance/baseline change is introduced.
+Concrete Parse/Symbol/ItemIndex factories and their Rust owner proof remain
+open; this pre-release ABI co-cut cannot be integrated as a partial product.
+
+The digest successor captures only current `quanta-contract-kernel` WIP, with
+other source/manifests at committed HEAD. Canonical owner request
+`64aba695240969ed82df0cccec6c9cd4`, source
+`b7fc5f3559538d9d6b8b3dd459cc4dce4caf7c7295a5474fec551a18ee8f8015`,
+executes4 passed/0 failed/0 ignored/50 filtered. Both new exact-backing/malformed
+regressions pass. Receipt `d3bfc06b283a5f4e9dd817a247003676d2f5bbb2673493e8e8cb2fd979ef1753`,
+publication marker `4fc7566f30b9ca660012a66f9561c296bae4685b4a1a77095d56c401c3083444`
+and independent archive8 readback are verified. This is **Kernel-only scoped
+GREEN**, not SourceWire/current-main/product qualification. The initial helper
+run rejected its wrong execution entry point before Rust; its retained log is
+followed by the successful canonical live-frontdoor invocation of that same
+validated frozen source. No gate or source capture check was bypassed.
+
+Evidence in the external task directory: `c2-descriptor-{design,postimages,static-verdict}-oct10.json`,
+`c2-descriptor-root-delta-oct10.patch`, `c1-c2-c6-contract-response-oct10.json`,
+`focused-kernel-{source,owner,proof}-oct10.json` and `focused-kernel-archive-oct10/`.
+Root has14 new source paths in these two follow-ups; no Semantica stage/commit/
+push. C1 issuer/pin/workspace/SDK FULL, C6 genuine prekey/token, final SSA/DFG
+and retained consumers, compatible owner/product proof and complete local-main
+integration remain required. All18 active ticket states are preserved.
 
 ### Incremental session and SSA dependency repair — 2026-10-10
 

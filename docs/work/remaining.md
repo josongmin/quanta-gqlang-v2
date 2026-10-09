@@ -92,11 +92,17 @@ their existing tickets.
 
 Latest independent source repair: [source-index exterior receiving](../plans/oct-6-substrate-dedup/execution-r79.md#source-index-exterior-receiving--2026-10-10)
 adds the9-path canonical decoder/sole hydration caller bank and removes one
-unused retired output text method. God8/AST9/LLM9/format/diff pass; eight new
-regressions are NOT_RUN. The digest QBC owner is admission-blocked by changing
-foreign source during capture, with zero Rust/tests and no publication. The
+unused retired output text method. God8/AST9/LLM9/format/diff pass. The focused
+Kernel-only digest owner now passes4/4, including both new regressions, with
+verified publication/archive8; six SourceWire regressions remain NOT_RUN.
+The initial full current-source capture refusal remains recorded separately. The
 source-index static defect is repaired in source; the complete SourceWire
-issuer/pin/alias/workspace/SDK caller bundle and C2/C6 contracts remain open.
+issuer/pin/alias/workspace/SDK caller bundle remains open. The [C2 generic
+descriptor route](../plans/oct-6-substrate-dedup/execution-r79.md#typed-input-descriptor-co-cut-and-focused-kernel-proof--2026-10-10)
+is now source-authored in4 paths under Parent/D4/31/92 agreement; D4 concrete
+Parse factories and31 HIR/ItemIndex receivers plus Rust proof remain open.
+AST/LLM/changed-format/diff pass; God retains unchanged Query29/baseline27
+without waiver. C6 genuine prekey/token and whole product acceptance remain open.
 All18 current states and public/product HOLD remain unchanged. Foreign staging
 is recorded independently from accepted local-main integration.
 
