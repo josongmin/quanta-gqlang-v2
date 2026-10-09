@@ -1,6 +1,7 @@
 # Substrate remaining proof handoff — 2026-10-07
 
-Latest source reconciliation: [R333 terminal owners and actual remainder](../plans/oct-6-substrate-dedup/native-identity-boundary.md#current-source-reconciliation-and-remaining-work--r333).
+Latest code checkpoint: [R337–R338 retained topology receiving](../plans/oct-6-substrate-dedup/native-identity-boundary.md#retained-topology-receiving--r337r338).
+Earlier source reconciliation: [R333 terminal owners and actual remainder](../plans/oct-6-substrate-dedup/native-identity-boundary.md#current-source-reconciliation-and-remaining-work--r333).
 Historical sections below retain their own source/proof boundaries.
 
 Owner: Semantica runtime/SDK/API. QGLang owns frontend compilation and its
@@ -1892,3 +1893,32 @@ not `qualify-local`, Semantica execution, or downstream product acceptance.
 Log and exact pre-note document SHAs are `r334-gqlang-just-ci.log` and
 `r334-gqlang-ci-receipt.json` in the evidence root. The receipt-only prose is
 added after that run; no Rust/manifest/tool change accompanies it.
+
+## R337–R338 retained topology code checkpoint
+
+QGLang input `c411d60c7627`; Semantica `a63f536b1b3` plus six recorded postimages.
+The actual PTA fixture caller now supplies its existing Original session to a
+private retained validator. Raw lowering/evidence arguments and cloned census
+sets are removed. The receiver uses the existing PTA unit read and DFG unique
+index/member-visit banks, keeps scratch/full causes external, requires Original
+admission and all successful finishers, and preserves the three relation oracles.
+The existing opaque lowering read type gains a root reexport for the consumer.
+
+Two rejection regressions use the same actual fixture entry and literal source
+outcomes: no-op cannot satisfy a lambda witness; returning lambda cannot satisfy
+void-only. Earlier producer refusal is not accepted as their topology outcome.
+They are authored, NOT_RUN. AST6/rustfmt6, effective LLM5/God5 and diff pass;
+no new allowance or baseline reset. Compiler/tests/QBC/runtime/product and
+Semantica publication remain NOT_RUN. Source files are uncommitted shared-main WIP.
+
+The genuine binary supplier, Original whole-cohort/inventory sealing and retained
+handoff consumer cut remains implementation work. The existing owned world API
+refuses `UnsupportedOperation`; its unit fixture API documents missing coupled
+inventory receiving. These are not replaced by a V1 adapter, reverse SDK edge,
+empty success or weaker assertions. Broader W0–W7 and18-ticket acceptance remain.
+
+See [source map, before/after, bounds and DoD](../plans/oct-6-substrate-dedup/native-identity-boundary.md#retained-topology-receiving--r337r338).
+Owned source evidence: `r337-topology-owner-decision.json`,
+`r337-topology-claim.json`, `r337-beforeimages.json`, `r338-topology-owned.patch`,
+`r338-topology-postimages.json`, `r338-topology-static.json`,
+`r338-topology-llm.log`, `r338-topology-god.log`.

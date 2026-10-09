@@ -420,7 +420,113 @@ Receipts: `r299-java-native-id-callers-source-cut.json`,
 `r313-java-native-id-independent-review.json`,
 `r314-native-id-final-source-readback.json`.
 
+## Retained topology receiving — R337–R338
+
+Source-only code checkpoint, 2026-10-09. Input: QGLang `c411d60c7627`;
+Semantica shared `main` `a63f536b1b3` plus the six exact postimages recorded in
+`r338-topology-postimages.json`. The earlier terminal owner repairs and the
+broader W0–W7 plan retain their own source and proof boundaries.
+
+### Purpose and before/after
+
+The actual `issue_and_validate_native_parts_v1` caller supplies
+`NativeLoweringOutputBackingV1` and `OriginalDfgFunctionEvidenceBackingV1`.
+Its former validator accepted a raw lowering DTO and raw evidence slice.
+That mismatched receiving seam is replaced using the existing fixture's
+Original session; no solver, runtime engine or authority issuer is added.
+
+| Owner path, under Semantica `packages/analysis/quanta-v2/crates/` | Before | R338 source |
+| --- | --- | --- |
+| `quanta-runtime-test-support-pta/src/exact_native_generation_fixture_v1/original_execution_v1.rs` | Pass retained backings into the raw receiver; unused raw evidence import | Pass the existing actual session alongside both retained backings; remove that unused import |
+| `quanta-runtime-test-support-pta/src/exact_native_generation_fixture_v1/owner_stages_v1.rs` | Raw DTO/slice access and cloned declaration `BTreeSet` census | Remove the three private raw validator helpers; keep the producer/sealing stages unchanged |
+| `quanta-runtime-test-support-pta/src/exact_native_generation_fixture_v1.rs` | Raw validator included with owner stages | Mount private `topology_v3` and import its single receiver |
+| `quanta-runtime-test-support-pta/src/exact_native_generation_fixture_v1/topology_v3.rs` | Absent | Reuse PTA `with_lowering_unit_into_birth_v3`, require Original admission, DFG checked cohort/index and canonical per-member visit; park all full causes and provisional scalar census outside highest fixture Current |
+| `quanta-adapters-pta/src/lib.rs` | Existing returned checked-read type lacked a public root name | Reexport existing opaque `NativeLoweringReadV3` with the existing read birth; no constructor, raw access, method or authority change |
+| `quanta-runtime-test-support-pta/src/exact_native_generation_fixture_v1/topology_v3/tests.rs` | Absent | Two actual fixture-entry rejection regressions with literal source outcomes; NOT_RUN |
+
+### Invariants and work bounds
+
+- Callable census stays nonempty, count-equal, unique and declaration-equal.
+  DFG's existing paid unique index supplies membership; the fixture independently
+  rejects repeated lowering declarations with paid comparisons. No cloned IDs,
+  replacement raw DTO or new authority map is created.
+- All three old relation predicates stay: retained object relations require
+  allocation plus constraints; void-only requires the sole function's canonical
+  return seed and no allocations/calls/lambda bindings; exact function references
+  require a nonzero expected count, equal bindings and no allocations.
+- Each lowering/cohort/member loan authenticates the actual Current. Diagnostic
+  lowering is refused. Census and visit completion remain provisional until the
+  enclosing lowering/session path succeeds. Incomplete/failed reads cannot publish
+  a matching topology as success.
+- Full read/consumer/provider error banks and scalar scratch precede highest
+  fixture Current. Unit crosses lower Source finishers; no row or admission loan
+  enters retained scratch. Provider causes selected by their same lower finishers
+  take precedence; occupied/invalid transfer failure is handled explicitly.
+- Existing canonical reads/index retain their own work and storage charging.
+  Independent duplicate comparisons cost64 work units each and are quadratic in
+  fixture callable count, bounded by the actual operation budget. Lambda binding
+  accumulation uses checked addition. No runtime/performance equivalence is claimed.
+
+### Test plan and executed proof
+
+New regressions call `produce_exact_java_native_generation_fixture_parts_v1`,
+the same entry as the existing positive contracts:
+
+1. `noop_source_cannot_satisfy_a_lambda_witness_v3`: the literal void method must
+   reject an expected lambda count1 with observed allocation0, callsite0,
+   constraint1 and function-ref0.
+2. `returning_lambda_cannot_satisfy_void_return_only_v3`: the actual returning
+   lambda fixture must reject void-only with function-ref1. An earlier producer
+   refusal fails the assertion; it cannot substitute for the topology outcome.
+
+Retain existing positive no-op, alias, returning-lambda and mixed-source result
+oracles, callable census and foreign Source/session rejection contracts. Run the
+new two regressions with those positives after the genuine whole-cohort producer
+and retained handoff consumers are connected on one compatible source tuple.
+
+Executed: AST6, rustfmt6, scoped effective LLM5/God5 and tracked diff pass.
+God reports two preexisting improved/stale entries; no allowance or baseline
+reset is used. Six-path postimages and the owned before/after patch are recorded.
+Compiler, Rust tests, QBC, runtime/product and Semantica Git publication are
+NOT_RUN in this source-only lane. The new test assertions are authored source,
+not an execution receipt or proof that the whole fixture currently succeeds.
+
+### Actual remaining code and DoD
+
+The topology type mismatch is source-repaired. W2 still needs one coupled
+genuine producer/consumer cut:
+
+1. Actual fixture binary input tied to its immutable build source, pin/session
+   and Current through the existing binary/type owner. The SDK implementation is
+   private; its presence does not provide a PTA fixture supplier.
+2. Original whole-cohort into-birth production through the existing world owner,
+   then canonical retained generation-file/inventory sealing with all partial,
+   failure and funding DATA outside highest Source. The owned world-return API
+   explicitly refuses `UnsupportedOperation`; the finalized fixture unit API
+   states that inventory sealing still needs its coupled receiver.
+3. Migrate retained V1 handoff fixture/DFG consumers together to genuine checked
+   Original reads. Preserve alias/lambda/callable/foreign-source outcomes.
+4. Direct genuine SDK joined-target HIR regression plus compatible owner/feature/
+   SDK/PTA/DFG/Graph/CHECK proof and complete local-main integration. Current SDK
+   `lower_target_hir_v3` still has its terminal guard first after a foreign source
+   successor; no new SDK hunk is authored here.
+
+Method renaming, a synthetic V1-to-Original adapter, a reverse SDK dependency,
+empty success or weakened positive assertions do not satisfy this cut. Broader
+W1/W3/W4 source obligations remain in the completion plan and18-ticket ledger.
+
+Receipts in the existing local evidence directory: `r337-topology-claim.json`,
+`r337-topology-owner-decision.json`, `r337-beforeimages.json`,
+`r338-topology-owned.patch`, `r338-topology-postimages.json`,
+`r338-topology-static.json`, `r338-topology-llm.log`, `r338-topology-god.log`.
+The sole PTA root reexport beforeimage is reconstructed from its exact pre-edit
+readback because the coordination status call exceeded the initial tool wait;
+that fact is recorded, and its other source hunks are preserved.
+
 ## Current source reconciliation and remaining work — R333
+
+Historical input: the retained topology row below is superseded by
+[R337–R338 source receiving](#retained-topology-receiving--r337r338).
 
 Observed source: Semantica `a63f536b1b3fa6e6990acd3dff0b6ef8a8f1a740`
 plus shared dirty work; QGLang documentation input `09276c57…`, clean.

@@ -34,9 +34,12 @@ plan; no worker is dispatched and no implementation/proof is claimed by this upd
   `adapter/java_source_closure/retained_workspace_issuance_v1.rs` rejects its
   unadmitted source-world birth. General facts context has Native input control,
   but no canonical output admission. These are implementation work, not only tests.
-- PTA test-support still uses diagnostic/V1 cohort/type finalization and raw
-  topology receiving. Its genuine binary provider and retained consumers must
-  change together. Already authored QRA receiving is reused.
+- PTA test-support still uses diagnostic/V1 cohort/type finalization. R338
+  [replaces raw topology receiving](native-identity-boundary.md#retained-topology-receiving--r337r338)
+  with retained unit reads, external DATA and two authored rejection regressions.
+  Its genuine binary provider, inventory sealing and retained handoff consumers
+  must change together. Already authored QRA receiving is reused; owner execution
+  remains NOT_RUN.
 - Product pre-key/context, Native finalizer and final trace/snapshot/packet/memo
   remain incomplete. Discard-only cleanup is authored; genuine guard proof is open.
 - R334 local QGLang CI passes1,514/1,514 and facade positive1/negative23 on

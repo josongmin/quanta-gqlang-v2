@@ -9,14 +9,14 @@ Latest plan/source: [W0–W7 completion plan](../plans/oct-6-substrate-dedup/par
 QGLang `231707d879de` and Semantica `a63f536b1b3` plus separately inventoried WIP,
 read back at16:48 KST. The original16:18 audit retains its own input.
 The audit distinguishes committed source, authored source and accepted execution.
-Native receiving status is superseded by the [R333 source reconciliation](../plans/oct-6-substrate-dedup/native-identity-boundary.md#current-source-reconciliation-and-remaining-work--r333); QGLang local CI R334 passes1,514 tests and facade1/23 before the receipt note. Downstream execution remains separate.
+Native topology receiving is source-authored at [R337–R338](../plans/oct-6-substrate-dedup/native-identity-boundary.md#retained-topology-receiving--r337r338), against QGLang `c411d60c7627` and Semantica `a63f536b1b3` plus exact six-path WIP. The earlier [R333 source reconciliation](../plans/oct-6-substrate-dedup/native-identity-boundary.md#current-source-reconciliation-and-remaining-work--r333) retains its input. QGLang local CI R334 passes1,514 tests and facade1/23 before the receipt note. Downstream compiler/tests/QBC/publication are NOT_RUN for R338.
 
 - **Committed:** original Shape/SCC owner routing, QGLang hardening, Python search
   feature policy and the later Python/Java lifetime repairs.
 - **Authored WIP:** current JSON external-state caller/test cut, discard-only trace
   guard and coupled Native/Original receiving. All14 discard postimages remain exact.
 - **Implemented incompletely:** SDK Original pair hydration/preparation/receipt
-  admission, genuine PTA fixture provider/cohort/topology consumers, nonempty
+  admission, genuine PTA fixture provider/cohort/inventory/handoff consumers, nonempty
   PTA/DFG publication and general facts output admission, plus product
   pre-key/context/final trace/snapshot/packet/memo.
 - **Proof pending:** current compatible Native owner compilation/tests, actual
@@ -61,7 +61,8 @@ in the completion plan. All18 active IDs map to its packages.
    owners on one compatible frozen source; repair the reached SQLite platform
    imports and inherited owner formatting.
 2. In parallel: W1 actual SDK durable generation/receipt/evidence/context;
-   W2 genuine fixture provider/cohort/type and retained topology/handoff;
+   W2 genuine fixture provider/cohort/type/inventory and retained handoff;
+   its R338 topology source repair still needs the coupled owner regression run;
    W4 product pre-key/context/trace. The existing SDK binder/provider is reused.
 3. Complete W3 nonempty PTA formal/alias/catalog/transactions, retained DFG
    source-world and adapter→context→extractor→final facts output admission.

@@ -7,11 +7,16 @@ slots, one heavy-build integrator queue and actual proof/commit/product exits.
 SDK Original generation, nonempty PTA/DFG and general facts output admission,
 trace/context/snapshot/packet/memo and genuine fixture receiving remain open.
 
-Latest source audit: [R333 reconciliation and remaining work](native-identity-boundary.md#current-source-reconciliation-and-remaining-work--r333).
+Latest code checkpoint: [R337–R338 retained topology receiving](native-identity-boundary.md#retained-topology-receiving--r337r338).
+The raw DTO receiver is replaced by genuine checked lowering/evidence reads;
+two source-oracle rejection regressions are authored. AST6, rustfmt6, scoped
+LLM5/God5 and diff pass. Semantica compiler/tests/QBC/publication are NOT_RUN.
+Earlier source audit: [R333 reconciliation and remaining work](native-identity-boundary.md#current-source-reconciliation-and-remaining-work--r333).
 Four direct HIR guards and common ledger first-cause receiving are authored.
 Current SDK FULL/private receiving, Java raw descriptor receiving and shared-query
 God are present/passing at their scoped source boundaries. Remaining Native-ID code is
-the coupled genuine PTA fixture producer/retained topology/handoff consumer;
+the coupled genuine PTA fixture binary-input/cohort/inventory producer and
+retained handoff consumer; topology source receiving is authored at R338;
 complete owner/product proof and Semantica main integration remain open.
 
 Status: implementation in progress; source edits and execution attempts are
