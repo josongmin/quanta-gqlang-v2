@@ -1,10 +1,11 @@
 # Substrate closeout execution plan
 
 Current next implementation: [R356 completion dispatch](completion-dispatch-r356.md)
-defines three parallel source roles, actual DFG/SSA/binding/selected PTA/fixture
-code maps, function-level God cleanup, independent tests and serial complete
-checkpoint commits. It is a plan; no Semantica implementation or execution was
-performed by the planning pass.
+now reconciles all six Oct-10 handoffs: P1–P4 belong to the existing C5/Native
+owner bundle; its parallel roles are not new writers. It retains actual DFG/
+SSA/binding/selected PTA/fixture code maps, recorded-D/C4 dependencies, God
+cleanup, tests and complete checkpoint exits. Exact fixture/parent hunk intake
+precedes edits. No Semantica implementation or execution occurred in this pass.
 
 Peer repair closeout: [R356 source cut and remaining acceptance](peer-audit-r343.md#current-checkpoint--r356).
 [Code map, before/after, tests and DoD](implementation-r356.md): existing external

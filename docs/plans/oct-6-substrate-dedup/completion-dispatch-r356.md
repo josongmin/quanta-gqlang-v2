@@ -4,6 +4,61 @@ Updated: 2026-10-10. **PLANNED**, based on three independent read-only source
 audits. This document schedules the remaining R356 code scope; it does not
 record implementation, test execution or Semantica integration.
 
+## Oct-10 handoff reconciliation — overrides new-writer assignments
+
+The user's subsequent overlap check identified the existing Semantica
+`docs/handoff/oct-10/agent-1.md` through `agent-6.md`. **P1–P4 substantially
+overlap the existing C5/Native work. A/B/C below are capacity and dependency
+roles, not permission to create competing source owners.** Resume/reuse the
+recorded owner work or obtain an exact path/hunk handoff before assigning a
+writer in this chat. No source-writing agents were launched for this plan.
+
+Input readback remains Semantica `e234efb0c1b` plus moving shared WIP, now 868
+tracked dirty paths. The handoffs state that their authors stopped for intake;
+this is not evidence that the scopes are unowned or that they are currently
+running. This pass reads the six handoffs and selected current source; it does
+not message those chats, resume them, or mutate Semantica.
+
+| This plan | Existing handoff/owner | Overlap and disposition |
+| --- | --- | --- |
+| P1 final Source DFG/key and retained output | [agent-4 C5](/Users/songmin/Documents/code-new/semantica-codegraph-v2/docs/handoff/oct-10/agent-4.md), [agent-6 C5](/Users/songmin/Documents/code-new/semantica-codegraph-v2/docs/handoff/oct-10/agent-6.md): 3a Core final constructor, T1 upper DFG/FunctionRef/PTA receiver, Parent upstream | Direct same producer/output path. Keep exact-key/projection acceptance within this C5 bundle; do not start a second Source DFG pipeline or retained wrapper |
+| P2 Original Braun SSA export | Same C5 handoffs: 3a | Direct same algorithm, paths and final export obligation. Reuse private unbound/bind state and the agreed Source-A/destination-D facade direction |
+| P3 canonical binding partial custody | [agent-6 Native binding/import](/Users/songmin/Documents/code-new/semantica-codegraph-v2/docs/handoff/oct-10/agent-6.md): T1; existing external-index claim | Same PTA binding owner and shared index/occurrence contracts. Exact partial-index extension is not independently itemized in the handoff; retain it as a concrete T1-bundle subtask and reconcile exact hunks |
+| P4 selected PTA and Runtime ingress/grant | agent-6 T1 actual import/extractor; [agent-3 selected suppliers](/Users/songmin/Documents/code-new/semantica-codegraph-v2/docs/handoff/oct-10/agent-3.md) D4; [agent-5 Native payload](/Users/songmin/Documents/code-new/semantica-codegraph-v2/docs/handoff/oct-10/agent-5.md) 72; Parent actual Runtime | Direct import/extractor scope plus coupled supplier dependencies. Do not assign a second broad Runtime/PTA writer. Freeze selected-input, genuine grant and Native payload handoffs together |
+| P5 public full fixture/selected test | agent-6 C5 V4 member/Product receiver; agent-5 names Parent fixture scope | Contract/output integration overlap; six handoffs do not enumerate every exact test-support file in P5. Verify actual fixture ownership before changing it; lack of a named file is not an exclusive write grant |
+| P6 parent God14 | No separate same God14 task found in the six handoffs | Candidate local structural task after exact parent hunks are released. The parent is still shared with T1/Native owners; no blanket ownership is inferred |
+| Broader W0/W1/W2/W4 and I | [agent-1 Wire/FileText](/Users/songmin/Documents/code-new/semantica-codegraph-v2/docs/handoff/oct-10/agent-1.md), [agent-2 SDK/HIR/ItemIndex](/Users/songmin/Documents/code-new/semantica-codegraph-v2/docs/handoff/oct-10/agent-2.md), agent-3 D4, agent-4 Root00, agent-5 72/Parent, agent-6 T1 | Existing producer/consumer and integration responsibilities. Consume their retained source/handoffs; I does not create a second shared-index serializer or inherit execution/Git authority |
+
+### Additional acceptance carried from the handoffs
+
+- **Recorded destination D is a real obligation.** The agreed C5 direction is
+  genuine A pair → existing `A.with_temporary_into_v3` child D → canonical
+  SSA/final DFG → same QSF recorded-D Shared owner → paid final reader under
+  that owner's actual output loan. An arbitrary semantic admission parameter
+  is not proof of the recorded operation/group or escaping result funding.
+- T1's `original_final_dfg_backing_v3.rs` is an **unaccepted proposal** in the
+  handoffs and is absent from current source. Do not describe it as implemented
+  or create a competing wrapper with a different name. Its exact facade,
+  final payload, Send/Sync and Parent member/Product receiving remain to agree.
+- Core local completion remains canonical SSA provenance and retained export;
+  final DFG receiving and FunctionRef acceptance stay coupled. Existing
+  `OriginalDfgFunctionEvidenceBackingV1` stores input fact evidence, not the
+  completed final SSA/DFG owner.
+- Native Call/ConstraintSet's actual first creation and opaque retained handle
+  are existing **C4 dependencies**, owned by 72/T1. P4's full Native consumer
+  result cannot be qualified by copying Port rows or by passing the narrower
+  direct R354 generation tests. Keep C4's genuine Source/output, Core primitive
+  and final-drop funding exits; do not add a second implementation here.
+- Graph and published domain-map/Snapshot/Resume funding are existing T1
+  scope. A census keeper alone does not fund persistent publication. This
+  focused dispatch neither reimplements those owners nor closes their proof.
+
+The independent work available to this chat now is source/handoff
+reconciliation, R356/R354 oracle review and documentation; P5 fixture edits and
+P6 structural edits require exact ownership intake. P1–P4 stay on the existing
+owner completion path. All source implementation and execution gates below
+remain required, with no new worker or foreign-chat dispatch implied.
+
 ## Purpose, scope and current input
 
 Finish the genuine Source → canonical SSA/DFG → selected PTA → final generation

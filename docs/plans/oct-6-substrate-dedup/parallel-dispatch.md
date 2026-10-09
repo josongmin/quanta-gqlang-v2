@@ -5,10 +5,13 @@ All execution is local. [R77 RCA](rca.md) owns cause analysis;
 [tickets](tickets.md) own scope/DoD and [remaining work](../../work/remaining.md)
 owns current states.
 
-Current R356 implementation dispatch: [three workers plus one integrator,
-exact source packages, handoffs and checkpoint DoD](completion-dispatch-r356.md).
-This refines the existing W2/W3/W5/W6 assignments without new tickets or
-competing writers. Core SSA and canonical binding custody run beside DFG key
+Current R356 implementation dispatch: [existing-owner reconciliation,
+source packages, handoffs and checkpoint DoD](completion-dispatch-r356.md).
+Oct-10 `agent-1`–`agent-6` intake confirms that P1–P4 overlap existing C5/Native
+owners. A/B/C are scheduling roles, not additional source assignments; exact
+owner/hunk intake precedes any writer. P5 fixture ownership and P6 parent God
+scope need separate exact intake. This refines W2/W3/W5/W6 without new tickets.
+Core SSA and canonical binding custody can run beside DFG key
 preparation; successful DFG publication precedes the selected PTA/fixture
 switch. Parent/function God cleanup follows functional file release. The
 broader W0–W7 dependency plan below remains in force. This dispatch is PLANNED.
