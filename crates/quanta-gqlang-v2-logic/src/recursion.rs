@@ -354,48 +354,49 @@ pub fn stratify(
     let (negated, aggregated) = scan_offending_edges(&graph, &components, &mut charge)?;
 
     if let Some(offending) = negated {
-        let members = component_members(&components, offending.component);
-        let path = canonical_return_path(&graph, &members, &offending, &mut charge)?;
+        let path = canonical_return_path(&graph, &components, &offending, &mut charge)?;
         return Err(LogicDiagnosticV1::NegationCycle {
             cycle: cycle_identities(&graph, &offending, &path)?,
-            offending_edge: offending.literal_location,
-            span: offending.rule_location,
+            offending_edge: offending.edge.literal_location.clone(),
+            span: offending.edge.rule_location.clone(),
         });
     }
 
     if let Some(offending) = aggregated {
-        let members = component_members(&components, offending.component);
         // The return path is discharged for aggregate recursion too: the
         // offending edge must provably close a real cycle before the rejection
         // is rendered. The rendered payload carries the aggregate call.
-        canonical_return_path(&graph, &members, &offending, &mut charge)?;
-        let Some(predicate) = graph.node(offending.target) else {
-            return Err(internal_membership_error(&offending.rule_location));
+        canonical_return_path(&graph, &components, &offending, &mut charge)?;
+        let Some(predicate) = graph.node(offending.edge.target) else {
+            return Err(internal_membership_error(&offending.edge.rule_location));
         };
         let rejection = RejectAllRecursiveAggregatesV2::new().check(
             offending
+                .edge
                 .aggregate_function
                 .as_deref()
                 .unwrap_or(RejectAllRecursiveAggregatesV2::UNSPECIFIED_FUNCTION),
             predicate,
-            &offending.literal_location,
+            &offending.edge.literal_location,
         );
         return match rejection {
             Err(diagnostic) => Err(diagnostic),
             // The fixed policy has no admitted arm. If that ever changed, this
             // fails closed instead of admitting an unproven recursion.
-            Ok(()) => Err(internal_membership_error(&offending.rule_location)),
+            Ok(()) => Err(internal_membership_error(&offending.edge.rule_location)),
         };
     }
 
     let strata = assign_strata(&graph, &components, &mut charge)?;
     let recursive = components
+        .members
         .iter()
         .filter(|component| is_recursive_component(&graph, component))
         .flatten()
         .filter_map(|member| graph.node(*member).cloned())
         .collect::<BTreeSet<ResolvedPredicateIdV2>>();
     let canonical_components = components
+        .members
         .iter()
         .map(|component| {
             component
@@ -698,6 +699,27 @@ fn internal_membership_error(span: &CheckedLocatedSpanV2) -> LogicDiagnosticV1 {
     }
 }
 
+/// One canonical SCC inventory and its dense vertex-membership index.
+/// All consumers share this private result; only `rule_components` constructs it.
+struct RuleComponentsV1 {
+    members: Vec<Vec<usize>>,
+    component_of: Vec<usize>,
+}
+
+impl RuleComponentsV1 {
+    fn lookup(
+        &self,
+        node: usize,
+        location: &CheckedLocatedSpanV2,
+    ) -> Result<usize, LogicDiagnosticV1> {
+        self.component_of
+            .get(node)
+            .copied()
+            .filter(|component| *component < self.members.len())
+            .ok_or_else(|| internal_membership_error(location))
+    }
+}
+
 /// The common partition owner preserves discovery/emission charge order and
 /// the exact incoming-edge location. Canonical rendering belongs to Logic.
 #[expect(
@@ -707,7 +729,7 @@ fn internal_membership_error(span: &CheckedLocatedSpanV2) -> LogicDiagnosticV1 {
 fn rule_components(
     graph: &RuleGraphV1,
     charge: &mut RuleGraphChargeV1,
-) -> Result<Vec<Vec<usize>>, LogicDiagnosticV1> {
+) -> Result<RuleComponentsV1, LogicDiagnosticV1> {
     let partition = indexed_scc::partition_v1(
         &graph.node_locations,
         |node| graph.edge_count(node),
@@ -734,88 +756,70 @@ fn rule_components(
         counts[component] += 1;
     }
     let mut components: Vec<Vec<usize>> = counts.into_iter().map(Vec::with_capacity).collect();
-    for (node, component) in partition.component_of.into_iter().enumerate() {
+    let mut component_of = partition.component_of;
+    for (node, &component) in component_of.iter().enumerate() {
         components[component].push(node);
     }
     components.sort();
-    Ok(components)
-}
-
-/// One candidate offending edge inside a recursive component.
-#[derive(Clone, Debug)]
-struct OffendingEdgeV1 {
-    source: usize,
-    target: usize,
-    component: usize,
-    polarity: BodyPolarityV1,
-    aggregate_function: Option<String>,
-    literal_location: CheckedLocatedSpanV2,
-    rule_location: CheckedLocatedSpanV2,
-}
-
-fn offending_order(edge: &OffendingEdgeV1) -> EdgeOrderV1 {
-    EdgeOrderV1 {
-        source: edge.source,
-        target: edge.target,
-        polarity: edge.polarity.rank(),
-        literal: location_order(&edge.literal_location),
-        rule: location_order(&edge.rule_location),
+    // Relabel the existing buffer after canonical component sorting. No second
+    // membership map, per-component set or Tarjan output copy is needed.
+    for (component, members) in components.iter().enumerate() {
+        for &node in members {
+            component_of[node] = component;
+        }
     }
+    Ok(RuleComponentsV1 {
+        members: components,
+        component_of,
+    })
 }
 
-/// Scan every projected edge once, charging one step per examined edge, and
-/// return the canonical offending edge for negation and for aggregation.
-///
-/// An edge is offending when it is not positive and both endpoints sit in the
-/// same recursive component. The scan cannot depend on component or adjacency
-/// insertion order because component members are canonical, adjacency is
-/// canonical, and the returned candidates are the minimum under
-/// [`EdgeOrderV1`].
-fn scan_offending_edges(
-    graph: &RuleGraphV1,
-    components: &[Vec<usize>],
+/// A selected edge borrows the canonical graph payload; no checked location
+/// or aggregate function is cloned while scanning rejected candidates.
+#[derive(Clone, Copy, Debug)]
+struct OffendingEdgeV1<'a> {
+    source: usize,
+    component: usize,
+    edge: &'a RuleEdgeV1,
+}
+
+/// Charge every projected edge in canonical component/member/adjacency order.
+/// Keep only the first canonical minimum for each rejection kind. Selection
+/// uses the same `edge_order` owner as graph construction and never exits early.
+fn scan_offending_edges<'a>(
+    graph: &'a RuleGraphV1,
+    components: &RuleComponentsV1,
     charge: &mut RuleGraphChargeV1,
-) -> Result<(Option<OffendingEdgeV1>, Option<OffendingEdgeV1>), LogicDiagnosticV1> {
-    let mut negated: Vec<OffendingEdgeV1> = Vec::new();
-    let mut aggregated: Vec<OffendingEdgeV1> = Vec::new();
-    for (component_index, component) in components.iter().enumerate() {
+) -> Result<(Option<OffendingEdgeV1<'a>>, Option<OffendingEdgeV1<'a>>), LogicDiagnosticV1> {
+    let mut negated: Option<OffendingEdgeV1<'a>> = None;
+    let mut aggregated: Option<OffendingEdgeV1<'a>> = None;
+    for (component_index, component) in components.members.iter().enumerate() {
         let recursive = is_recursive_component(graph, component);
-        let members: BTreeSet<usize> = if recursive {
-            component.iter().copied().collect()
-        } else {
-            BTreeSet::new()
-        };
         for &source in component {
             for edge in graph.bucket(source) {
                 charge.charge_step(&edge.literal_location)?;
-                if !members.contains(&edge.target) {
+                let target_component = components.lookup(edge.target, &edge.literal_location)?;
+                if !recursive || target_component != component_index {
                     continue;
                 }
-                let candidate = OffendingEdgeV1 {
-                    source,
-                    target: edge.target,
-                    component: component_index,
-                    polarity: edge.polarity,
-                    aggregate_function: edge.aggregate_function.clone(),
-                    literal_location: edge.literal_location.clone(),
-                    rule_location: edge.rule_location.clone(),
+                let selected = match edge.polarity {
+                    BodyPolarityV1::Positive => continue,
+                    BodyPolarityV1::Negated => &mut negated,
+                    BodyPolarityV1::Aggregated => &mut aggregated,
                 };
-                match edge.polarity {
-                    BodyPolarityV1::Positive => {}
-                    BodyPolarityV1::Negated => negated.push(candidate),
-                    BodyPolarityV1::Aggregated => aggregated.push(candidate),
+                if selected.as_ref().map_or(true, |current| {
+                    edge_order(source, edge) < edge_order(current.source, current.edge)
+                }) {
+                    *selected = Some(OffendingEdgeV1 {
+                        source,
+                        component: component_index,
+                        edge,
+                    });
                 }
             }
         }
     }
-    Ok((
-        negated
-            .into_iter()
-            .min_by(|left, right| offending_order(left).cmp(&offending_order(right))),
-        aggregated
-            .into_iter()
-            .min_by(|left, right| offending_order(left).cmp(&offending_order(right))),
-    ))
+    Ok((negated, aggregated))
 }
 
 fn is_recursive_component(graph: &RuleGraphV1, component: &[usize]) -> bool {
@@ -823,13 +827,6 @@ fn is_recursive_component(graph: &RuleGraphV1, component: &[usize]) -> bool {
         || component
             .first()
             .is_some_and(|only| graph.has_self_loop(*only))
-}
-
-fn component_members(components: &[Vec<usize>], component: usize) -> BTreeSet<usize> {
-    components
-        .get(component)
-        .map(|members| members.iter().copied().collect())
-        .unwrap_or_default()
 }
 
 /// Prove an actual return path inside the offending edge's component.
@@ -841,12 +838,17 @@ fn component_members(components: &[Vec<usize>], component: usize) -> BTreeSet<us
 /// examined edge, before it is examined.
 fn canonical_return_path(
     graph: &RuleGraphV1,
-    members: &BTreeSet<usize>,
-    offending: &OffendingEdgeV1,
+    components: &RuleComponentsV1,
+    offending: &OffendingEdgeV1<'_>,
     charge: &mut RuleGraphChargeV1,
 ) -> Result<Vec<usize>, LogicDiagnosticV1> {
-    let from = offending.target;
+    let from = offending.edge.target;
     let to = offending.source;
+    if components.lookup(from, &offending.edge.literal_location)? != offending.component
+        || components.lookup(to, &offending.edge.rule_location)? != offending.component
+    {
+        return Err(internal_membership_error(&offending.edge.rule_location));
+    }
     let mut predecessor: Vec<Option<usize>> = (0..graph.nodes.len()).map(|_| None).collect();
     let mut seen: Vec<bool> = (0..graph.nodes.len()).map(|_| false).collect();
     let mut queue: VecDeque<usize> = VecDeque::new();
@@ -861,7 +863,7 @@ fn canonical_return_path(
         }
         for edge in graph.bucket(node) {
             charge.charge_step(&edge.literal_location)?;
-            if !members.contains(&edge.target) {
+            if components.lookup(edge.target, &edge.literal_location)? != offending.component {
                 continue;
             }
             if seen.get(edge.target).copied().unwrap_or(false) {
@@ -878,14 +880,14 @@ fn canonical_return_path(
     }
 
     if !seen.get(to).copied().unwrap_or(false) {
-        return Err(internal_membership_error(&offending.rule_location));
+        return Err(internal_membership_error(&offending.edge.rule_location));
     }
 
     let mut path: Vec<usize> = vec![to];
     let mut cursor = to;
     while cursor != from {
         let Some(previous) = predecessor.get(cursor).copied().flatten() else {
-            return Err(internal_membership_error(&offending.rule_location));
+            return Err(internal_membership_error(&offending.edge.rule_location));
         };
         path.push(previous);
         cursor = previous;
@@ -901,17 +903,17 @@ fn canonical_return_path(
 /// last entry back to the first. A self-loop therefore renders as one identity.
 fn cycle_identities(
     graph: &RuleGraphV1,
-    offending: &OffendingEdgeV1,
+    offending: &OffendingEdgeV1<'_>,
     return_path: &[usize],
 ) -> Result<Vec<ResolvedPredicateIdV2>, LogicDiagnosticV1> {
     let mut cycle: Vec<ResolvedPredicateIdV2> = Vec::new();
     let Some(source) = graph.node(offending.source) else {
-        return Err(internal_membership_error(&offending.rule_location));
+        return Err(internal_membership_error(&offending.edge.rule_location));
     };
     cycle.push(source.clone());
     for member in return_path.iter().take(return_path.len().saturating_sub(1)) {
         let Some(identifier) = graph.node(*member) else {
-            return Err(internal_membership_error(&offending.rule_location));
+            return Err(internal_membership_error(&offending.edge.rule_location));
         };
         cycle.push(identifier.clone());
     }
@@ -924,51 +926,45 @@ fn cycle_identities(
 /// aggregated edges force the source strictly above the target. Members of one
 /// SCC share a stratum (a negation or aggregation cycle already rejected).
 /// One step is charged per examined edge in every pass, before the pass.
+#[expect(
+    clippy::indexing_slicing,
+    reason = "RuleGraph build stores one checked location per node in the same order"
+)]
 fn assign_strata(
     graph: &RuleGraphV1,
-    components: &[Vec<usize>],
+    components: &RuleComponentsV1,
     charge: &mut RuleGraphChargeV1,
 ) -> Result<BTreeMap<ResolvedPredicateIdV2, usize>, LogicDiagnosticV1> {
-    let mut component_of: Vec<Option<usize>> = (0..graph.nodes.len()).map(|_| None).collect();
-    for (component_index, component) in components.iter().enumerate() {
-        for &member in component {
-            if let Some(slot) = component_of.get_mut(member) {
-                *slot = Some(component_index);
-            }
-        }
-    }
-
-    let mut levels: Vec<usize> = (0..components.len()).map(|_| 0).collect();
+    let mut levels: Vec<usize> = (0..components.members.len()).map(|_| 0).collect();
     let mut pass = 0usize;
     let mut changed = true;
-    while changed && pass <= components.len() {
+    while changed && pass <= components.members.len() {
         changed = false;
         pass = pass.saturating_add(1);
-        for source in 0..graph.nodes.len() {
-            let Some(source_component) = component_of.get(source).copied().flatten() else {
-                continue;
-            };
+        for (source, location) in graph.node_locations.iter().enumerate() {
+            let source_component = components.lookup(source, location)?;
             for edge in graph.bucket(source) {
                 charge.charge_step(&edge.literal_location)?;
-                let Some(target_component) = component_of.get(edge.target).copied().flatten()
-                else {
-                    continue;
-                };
+                let target_component = components.lookup(edge.target, &edge.literal_location)?;
                 if target_component == source_component {
                     continue;
                 }
-                let target_level = levels.get(target_component).copied().unwrap_or(0);
+                let target_level = levels
+                    .get(target_component)
+                    .copied()
+                    .ok_or_else(|| internal_membership_error(&edge.literal_location))?;
                 let required = match edge.polarity {
                     BodyPolarityV1::Positive => target_level,
                     BodyPolarityV1::Negated | BodyPolarityV1::Aggregated => {
                         target_level.saturating_add(1)
                     }
                 };
-                if let Some(slot) = levels.get_mut(source_component) {
-                    if *slot < required {
-                        *slot = required;
-                        changed = true;
-                    }
+                let slot = levels
+                    .get_mut(source_component)
+                    .ok_or_else(|| internal_membership_error(&edge.rule_location))?;
+                if *slot < required {
+                    *slot = required;
+                    changed = true;
                 }
             }
         }
@@ -976,13 +972,21 @@ fn assign_strata(
 
     let mut strata: BTreeMap<ResolvedPredicateIdV2, usize> = BTreeMap::new();
     for (index, node) in graph.nodes.iter().enumerate() {
-        let level = component_of
-            .get(index)
+        let location = &graph.node_locations[index];
+        let component = components.lookup(index, location)?;
+        let level = levels
+            .get(component)
             .copied()
-            .flatten()
-            .and_then(|component| levels.get(component).copied())
-            .unwrap_or(0);
+            .ok_or_else(|| internal_membership_error(location))?;
         strata.insert(node.clone(), level);
     }
     Ok(strata)
 }
+
+#[cfg(test)]
+#[expect(
+    clippy::expect_used,
+    reason = "fault-injection tests use registry-proven fixture locations"
+)]
+#[path = "recursion/partition_tests.rs"]
+mod partition_tests;

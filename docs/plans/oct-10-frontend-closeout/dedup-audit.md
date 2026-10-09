@@ -182,6 +182,67 @@ SCC partition 책임 겹침을 확인했다. 재현된 결과 오류는 아니�
 - 증거: `.audit/oct10-frontend-closeout/{dag-focused,dag-final-unit,view-heap-focused}.log`,
   `dag-duplicate-postflight.json`. 최종 full qualification은 현재 HEAD receipt로 별도 판정한다.
 
+## D05 — Logic SCC membership 재구성과 offending payload 복제: SOURCE_REPAIRED
+
+입력은 clean main `77550baafe77dc8798ee666aeb8d9271736f3a50` (qualification exit0,
+Nextest1524)다. 이는 아래 변경 후 source의 qualification이 아니며 현재 HEAD receipt가 필요하다.
+
+### 원인·실제 caller·변경
+
+- [Logic recursion](../../../crates/quanta-gqlang-v2-logic/src/recursion.rs)의 `rule_components`는
+  공통 kernel의 dense labels를 component 목록 생성 후 폐기했다. `scan_offending_edges`는
+  component별 BTreeSet, `component_members`는 return-path용 BTreeSet, `assign_strata`는
+  별도의 `Vec<Option<usize>>` membership을 다시 만들었다.
+- private `RuleComponentsV1`이 canonical sorted members와 dense `component_of`를 한 번 소유한다.
+  kernel labels buffer를 canonical component sorting 후 제자리 relabel하며 scan/BFS/strata가 재사용한다.
+  각 domain의 graph ordering/stratification 정책을 다른 stage로 옮기지 않는다.
+- `offending_order`는 기존 `edge_order`의 같은 source/target/polarity/literal/rule key를 다시 투영했다.
+  이를 제거하고 graph construction과 offending selection이 하나의 ordering owner를 쓴다.
+- scan은 positive intra-SCC edge까지 임시 payload를 복제했고, negated/aggregate 후보 전부를 Vec에
+  보관한 뒤 두 최소값만 사용했다. 이제 graph payload를 빌린 minimum Option2개만 유지한다.
+  selection 추가 보관은 O(1), shared membership index는 O(V)다. graph 자체나 전체 RSS가 O(1)이라는 주장은 아니다.
+- canonical component/member/adjacency scan order와 edge별 before-work charge는 유지한다.
+  최소값 발견 뒤에도 scan을 끝내며 negation-before-aggregate와 마지막 scan의 budget refusal가 유지된다.
+  equal canonical key는 기존처럼 첫 payload를 유지한다. 최종 diagnostic만 필요한 checked facts를 clone한다.
+
+### 실패 경계
+
+- 누락/범위 밖 membership을 빈 집합이나 stratum0으로 해석하던 fallback을 제거했다.
+  공통 lookup은 exact checked location의 typed `MembershipMismatch`로 거절한다.
+- return-path의 self-cycle도 초기 source/target membership 검증을 통과해야 한다.
+- 이 index는 private constructor가 완전하게 만든다. 이번 감사에서 외부 입력으로 잘못된 성공을
+  재현한 것은 아니다. malformed-index 검증은 **내부 fault injection**이며 invariant 회귀에 대비한 proof다.
+- public DTO/schema/digest, source identity, diagnostic selection/span, step totals와 global limits는 변경하지 않는다.
+
+### 실행 증거
+
+- `cargo test --locked --offline -p quanta-gqlang-v2-logic --lib --test v3_logic_recursion
+  --test v3_rule_scc_hellgate --test v3_logic_source`: **84/84 PASS**
+  (lib24/recursion17/SCC13/source30, failed0/ignored0/filtered0).
+- 기존 independent343 graph/strata oracle,50k narrow-stack/exact-step, canonical actual cycle,
+  permutation, source-sealed polarity/identity 및 discovery/emission located charges를 포함한다.
+- 새 actual stratify regression:8194 body edges의 exact8196 steps에서는 최소 negated cycle,
+  one-short에서는 마지막 aggregate literal의 step refusal. 조기 rejection이나 과금 생략을 거절한다.
+- equal-key aggregate candidate는 두 입력 순서 각각의 첫 function과 정확한 span을 보존한다.
+- private fault injection: missing/out-of-range component index 각각에서 scan, self-cycle BFS,
+  strata가 exact literal/rule location의 `MembershipMismatch`로 거절한다.
+- 후속 production AST: **162 files /2865 functions**, parse error0,80-token 이상 exact-body group0.
+  old `offending_order`, `component_members`, owned candidate Vec와 별도 Option membership map은 없다.
+- `.audit/oct10-frontend-closeout/logic-index-final.log`, `logic-index-duplicate-postflight.json`에 보관한다.
+  peak allocator/RSS/latency 비교는 실행하지 않았다. full qualification은 current-HEAD receipt로 판정한다.
+
+### 추가 대조 후 유지한 경계
+
+- Types `solver.rs`→`Engine::is_recursive`는 unresolved rule-head domain의 진단 분기를 위한
+  pre-sema predicate reachability이며 자체 type-work budget을 사용한다. Logic의 sealed document
+  SCC/strata proof와 consumer/stage가 다르다. Types→Modules/Logic 의존을 만들어 공통 SCC로
+  강제 연결하는 변경은 하지 않는다. 이번 source audit를 그 경로의 새 runtime/performance proof로 해석하지 않는다.
+- Pipeline `execution/vocabulary.rs::registered_execution_symbol`→`project_call_target`는 absent owner
+  spelling을 `UnregisteredSymbol`로 거절하고 compile assembly가 이를 진단으로 투영한다.
+  `projection.rs::close_expression_ids`는 Foreign/Dangling을 typed rejection으로 처리한다.
+  frontend-contract는 curated re-export seam이며 DTO declaration은 Pipeline에 있다.
+  확인한 경로에서 새 placeholder success나 두 번째 execution owner는 발견하지 않았다.
+
 ## 이전 D01/D02 실행과 증거 (D03 전환 전 snapshot)
 
 | 검증 | 현재 결과 |

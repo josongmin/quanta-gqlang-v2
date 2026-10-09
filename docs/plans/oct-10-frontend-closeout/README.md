@@ -1,6 +1,6 @@
 # Oct-10 QGLang 기존 작업 마감
 
-Updated: 2026-10-10. 상태: **DEDUP4_SOURCE_DONE / FOCUSED_PASS / QUALIFICATION_RECEIPT_DERIVED / PAIRED_OPEN**.
+Updated: 2026-10-10. 상태: **DEDUP5_SOURCE_DONE / FOCUSED_PASS / QUALIFICATION_RECEIPT_DERIVED / PAIRED_OPEN**.
 
 ## 목적과 범위
 
@@ -32,6 +32,10 @@ Updated: 2026-10-10. 상태: **DEDUP4_SOURCE_DONE / FOCUSED_PASS / QUALIFICATION
 7. 추가 D04 감사에서 DAG preflight 중복과 ready Vec의 반복 이동을 확인해 수정했다.
    공통 borrowed DP와 cursor FIFO, canonical View min-heap을 사용한다. 별도 cfg(test) helper만
    확인하던 oracle에 actual production exact/one-short 검증을 연결했다.
+
+8. D05에서 Logic의 SCC membership 재구성과 edge-order 중복을 제거했다. scan/BFS/strata는
+   canonical dense index를 재사용하고 offending 후보는 borrowed minima2개만 유지한다.
+   대량 후보/과금/first-tie 및 내부 malformed-index refusal를 포함한 Logic84 owner tests가 통과했다.
 
 정적 감사는 명시한 소스·호출·설정 범위의 대조다. 저장소 전체 중복0,
 최신 CI 통과 또는 Semantica 제품 완료를 뜻하지 않는다.

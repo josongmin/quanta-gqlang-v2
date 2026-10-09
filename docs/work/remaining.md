@@ -45,7 +45,10 @@ owners pass. Follow-up D04 also unifies duplicate DAG preflight, removes copied
 adjacency and quadratic ready-Vec shifts, and preserves canonical View order
 with a standard min-heap. The five-node oracle now exercises the actual
 production path with exact/one-short work budgets, alongside wide/isolated
-50k controls. The current committed HEAD's `target/qualification/<HEAD>/receipt.json`
+50k controls. D05 retains one canonical Logic membership index across offending
+scan/return-path/strata and selects borrowed minima using the graph's sole edge-order
+owner. All-edge charge/first-tie behavior and malformed internal index rejection
+are covered by84 Logic owner tests. The current committed HEAD's `target/qualification/<HEAD>/receipt.json`
 is authoritative for standalone local qualification; no matching successful
 receipt means NOT_QUALIFIED. Paired downstream acceptance remains OPEN under
 E13. File/test splits and local size/MSRV gates are present. DTO physical

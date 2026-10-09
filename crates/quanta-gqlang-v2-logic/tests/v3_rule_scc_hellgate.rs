@@ -54,6 +54,51 @@ fn generous() -> DownstreamBudgetReceiptV2 {
     receipt(4_096, 40_000, 4_000_000)
 }
 
+#[test]
+fn many_offending_edges_keep_canonical_minimum_and_scan_budget_before_rejection() {
+    let l = checked_locations(5);
+    let mut body = vec![negated("p", &l[1])];
+    for _ in 0..4096 {
+        body.push(positive("p", &l[3]));
+        body.push(aggregated("p", "count", &l[2]));
+    }
+    // Canonical graph order puts the final aggregated literal after all
+    // positives, negations and the earlier aggregate locations.
+    body.push(aggregated("p", "max", &l[4]));
+    let exact_steps = u32::try_from(body.len() + 2).expect("discovery + emission + scan");
+    let program = RecursiveProgramV1::from_rules(vec![rule("p", body, &l[0])]);
+    let error =
+        stratify(&program, &receipt(1, 10_000, exact_steps - 1)).expect_err("last scan refuses");
+    assert!(matches!(error, LogicDiagnosticV1::RuleGraphBudgetExceeded {
+        dimension: RuleGraphBudgetDimensionV1::Steps, limit, span
+    } if limit == exact_steps - 1 && span == l[4]));
+    let error = stratify(&program, &receipt(1, 10_000, exact_steps)).expect_err("negation wins");
+    assert!(
+        matches!(error, LogicDiagnosticV1::NegationCycle { cycle, offending_edge, span }
+        if cycle == vec![pred("p")] && offending_edge == l[1] && span == l[0])
+    );
+}
+
+#[test]
+fn equal_canonical_aggregate_keys_retain_first_payload() {
+    let l = checked_locations(2);
+    for functions in [["count", "max"], ["max", "count"]] {
+        let program = RecursiveProgramV1::from_rules(vec![rule(
+            "p",
+            vec![
+                aggregated("p", functions[0], &l[1]),
+                aggregated("p", functions[1], &l[1]),
+            ],
+            &l[0],
+        )]);
+        let error = stratify(&program, &receipt(1, 2, 4)).expect_err("recursive aggregate");
+        assert!(
+            matches!(error, LogicDiagnosticV1::RecursiveAggregate { function, predicate, span }
+            if function == functions[0] && predicate == pred("p") && span == l[1])
+        );
+    }
+}
+
 fn pred(name: &str) -> ResolvedPredicateIdV2 {
     ResolvedPredicateIdV2::try_new(name).expect("canonical predicate identity")
 }
