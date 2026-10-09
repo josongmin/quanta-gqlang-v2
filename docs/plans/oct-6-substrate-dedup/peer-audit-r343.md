@@ -43,6 +43,15 @@ until Source completion, first-cause preservation, exact last-drop refund, and
 unchanged namespace bytes and successful output. No memory corruption, leak or
 wrong successful result was reproduced by this audit.
 
+R344 prepared a two-file caller patch using that existing helper. It adds
+initially empty partial String fields to the existing Java/Python births and
+leaves the completed workspace Option and namespace algorithm unchanged.
+`git apply --check` passed against the recorded source. The patch is external
+evidence, **PREPARED_NOT_APPLIED_NOT_BUILT**, not a repair in Semantica main.
+Current live materialization claims overlap these files. Keep one implementation
+owner and reconcile the actual hunks before applying it. The patch does not
+resolve the helper's conditional full allocator-error custody requirement.
+
 ## A2: complete the existing supplier and consumer contract
 
 The staged Java DFG producer publishes a Source member. Its ordinary member
@@ -140,6 +149,9 @@ Detailed external evidence is under
 `r343-peer-own-changes-audit.md`, the three independent lane JSON reports, and
 the peer postflight/delta readbacks. Moving foreign staged inputs and their
 temporary API removal are recorded separately from stable consumer evidence.
+The later `r344-t1-peer-review.json` records the direct pre-final test source;
+`r344-workspace-custody-prepared.patch` and its JSON record the unapplied caller
+patch and its remaining acceptance conditions.
 
 See [the current execution plan](parallel-dispatch.md) for the existing
 integration and owner queue. This peer audit does not rewrite that queue or
