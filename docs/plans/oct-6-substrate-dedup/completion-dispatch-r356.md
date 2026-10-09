@@ -1,8 +1,13 @@
 # Remaining implementation dispatch after R356
 
-Updated: 2026-10-10. **PLANNED**, based on three independent read-only source
-audits. This document schedules the remaining R356 code scope; it does not
-record implementation, test execution or Semantica integration.
+Updated: 2026-10-10. **PLANNED; dispatch consolidated downstream.** The active
+Semantica remaining-work map is
+[Oct-10 compiled](../../../../semantica-codegraph-v2/docs/handoff/oct-10/oct-10-compiled.md).
+Its section 0 merges P1–P6 into E06/E07/E10/E13 with existing owners, actual
+Runtime grant and fixture/feature dependencies, independent tests and DoD.
+This document retains the three read-only audits' detailed source reasoning;
+its A/B/C scheduling roles do not authorize a second implementation queue.
+It records no new implementation, test execution or Semantica integration.
 
 ## Oct-10 handoff reconciliation — overrides new-writer assignments
 

@@ -1,11 +1,18 @@
 # Substrate closeout execution plan
 
-Current next implementation: [R356 completion dispatch](completion-dispatch-r356.md)
-now reconciles all six Oct-10 handoffs: P1–P4 belong to the existing C5/Native
-owner bundle; its parallel roles are not new writers. It retains actual DFG/
-SSA/binding/selected PTA/fixture code maps, recorded-D/C4 dependencies, God
-cleanup, tests and complete checkpoint exits. Exact fixture/parent hunk intake
-precedes edits. No Semantica implementation or execution occurred in this pass.
+Current Semantica execution map:
+[Oct-10 compiled](../../../../semantica-codegraph-v2/docs/handoff/oct-10/oct-10-compiled.md).
+It consolidates the six handoffs and the R356 acceptance supplement into existing
+E06/E07/E10/E13 owners; it is the remaining-work dispatch reference. This packet
+retains audit history and original ticket contracts rather than a second queue.
+[R356 detail](completion-dispatch-r356.md) retains the code map, before/after,
+tests and checkpoint criteria. No new source writer is assigned by that map.
+
+No separate required GQLang code change was identified for this substrate
+closeout. File/test splits and local size/MSRV rails are present. DTO physical
+extraction and fuzz cadence remain deferred/optional; proposed V4 frontend work
+is tracked separately in [remaining work](../../work/remaining.md#proposed-code-query-work).
+This documentation pass executes no Rust or downstream product qualification.
 
 Peer repair closeout: [R356 source cut and remaining acceptance](peer-audit-r343.md#current-checkpoint--r356).
 [Code map, before/after, tests and DoD](implementation-r356.md): existing external

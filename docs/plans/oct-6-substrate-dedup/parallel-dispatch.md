@@ -5,7 +5,13 @@ All execution is local. [R77 RCA](rca.md) owns cause analysis;
 [tickets](tickets.md) own scope/DoD and [remaining work](../../work/remaining.md)
 owns current states.
 
-Current R356 implementation dispatch: [existing-owner reconciliation,
+Current Semantica execution map:
+[Oct-10 compiled](../../../../semantica-codegraph-v2/docs/handoff/oct-10/oct-10-compiled.md).
+The W0–W7 and R356 sections below retain historical scope/acceptance detail;
+the consolidated map owns current downstream scheduling and existing-owner
+reconciliation. These documents do not create competing source writers.
+
+R356 audit detail: [existing-owner reconciliation,
 source packages, handoffs and checkpoint DoD](completion-dispatch-r356.md).
 Oct-10 `agent-1`–`agent-6` intake confirms that P1–P4 overlap existing C5/Native
 owners. A/B/C are scheduling roles, not additional source assignments; exact
@@ -14,7 +20,8 @@ scope need separate exact intake. This refines W2/W3/W5/W6 without new tickets.
 Core SSA and canonical binding custody can run beside DFG key
 preparation; successful DFG publication precedes the selected PTA/fixture
 switch. Parent/function God cleanup follows functional file release. The
-broader W0–W7 dependency plan below remains in force. This dispatch is PLANNED.
+broader W0–W7 obligations below remain required and are reconciled in the
+consolidated map. This dispatch is PLANNED, not a new live assignment.
 
 Peer repair lane: [R356](peer-audit-r343.md#current-checkpoint--r356) applies
 one ten-path external occurrence/index custody cut at Semantica `e234efb0c1b`.

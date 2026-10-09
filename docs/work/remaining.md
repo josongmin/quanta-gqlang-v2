@@ -10,12 +10,20 @@ QGLang `661f87d38dae` and latest Semantica `e234efb0c1b` plus separately invento
 The16:18/16:48 audits retain their own inputs. The later main commit imports
 source; current owner acceptance remains pending.
 The audit distinguishes committed source, authored source and accepted execution.
-Next planned source dispatch: [R356 parallel completion](../plans/oct-6-substrate-dedup/completion-dispatch-r356.md)
-assigns DFG key/result, SAME Core SSA and canonical binding partial custody to
-three independent roles, then completes selected PTA/Runtime callers and the
-public fixture together. Parent/function God cleanup follows functional file
-release; owner execution and complete checkpoint commits are serial. This
-planning update changes no implementation or ticket acceptance state.
+Current Semantica execution map:
+[Oct-10 compiled](../../../semantica-codegraph-v2/docs/handoff/oct-10/oct-10-compiled.md)
+consolidates the six handoffs and R356 P1–P6 into existing E06/E07/E10/E13 owner
+packages. [R356 detail](../plans/oct-6-substrate-dedup/completion-dispatch-r356.md)
+retains DFG/SSA/binding/selected PTA/fixture code maps, exact prebirth grant,
+feature closure, tests and checkpoint DoD. Its three scheduling roles are not
+additional writers. The original 18 states and downstream Native14+IR9+proof2
+cover different scopes and must not be added together.
+
+No separate required GQLang code change was identified for this substrate
+closeout: file/test splits and local size/MSRV gates are present. DTO physical
+extraction and automatic fuzz cadence remain deferred/optional. The proposed
+V4 A03/A04/A08-Q work below remains a separate roadmap. This consolidation
+changes no implementation or ticket acceptance state and executes no Rust.
 Peer repair successor [R356](../plans/oct-6-substrate-dedup/peer-audit-r343.md#current-checkpoint--r356)
 connects the existing external occurrence/index births and removes the live
 copy duplicate. Its [ten-path code map and acceptance plan](../plans/oct-6-substrate-dedup/implementation-r356.md)
