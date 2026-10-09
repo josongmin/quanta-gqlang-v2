@@ -11,7 +11,7 @@ compiler, runtime, product or installation results.
 | --- | --- | --- |
 | W1 | Committed-baseline lifetime defect; R348 repair applied to dirty source, not qualified | External text and full allocator-cause custody, genuine late-refusal and exact refund proof |
 | A2 | Staged Source integration partly connected for ExactZero; final-generation consumer still ordinary-only | One supplier-owned contract, all reachable consumers connected, genuine positive and negative proof |
-| T2 | Confirmed source defect in the R346 topology receiving patch; runtime not run | Source-zero success must satisfy the outer completion state without bypassing controller failures |
+| T2 | Confirmed R346 defect; existing owner's R347 source correction independently reviewed | Execute genuine Source-zero positive and rejection/finisher regression; runtime not run |
 | T1 | Initial static false-pass possibility; successor pre-final regression authored by the existing topology lane | Execute the positive and strict negative tests through the actual pre-final owner; current execution remains unproved |
 
 ### Current checkpoint — R348
@@ -22,8 +22,8 @@ The W1 successor changes are applied in fourteen Semantica files under reconcile
 claim `OCT9-GQLANG-WORKSPACE-CUSTODY-PEER-R345`. This chat did not stage, commit
 or push Semantica, or run its Rust compiler, tests, QBC or runtime.
 
-W1 has independent source review and static checks. A2/T2 remain source work;
-T1 and W1 still require executed owner proof. Existing Source ExactZero support
+W1 has independent source review and static checks. A2 remains source work;
+T1, T2 and W1 still require executed owner proof. Existing Source ExactZero support
 does not support nonzero lambda references or establish final generation success.
 
 The R341 error-masking finding A1 is withdrawn. It confused
@@ -152,12 +152,29 @@ a valid Source-zero result falls through to `CallableCensusMismatch`.
 
 This is a confirmed source-logic defect in the receiving patch, independently of
 the remaining upstream fixture and final-generation blockers. It was not run.
-The existing topology owner must retain explicit verified Source-zero state only
+The repair must retain explicit verified Source-zero state only
 after the controlled read returns success, then accept either that state or the
 completed ordinary visit, retaining every other completion/error check. Source
 Err, mixed-cohort refusal and ordinary None must not bypass their normal gates.
-Use a genuine Source success regression that fails on the current unstarted birth;
+Use a genuine Source success regression that fails on the former unstarted-birth fallback;
 the two authored negatives alone cannot establish this positive path.
+
+### Existing-owner correction — R349 peer readback
+
+The topology owner has now added `source_function_refs_read_v3` to its existing
+DATA. Default leaves it false; its only true assignment follows successful
+controlled Source/output reading. The outer condition accepts this observed
+Source read or completed ordinary visitation, retaining the highest Source,
+lower/census completion and error checks. Source Err exits before the assignment;
+ordinary None still requires the visitor. No unused birth is marked complete.
+
+The initial peer read raced this edit and has no successor verdict. The root
+review uses one saved byte snapshot, SHA256
+`63bb5c6efcac207b93f6d46ebb08e5133c409bbc9b536c0c461c0795a6d75e82`,
+in `r349-topology-single-read.rs` and `r349-topology-root-successor-review.json`.
+The identified source defect is repaired in that snapshot. Actual owner tests,
+QBC and final-generation integration remain **NOT_RUN**, so this is source review
+of the correction, not executed acceptance.
 
 ## T1: distinguish pre-final rejection from later rejection
 
