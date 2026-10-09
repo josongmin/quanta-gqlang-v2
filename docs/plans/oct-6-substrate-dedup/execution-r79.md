@@ -1480,6 +1480,65 @@ push. C1 issuer/pin/workspace/SDK FULL, C6 genuine prekey/token, final SSA/DFG
 and retained consumers, compatible owner/product proof and complete local-main
 integration remain required. All18 active ticket states are preserved.
 
+### Diagnostic transition copy and actual provenance caller audit — 2026-10-10
+
+Source: QGLang `8dcea6b54547` and Semantica `e234efb0c1b` plus shared WIP.
+Root removes the unused optional Current/authenticated-TARGET branch from the
+Kernel diagnostic transition/disposition copier. Its three actual Runtime
+callers all supplied `None`; the production materialized-disposition supplier
+and two ingress test ports now use the same one-argument function. Managed
+syntax still refuses `UnsupportedAllocation` before metadata/artifact copies;
+diagnostic cloning and FullRebuild fallback are unchanged. This pre-release
+Rust API removes an unused branch, not a genuine managed owner or issuer.
+Four paths are source-authored, three added/sixteen removed lines. The prior
+14-path follow-ups plus this cut total18 newly authored Root source paths;
+that count excludes the earlier Runtime/session and TypesCore repair.
+
+Changed function AST, rustfmt parsing4, LLM4 and diff checks pass. One whole
+file retains the same Tree-sitter `#[cfg]` struct-pattern parsing limitation in
+both preimage and postimage; its edited function parses. Whole-scope God is RED
+on the unchanged `ProductionNormalSourceAttributionFactoryV1::compose_v1`
+(70 lines, baseline64, threshold50); its exact function bytes match the
+preimage. No allowance or baseline change is made. Rust owner/tests are NOT_RUN.
+Root does not stage or commit a partial Semantica product.
+
+A fresh ten-definition C2 source census finds descriptor arguments on all four
+Kernel trait constructors and the four Symbol/ItemIndex concrete overrides.
+Parse's two concrete constructors still use the old shape at this observation.
+The canonical five-role QSF managed-copy compositor now exists. These are
+source observations during active writes, not type/behavior acceptance. Exact
+Parse/Symbol/ItemIndex handbacks and the pin phase-method handback remain
+active0 for Root; other writers preserve their current owned bodies.
+
+Managed provenance still uses old owned callback APIs. Its actual Parser
+caller reaches Kernel beneath installed-session and Java-semantics Source
+loans. Five separate external backend roles are required: source authentication,
+metadata scalar, identity scalar, exact Source and exact batch. The existing
+Port exact-edit unit reader takes `&PortIncrementalParseInputV3`, whereas this
+actual caller holds `&mut Option<PortManagedTargetParseResultV3>`. The canonical
+Port owner must agree a direct borrowed managed-owner entry or a complete
+outer-carrier co-cut before Kernel and Parser change together. A new nested
+factory or a temporary owned enum does not close that lifetime boundary.
+The proposed exact signatures are recorded, not yet implemented or accepted.
+
+Highest Source completion is the acceptance boundary. Every paid payload or
+partial must drop before its SAME genuine funding; an escaping retained owner
+keeps actual backing funding through its final drop or a canonical durable
+transfer. Workarea-only permits followed by a raw Arc/Clone escape do not
+satisfy that contract. Source-index field order and its accepted output owner
+retain funding structurally; genuine late-refusal/refund proof remains NOT_RUN.
+The shared-header exterior birth bank is still absent in the mounted pin owner.
+SDK FULL/indexed-source, issuer/pin/alias/workspace, managed provenance, C6
+prekey/token and SSA/DFG/retained consumer closure remain required.
+
+Evidence: `diagnostic-transition-copy-{census,claim,design,ast,static,handoff}-oct10.json`,
+`diagnostic-transition-copy-root-delta-oct10.patch`,
+`closeout-current-residual-source-oct10.json`,
+`managed-provenance-exact-cocut-proposal-oct10.json` and the refreshed
+`c1-c2-c6-contract-response-oct10.json` in the external task evidence directory.
+Existing Kernel-only published digest4 remains separate. No new compiler,
+Native/product qualification, main integration or ticket closure is claimed.
+
 ### Incremental session and SSA dependency repair — 2026-10-10
 
 Input: QGLang `661f87d38dae`; Semantica main `8217a38bf04d` plus shared WIP.

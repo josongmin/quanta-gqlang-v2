@@ -112,6 +112,17 @@ without waiver. C6 genuine prekey/token and whole product acceptance remain open
 All18 current states and public/product HOLD remain unchanged. Foreign staging
 is recorded independently from accepted local-main integration.
 
+Latest Root [diagnostic copy and provenance caller audit](../plans/oct-6-substrate-dedup/execution-r79.md#diagnostic-transition-copy-and-actual-provenance-caller-audit--2026-10-10)
+authors4 more paths, removing the unused optional Current/Source branch and
+co-cutting three actual None callers. Changed-function AST/rustfmt parsing/LLM/
+diff pass; unchanged compose70/baseline64 God debt remains RED and Rust owner
+is NOT_RUN. Current C2 source has Symbol/ItemIndex ctor4 migrated, Parse ctor2
+still old. The actual managed-provenance caller needs exterior five-role banks
+plus the canonical direct managed-owner exact-edit entry jointly agreed with
+Port/Parser. The generic shared-header exterior birth is still absent. SAME
+actual funding must outlive every retained/partial payload's final drop.
+These source changes/proposals close no ticket or complete product integration.
+
 Oct10 successor: root authors the actual incremental family RuntimeCtx/session
 seam in10 Semantica paths. It borrows the admitted carrier, shares the existing
 Parse/HIR receiver, and reuses QueryExecutor's typed-copy owner for two HIR

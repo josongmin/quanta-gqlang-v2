@@ -41,6 +41,16 @@ callback, full-cause/first-refusal and partial-retention owner tests after the
 concrete Parse/Symbol/ItemIndex co-cut. Do not report static rails as behavior
 proof.
 
+The [diagnostic-copy successor](execution-r79.md#diagnostic-transition-copy-and-actual-provenance-caller-audit--2026-10-10)
+has changed-function AST, rustfmt parse4, LLM4 and diff proof; its three actual
+callers have no unrelated byte changes. A whole-file Tree-sitter cfg-pattern
+limitation is identical before/after; unchanged compose70/baseline64 keeps the
+God scope RED. No Rust owner/test is executed for this cut. Preserve diagnostic
+clone/FullRebuild and managed rejection in the eventual owner run. The actual
+managed-provenance pair needs outer five-role bank identity, canonical phase
+selection/full losing causes and paid partial/final-funding lifetime oracles;
+its proposed Port/Parser/Kernel signatures are not behavior proof.
+
 | Owner/module | Required new oracle |
 | --- | --- |
 | `quanta-contract-kernel`, `ids::authority_digest_v1::tests` | Exact same String backing on valid transfer; uppercase/length/prefix rejection preserves text, pointer and capacity (2 tests) |

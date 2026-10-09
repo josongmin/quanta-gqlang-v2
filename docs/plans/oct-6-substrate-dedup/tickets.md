@@ -122,6 +122,15 @@ Its God scope retains the unchanged Query29/baseline27 finding without waiver.
 C6 OriginalPaid prekey/token and consumer acceptance remain open. This does not reduce the18 ticket states or promote
 foreign staging to accepted integration.
 
+Latest Root [diagnostic copy/caller audit](execution-r79.md#diagnostic-transition-copy-and-actual-provenance-caller-audit--2026-10-10)
+adds4 source paths: unused optional Current/auth callback removal and all three
+actual None callers. Changed function AST/rustfmt parsing/LLM/diff pass; God
+retains unchanged compose70/baseline64 debt. Rust owner/tests remain NOT_RUN.
+The current C2 census finds Symbol/ItemIndex ctor4 migrated and Parse ctor2 old.
+Managed provenance needs the actual Parser outer five-role banks and canonical
+Port direct managed-owner exact-edit entry jointly agreed; proposed signatures
+close no ticket. Paid retained data must keep SAME funding through final drop.
+
 All18 active IDs map to the current W0–W7 packages. QG-DIAG remains RESOLVED and
 D4/D5-CUSTODY remains SCOPED_ACCEPTED; neither is reopened as new implementation.
 Package ownership is a scheduling responsibility; existing claims govern writes.

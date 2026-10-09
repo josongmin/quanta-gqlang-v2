@@ -103,6 +103,22 @@ and read/transfer unit policy stay separate from genuine capability admission.
 The generic source4 cut is authored; concrete factories/owner proof remain open.
 Unchanged Query29/baseline27 God debt is separately recorded without waiver.
 
+Diagnostic-copy RCA: the Kernel ordinary copier retained a Source/current
+branch despite all three actual Runtime callers passing None. Root removes
+that unused pre-release argument/branch and co-cuts those callers. Managed
+input still refuses before copying; ordinary diagnostic and FullRebuild
+policies remain. Changed-function/static proof is separate from the unchanged
+compose70/baseline64 God debt and unrun Rust owner.
+
+Managed-provenance RCA: Kernel is called beneath Parser installed-session and
+semantics loans. Its new exact-edit reader requires an input enum, while the
+actual destination is a managed parse Option; a nested factory or temporary
+owned wrapper would not establish exterior partial/funding custody. Five
+actual Source/scalar/exact backend occurrences and the Port direct-owner entry
+must be agreed and co-cut at the real outer Parser birth. Source completion
+never releases funding for an escaping retained payload: SAME backing funding
+outlives its final drop, including losing partials and errors.
+
 SSA dependency RCA: `OriginalCfgDfgBatchReadV4::with_member_v4` already supplies
 the genuine AdmittedCfg/facts pair with actual member admission/native control.
 The missing canonical Core Original replay/finalizer/export consumes that pair;
