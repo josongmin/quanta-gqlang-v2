@@ -697,6 +697,44 @@ Evidence: `r347-source-read-completion-decision.md`, `r347-owned.patch` and
 `r347-topology-static.json`. The defect and repair are statically traced;
 runtime reproduction and mutation execution are not claimed.
 
+### Oct-10 topology integration prerequisite readback
+
+Read back on 2026-10-10 KST: Semantica `6e9596685cc6` plus shared staged
+work, and QGLang documentation input `860fa9939914`. The user's instruction
+to finish and integrate checkpoints authorizes this lane's implementation and
+Git work; it does not establish downstream acceptance or ownership of foreign
+staged changes.
+
+- The R347 receiver is preserved. The four pre-final tests now use the
+  supplier's `FixtureSourceSpecV3`; the existing private fixture method still
+  calls the actual topology owner before final generation. Current AST2,
+  rustfmt2 and scoped diff checks pass. Changed-file LLM and God checks pass
+  for the one eligible production module, with zero allowances.
+- The Source lambda producer now has CFG/facts preparation, but publishes
+  `OriginalSourceFunctionRefsV3::BindingRequired`. The controlled zero reader
+  rejects that state. The canonical Original SSA storage still declares
+  `ExportWork = ()`; final SSA/DFG publication and selected consumers remain
+  the existing C5/E07 work. A scalar parser-anchor count cannot close this gap.
+- Committed Semantica HEAD lacks both the Source zero reader and the fixture's
+  pre-final method/source-spec API. Those are staged supplier changes.
+  Committing only the two topology files would leave unresolved dependencies;
+  their complete compatible supplier/consumer bundle must be integrated
+  together. Foreign staging is not an approval to commit that bundle.
+- The four-test owning request resolves successfully as
+  `owner-execution:f1533a074b59dfb426f1d7a579d9e5a9`, package
+  `quanta-runtime-test-support-pta`, lib, module selector
+  `exact_native_generation_fixture_v1::topology_v3::tests`, package-all-features,
+  ignored excluded and one test thread. This is request preparation only;
+  no compiler, test or QBC run was performed by this lane. A narrow runtime
+  selector does not reduce this owner's all-features compilation closure.
+
+Completion stays with the existing [C5/Native owner bundle](completion-dispatch-r356.md#oct-10-handoff-reconciliation--overrides-new-writer-assignments):
+finish genuine final SSA/DFG and the authenticated binding reader, connect this
+receiver to that accepted reader, execute all four positive/strict-negative
+tests on one compatible input, then serialize the complete main checkpoint.
+The prior inventory/topology source checkpoints, separate lower-owner GREENs,
+request resolution and static checks do not satisfy those remaining exits.
+
 ## Current source reconciliation and remaining work — R333
 
 Historical input: the retained topology row below is superseded by
