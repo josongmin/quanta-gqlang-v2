@@ -102,6 +102,15 @@ those downstream outputs is an implementation prerequisite. HIR OriginalPaid
 pre-key/token, full SourceWire migration and final consumer/publication remain
 open. All18 active ticket states are preserved.
 
+Oct10 follow-up: [private source-index receiving](execution-r79.md#source-index-exterior-receiving--2026-10-10)
+is source-authored in9 paths; an unused retired output text method is removed.
+God8/AST9/LLM9/format/diff pass without new allowances. Eight new tests are
+NOT_RUN: the narrow digest owner cannot capture changing foreign source and
+starts no Rust executor. Complete issuer/pin/workspace/SDK caller migration,
+C2 path-specific factory agreement, C6 OriginalPaid prekey/token and consumer
+acceptance remain open. This does not reduce the18 ticket states or promote
+foreign staging to accepted integration.
+
 All18 active IDs map to the current W0–W7 packages. QG-DIAG remains RESOLVED and
 D4/D5-CUSTODY remains SCOPED_ACCEPTED; neither is reopened as new implementation.
 Package ownership is a scheduling responsibility; existing claims govern writes.

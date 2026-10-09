@@ -28,6 +28,22 @@ lifetime and final refund. Those oracles remain unexecuted and are not supplied
 by an ordinary diagnostic positive. Final SSA proof starts from the actual V4
 CFG/facts pair; definition handles are expected results, not test prerequisites.
 
+Oct10 source-index follow-up: eight new tests, all **NOT_RUN**. Canonical
+QBC digest module request `c5fa79acb0a3618f6cfb6a905cfce986` was admission-blocked
+by foreign source drift, before Rust. Execute its existing/new digest tests
+on a stable source, then the SourceWire index tests after the remaining API
+closure compiles. Do not report static rails as behavior proof.
+
+| Owner/module | Required new oracle |
+| --- | --- |
+| `quanta-contract-kernel`, `ids::authority_digest_v1::tests` | Exact same String backing on valid transfer; uppercase/length/prefix rejection preserves text, pointer and capacity (2 tests) |
+| SourceWire, `source_index_v3::recovery_tests_v3` | Unordered and incomplete members retain pending backing; ordered member moves same backing; predecessor mismatch retains text and original diagnostic priority (4 tests) |
+| SourceWire, `source_index_v3::decode_birth_v3::tests` | Occupied output preserves both slots, one-shot movement and reentry refusal; first full cause survives repeated use and moves once (2 tests) |
+
+These are canonical/structural regressions. Genuine HEAD late-refusal,
+allocator-failure custody and final-refund integration remain separate owner
+oracles, not supplied by the structural `WorkOnlyV3` test control.
+
 The [W014 first cut](execution-r79.md#w014-parallel-implementation-and-first-owner-cut--2026-10-09)
 executes zero tests because `--locked` rejects the root lockfile. After the
 version-preserving root/nested repair, run a successor locked capture. Include

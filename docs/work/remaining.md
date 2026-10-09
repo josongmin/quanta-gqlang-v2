@@ -89,6 +89,16 @@ records the Java HIR exterior producer, final SSA handle/DFG row publication,
 B/A selected typed-input consumer and installed prerequisites without closing
 their existing tickets.
 
+Latest independent source repair: [source-index exterior receiving](../plans/oct-6-substrate-dedup/execution-r79.md#source-index-exterior-receiving--2026-10-10)
+adds the9-path canonical decoder/sole hydration caller bank and removes one
+unused retired output text method. God8/AST9/LLM9/format/diff pass; eight new
+regressions are NOT_RUN. The digest QBC owner is admission-blocked by changing
+foreign source during capture, with zero Rust/tests and no publication. The
+source-index static defect is repaired in source; the complete SourceWire
+issuer/pin/alias/workspace/SDK caller bundle and C2/C6 contracts remain open.
+All18 current states and public/product HOLD remain unchanged. Foreign staging
+is recorded independently from accepted local-main integration.
+
 Oct10 successor: root authors the actual incremental family RuntimeCtx/session
 seam in10 Semantica paths. It borrows the admitted carrier, shares the existing
 Parse/HIR receiver, and reuses QueryExecutor's typed-copy owner for two HIR

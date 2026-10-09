@@ -79,6 +79,19 @@ different compile closure does not reduce Cut17's all-features28 by four.
 Complete SourceWire caller custody remains a real prerequisite; owning family
 acceptance remains open.
 
+Oct10 source-index RCA: the existing decoder owns its observer inside the
+locked-HEAD callback. `finish_member_v3` removes the pending member before the
+fallible ordering comparison, while final index assembly consumes predecessor
+text before checking all required root fields. Static failure-path inspection
+therefore identifies early paid-partial destruction. Root keeps the observer,
+completed candidate and full allocator/error state in the exterior Census bank;
+all rejection checks precede moves. The original predecessor-before-root-field
+error priority remains. Same CBOR framing, native births and canonical digest
+validator are reused. Eight structural/canonical regressions are authored;
+none has executed. The digest owner attempt is admission-blocked by foreign
+source drift during hashing, without Rust/tests/publication. The unrelated
+SourceWire owned copy/retain and C2/C6 supplier gaps remain real prerequisites.
+
 SSA dependency RCA: `OriginalCfgDfgBatchReadV4::with_member_v4` already supplies
 the genuine AdmittedCfg/facts pair with actual member admission/native control.
 The missing canonical Core Original replay/finalizer/export consumes that pair;

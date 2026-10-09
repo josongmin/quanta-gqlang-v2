@@ -1361,6 +1361,74 @@ migration, including SourceWire initial pin/issuer/capture and SDK enclosing
 custody. No compatibility owned-return wrapper is restored.
 Parser/SDK/Runtime product acceptance and complete Source integration remain open.
 
+### Source index exterior receiving — 2026-10-10
+
+Source observation: QGLang `66b6b6408898`, Semantica `e234efb0c1b` plus
+shared WIP. Root adds one nine-path private decoder/receiver cut and removes
+one unused output-copy method. These source changes are not owner acceptance
+or complete Semantica integration. The original Shape/SCC source remains
+committed; no second traversal implementation is assigned.
+
+- `OriginalSourceIndexDecodeBirthV3` now lives in `CensusBirthV3`, constructed
+  before the actual locked-HEAD callback. Pending fields, completed rows,
+  vector/string allocation errors and the full semantic failure survive until
+  that Source finishes. Only unit status crosses the decoder boundary; the
+  HEAD receiver recovers the selected full cause through `IndexDecode`.
+- The same CBOR visitor and native text/vector birth engines remain canonical.
+  The sole hydration caller moves completed output between external slots.
+  Schema/cardinality/order/predecessor checks run before removing pending DATA;
+  the original predecessor diagnostic priority is preserved. A rejected field
+  or ordering check therefore cannot drop its paid String inside Source.
+- `AuthorityDigestV1::try_take_validated_text_v3` reuses its existing borrowed
+  validator, then moves the same String backing. Validation failure leaves
+  that exact text/capacity with the caller. Its fixed32-byte decode allocates
+  no replacement payload. There is no new digest validator or encoder.
+- The unused `OriginalOutputAllocationAdmissionV3::try_copy_original_text_v3`
+  method called an already removed free function. Scoped Semantica/Index/QGLang
+  Rust caller search found no caller of that method; the separate custody
+  method has real callers and remains assigned to the full migration. Remove
+  only the unused method; do not restore an owned-return compatibility alias.
+
+Static result: God8 passes with no allowance/baseline edit; AST9, scoped
+rustfmt9/diff and LLM9 pass. Eight new regression tests cover exact digest
+backing, malformed digest preservation, unordered/incomplete member partials,
+ordered same-backing movement, predecessor error priority, occupied/repeated
+index transfer and first full-cause recovery. All eight are **NOT_RUN**.
+
+A narrow canonical QBC digest-module request resolves as
+`c5fa79acb0a3618f6cfb6a905cfce986`. The historical base lane is unregistered;
+the default-lane successor refuses source capture because the foreign
+`output_call_graph_edge_lookup_v1/index_admission_v3.rs` changes while hashing.
+Neither attempt starts Rust/tests or publishes an owner receipt. This is
+`ADMISSION_BLOCKED`, not a compiler or test failure. Cut20's24 diagnostics keep
+their previous exact input; no successor error count is inferred.
+
+Evidence: external task directory
+`/Users/songmin/.codex/task-evidence/oct8-closeout-execution-r79/`,
+`source-index-exterior-{claim,design,static-postimages}.json`,
+`source-index-exterior-root-delta.patch`, `source-index-{god,llm}.log`,
+`authority-digest-exterior-owner-admission-failure.json` and
+`retired-output-text-design.json`. Another writer stages these source files;
+root Semantica stage/commit/push count remains0.
+
+Contract response is in `c1-c2-c6-contract-response-oct10.json`. Root accepts
+D4's five-role input-copy facade and separate standalone validation bank.
+Generic Kernel composition must receive the producer-captured canonical
+`CopyBankDescriptorV3`, allowing each concrete QSF family to create its own
+named SAME-factory banks before highest Source. The current single erased
+backend bank cannot represent those distinct occurrences. The exact generic
+trait/visitor delta still requires the coupled producer/consumer agreement;
+no shared C2 signature is changed in this decoder cut. Managed execution,
+provenance, output copy, prekey, cache and checked read have different role
+censuses. C6 OriginalPaid prekey/retained admission/token supply remains open;
+flipping scalar admission or borrowing an ordinary authority does not repair it.
+
+Next: complete the real issuer/pin/generation/alias/workspace and SDK FULL
+callers, C2/C6 agreed suppliers/receivers, final SSA/DFG identity joins and
+retained output consumers; then freeze a compatible source for owning tests,
+publication and complete local-main integration. Public TARGET/Portable and
+installed product qualification remain HOLD. All18 active states stay open.
+
 ### Incremental session and SSA dependency repair — 2026-10-10
 
 Input: QGLang `661f87d38dae`; Semantica main `8217a38bf04d` plus shared WIP.
