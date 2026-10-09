@@ -545,6 +545,53 @@ owned changes. `r339-owned-foreign-reconciliation.json` and
 remain scoped to that reviewed tuple, not the moving parent successor. Tests,
 compiler/QBC and Semantica publication are still NOT_RUN.
 
+### R341 source inclusion, local qualification and remaining owners
+
+Read back on 2026-10-09: Semantica `8217a38bf04d` and QGLang
+`99fc50d98b13`. The five independent topology paths exactly match the R339
+owned postimages in committed Semantica HEAD. The fixture parent contains the
+owned topology mount alongside concurrent supplier changes. This establishes
+source inclusion; this lane did not stage or commit Semantica and does not
+claim downstream owner or product acceptance.
+
+- Current six-path AST and rustfmt checks pass with stable inputs. Scoped LLM
+  and God checks pass over five eligible production files; the test child is
+  outside those production scopes. No allowance or baseline is changed.
+- The existing Graph ingress seals one witness; host admission distinguishes
+  Reachability `Endpoints` from Path `NodeSequence`. The consumer's composition
+  golden uses source schema3 and contract/qualification schema8. Both producer
+  subtree pins and the vector SHA-256 match the current committed producer.
+  The two false-AND EXISTS result regressions and Rename registry entry are
+  present. These downstream observations are static, not executed outcomes.
+- Clean-HEAD QGLang `just qualify-local` passes on `99fc50d98b13`, including
+  Nextest1514/1514, zero skip/leak, facade positive1/negative23, public API156,
+  both Clippy rails and all remaining local CI groups. The receipt's log and
+  raw Nextest streams were independently hash-checked. An absent owned build
+  cache was restored under the qualification lock after marker/source checks;
+  the initial preflight failures remain recorded separately.
+
+| Remaining work | Existing implementation owner / receiving boundary |
+| --- | --- |
+| SDK admitted generation/receipt/context, nonempty PTA/DFG/facts publication, Runtime final context/packet/memo | Active `quanta-gqlang-v2 평가 검증` workers own W1/W3/W4; reuse their coupled contracts and implementations. |
+| World, retained members, generation files/entity/import, seal/inventory | `IR 잔여 · Java world·artifact 원 authority`; the concurrent Original provider/inventory fixture is existing source, not a new implementation assigned here. |
+| Production PTA graph/census/chunk/binding | `Find benchctl usage (2)`; the fixture topology validator is a separate receiving seam. |
+| Topology acceptance | The actual fixture owner must execute both literal negative regressions together with real void/alias/lambda positives on one compatible supplier/consumer tuple. Earlier producer refusal must fail those negative assertions. |
+| Final downstream acceptance | Existing W5/W6/W7 owners retain consumer features, policy, complete main integration and actual Graph/CHECK/install proof. |
+
+The initial D1-D7 duplicate-removal commits are ancestors of the observed
+Semantica HEAD; they are not seven new implementation assignments. The18 active
+closeout IDs include authority integration, verification and installation.
+Do not report them as18 surviving duplicates or infer a total percentage from
+their count. This source-only lane keeps Semantica compiler/tests/QBC/product
+execution with the downstream owners; both topology tests remain NOT_RUN here.
+
+Evidence: `r341-topology-static-readback.json`,
+`r341-topology-policy-readback.json`,
+`r341-source-inclusion-and-local-qualification.json`,
+`r341-qualification-cache-recovery.json` and
+`r341-qualification-99fc50d/`. The frontend qualification stays bound to
+`99fc50d98b13`; a later documentation checkpoint is not a new qualified SHA.
+
 ## Current source reconciliation and remaining work — R333
 
 Historical input: the retained topology row below is superseded by
