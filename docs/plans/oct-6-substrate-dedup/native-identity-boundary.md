@@ -671,6 +671,32 @@ adds no feature, public contract, provider, issuer or binding algorithm.
 Evidence: `r346-source-zero-receiving-decision.md`, `r346-owned.patch`,
 `r346-topology-static.json` and the current supplier/source readback receipts.
 
+### R347 Source read completion correction
+
+Independent source review found an integration defect in R346: a successful
+controlled Source zero read does not enter the ordinary visitor, yet the outer
+finisher unconditionally required that visitor's completed birth. This made
+the successful Source path fall through to `CallableCensusMismatch`.
+
+The same topology owner now records the actual successful Source read in its
+existing exterior DATA. FunctionRef completion accepts that observed Source
+read or the ordinary visitor's completed birth. Highest Source, lowering and
+declaration-census completion, empty error slots and relation predicates remain
+required. The unused visitor birth is not marked complete. No reader failure
+falls back to ordinary data. The existing genuine no-op positive and strict
+negative are the owner regressions for this path; execution is still NOT_RUN.
+
+AST, rustfmt, changed-file LLM, God-surface and diff checks pass for topology
+SHA-256 `63bb5c6efcac207b93f6d46ebb08e5133c409bbc9b536c0c461c0795a6d75e82`.
+This supersedes R346's receiver postimage; it does not create a new downstream
+qualification. Nonzero Source bindings, actual four-test acceptance and the
+complete Semantica main bundle remain open with the existing supplier/owner
+queue. The receiver patch and exact postimage were sent to that queue.
+
+Evidence: `r347-source-read-completion-decision.md`, `r347-owned.patch` and
+`r347-topology-static.json`. The defect and repair are statically traced;
+runtime reproduction and mutation execution are not claimed.
+
 ## Current source reconciliation and remaining work — R333
 
 Historical input: the retained topology row below is superseded by
