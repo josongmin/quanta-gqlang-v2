@@ -8,6 +8,7 @@ analysis; this file owns the 18 active states.
 Latest source: [2026-10-09 current-main audit](../plans/oct-6-substrate-dedup/execution-r79.md#current-main-audit--2026-10-09),
 QGLang `09276c57d279` and Semantica `a63f536b1b3` plus separately inventoried WIP.
 The audit distinguishes committed source, authored source and accepted execution.
+Native receiving status is superseded by the [R333 source reconciliation](../plans/oct-6-substrate-dedup/native-identity-boundary.md#current-source-reconciliation-and-remaining-work--r333); QGLang local CI R334 passes1,514 tests and facade1/23 before the receipt note. Downstream execution remains separate.
 
 - **Committed:** original Shape/SCC owner routing, QGLang hardening, Python search
   feature policy and the later Python/Java lifetime repairs.
@@ -686,11 +687,14 @@ hydration/receiving remains open. R295/R297 author distinct external semantic
 ledgers for Python import/provider completion. R299/R304 migrate nine mounted
 Java Source-backed fixtures, the getter helper and literal receiver while
 preserving positive assertions. R314 current readback matches all30 receiving
-postimages; this is source evidence only. The [current Native remainder](../plans/oct-6-substrate-dedup/native-identity-boundary.md#current-remaining-work--r314)
-is genuine PTA binary provider/whole-cohort finalization and V3 fixture consumers,
-D4 direct terminal guards in two files/three entries, SDK FULL/private join,
-shared query God RED and broader payload/error/HIR receiving with qualified
-owner execution. R291 adds the fifth genuine terminal regression, still NOT_RUN.
+postimages; this is source evidence only. The [R333 current Native remainder](../plans/oct-6-substrate-dedup/native-identity-boundary.md#current-source-reconciliation-and-remaining-work--r333)
+is the coupled genuine PTA binary provider/whole-cohort fixture, retained
+lowering/evidence topology reads and V3 handoff consumers, plus complete owner/
+product proof and Semantica integration. Four direct Parser/SDK terminal guards
+and common first-cause receiving are now authored. SDK FULL/private product
+receiving and Java raw descriptor receiving exist; current shared-query God
+passes. Earlier missing-code and God RED statements are historical source
+observations, superseded by that reconciliation. R291 adds the fifth genuine terminal regression, still NOT_RUN.
 Exhaustive highest Source/runtime custody is unproved. Compiler/tests, source
 capture and Semantica Git publication are NOT_RUN.
 

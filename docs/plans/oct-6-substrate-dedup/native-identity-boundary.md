@@ -420,7 +420,84 @@ Receipts: `r299-java-native-id-callers-source-cut.json`,
 `r313-java-native-id-independent-review.json`,
 `r314-native-id-final-source-readback.json`.
 
+## Current source reconciliation and remaining work — R333
+
+Observed source: Semantica `a63f536b1b3fa6e6990acd3dff0b6ef8a8f1a740`
+plus shared dirty work; QGLang documentation input `09276c57…`, clean.
+This section supersedes the R314 missing-code list below. Source presence,
+static checks, executed owner proof and Git publication are separate states.
+
+### Completed source repairs in this cut
+
+| Owner / reachable consumer | Before | After / invariant |
+| --- | --- | --- |
+| Parser Java member portable HIR: `workspace_member_read_v3/original_portable_hir_v3.rs`, two methods | Finalized validation and paid Source work preceded the terminal statement-frame guard. | Existing `ensure_open_v3` runs first; the stored exact Native propagates through `NativeRefusedV1`. Fresh finalized/member validation remains. |
+| Parser retained target `syntax_facet_v3.rs` and SDK `original_exact_edit_join_v3.rs`, direct trait lower methods | Source/shared-owner validation preceded the deeper conversion guard. | Both direct methods guard before their own Source access. The already guarded public `PortManagedTargetParseResultV3` route is preserved. Four direct entries in three files are repaired. |
+| SourceWire `original_identity_mint_ledger_v3.rs`; semantic, statement and Java/Python stable mint bridges | Several successful-begin failures used bare `stop_v3`; a later output received `InvalidBoundary` instead of the selected Native. Each bridge could implement its own optional-cause selection. | Same ledger owner provides `stop_with_output_first_refusal_v3`, reading only the existing admission's observed cause. Production bridges reuse it. Semantic-only callback errors retain their full typed error and generic terminal refusal. No new Current poll, allocation, serializer or authority. |
+| Parser semantic `original_hash_v3.rs` | Error projection could record Native only after the ledger had stopped. Invalid authored axes followed by unsupported Original error-detail birth exposed this chronology. | Finish/project the error while the actual ledger borrow remains; then stop using the observed output cause. Failure skips the success-only final checkpoint. Canonical full error slots remain retained. |
+| Java/Python common stable owner | Span and symbol methods duplicated authentication/operation/group/ledger preparation. | One private `begin_stable_attempt_v3` preserves the same order; the returned borrow is tied only to the existing ledger. Semantic hash also shares its duplicate lease-error mapping locally. No public identity/schema change. |
+
+### Stale missing-code claims removed
+
+- Shared symbol-query `hir/query.rs` now passes scoped God on stable SHA
+  `efda8841…`; the historical R305 RED is not the current verdict. No allowance
+  or baseline reset was used. This is a scoped source gate, not workspace proof.
+- SDK FULL/private exact-edit receiving exists on the product route:
+  `apply_existing_file_attribution_v4` → request preparation →
+  `prepare_original_exact_edit_binding_provider_v3` → Parser binding → retained
+  selected Source/joined syntax. The inspected provider/binding/copy path has
+  no unimplemented stub. Compile/runtime qualification remains open.
+- Java `receiving_attempts_v3` and its materializer caller exist. Raw scope
+  projection now retains descriptor/name/error frames externally in
+  `original_projection_v3/descriptor_birth_v3.rs`, using `ScopePathAccessV3` and
+  the same mint owner; the previous descriptor-only pointer vectors are removed.
+  This readback does not qualify full highest-Source custody.
+- PTA already has genuine FD/pin/Original execution and external native-parts
+  receiving. Those are not new implementation assignments.
+
+### Actual remaining work and DoD
+
+| Work | Current source obligation | Completion condition |
+| --- | --- | --- |
+| PTA fixture whole-cohort producer and consumers | `owner_stages_v1.rs` still calls diagnostic `java_workspace_resolution_batch_v1`, V1 type finalization and ordinary inventory extraction. `type_identities_v3.rs` still finalizes V1. The real Original binary-input product implementation is SDK-local; the PTA fixture dependency set has no genuine provider. Mixed-source consumer retains the V1 handoff. | Use the existing Original whole-cohort/type/binary owners with an actually issued fixture provider; migrate retained handoff consumers together. Preserve alias/lambda/callable/foreign-source oracles. A method rename, synthetic adapter, SDK dependency cycle or empty success is insufficient. |
+| PTA retained topology receiver | `issue_and_validate_native_parts_v1` supplies retained lowering/evidence backings; `fixture_validate_native_topology_v1` still expects raw lowering DTO and evidence slice. | Use genuine checked lowering/evidence reads under the fixture's existing Current, with external scratch/error custody and independent callable/relation census. Preserve positive assertions and work limits. Do not allocate replacement raw DTOs inside Source. |
+| Owner and product proof | New terminal fixes and broader SDK/raw/cohort receiving are source-only. Direct genuine SDK joined-target HIR regression was not found; contract-ports fake syntax fixtures do not prove that route. | One frozen compatible tuple: default/no-Java and Java/Python owners compile; focused genuine terminal/custody/refund tests run; affected SDK/PTA/DFG and Graph/CHECK outcomes pass their actual owner/QBC gates. |
+| Main integration | Semantica authored source is shared dirty main, not a committed complete bundle. | Integrate the complete compatible accepted producer/consumer bundle on local main. QGLang documentation commits and G local CI do not establish downstream integration. |
+
+### Regression and verification plan
+
+- SourceWire two pure DATA tests cover observed-cause retention and semantic-only
+  terminal behavior. Their stub cannot issue Source or allocation authority.
+- Existing genuine Java `failed_original_hash_factory_never_polls_fresh_output_v3`
+  now expects the original `Cancelled`, retaining its different-root no-poll/
+  work/byte/cause and final-refund assertions.
+- New genuine `invalid_axis_detail_refusal_is_stored_before_terminal_retry_v3`
+  uses authored `Class` → Core InvalidAxis → actual Original detail refusal
+  `UnsupportedOperation`; later cancellation cannot change the terminal cause,
+  poll/work/bytes or retained funding. Ledger drops last and refunds.
+- Run these under their existing owner targets together with R324's two genuine
+  scoped-symbol regressions. Preserve the independent legacy-ID oracle. Then
+  run the complete coupled receiving feature/SDK/PTA/product gates. No test
+  execution, compiler or QBC verdict is claimed by this source-only cut.
+
+R333 scoped AST9 and diff9 pass; stable owned paths pass rustfmt, changed-file
+LLM and production God without allowance/baseline reset. SDK's joined-owner
+file received concurrent foreign changes after the initial nine-file format
+pass; its whole-file formatting receipt is superseded, while this lane's one
+guard hunk remains intact. The successor is retained separately, not counted
+as this lane's patch or aggregate PASS.
+
+Evidence root remains `query-owner-build-r1`: R330 normal claim/beforeimages/
+owner decision, R330 homologous audit, R331/R332 independent reviews,
+`r333-owned-terminal.patch`, final per-path postimages/static receipts,
+`r332-current-shared-query-god.json`, and R333 SDK product-path readback.
+Semantica compiler/tests/QBC/runtime/stage/commit/push are **NOT_RUN** in this
+lane. No outbound app messages were sent.
+
 ## Current remaining work — R314
+
+Historical source inventory; superseded by the
+[R333 current reconciliation](#current-source-reconciliation-and-remaining-work--r333).
 
 | Work | Concrete scope / purpose | Completion condition |
 | --- | --- | --- |

@@ -1,5 +1,8 @@
 # Substrate remaining proof handoff — 2026-10-07
 
+Latest source reconciliation: [R333 terminal owners and actual remainder](../plans/oct-6-substrate-dedup/native-identity-boundary.md#current-source-reconciliation-and-remaining-work--r333).
+Historical sections below retain their own source/proof boundaries.
+
 Owner: Semantica runtime/SDK/API. QGLang owns frontend compilation and its
 host-agnostic contract. This handoff records current inputs and their source-bound
 proof history.
@@ -1841,3 +1844,51 @@ derive. Finite API/hunk map, exact7 source SHAs and owned patch are listed in th
 linked boundary document. Semantica source remains uncommitted shared-main WIP;
 compiler/tests/QBC/runtime/source capture/Semantica Git and outbound messages
 are NOT_RUN. Only the two owned QGLang documents form this local-main checkpoint.
+
+
+## R330–R333 terminal owner reconciliation
+
+[Current source, before/after and DoD](../plans/oct-6-substrate-dedup/native-identity-boundary.md#current-source-reconciliation-and-remaining-work--r333)
+now supersede the old R314 source remainder. Semantica input is
+`a63f536b…` plus shared dirty work. Four direct Parser/SDK HIR entries now
+check the existing statement frame before Source access. SourceWire centralizes
+observed Native terminal selection; semantic/statement and common Java/Python
+stable bridges reuse it. Semantic error projection precedes ledger stop.
+Duplicated stable preparation and semantic lease-error mapping are extracted
+inside their existing owners; canonical bytes, schema/domain and identities
+are unchanged.
+
+Two pure DATA terminal tests and one genuine invalid-axis/detail-refusal test
+are authored. The existing genuine Java different-root retry oracle now expects
+the stored `Cancelled`; polling/work/bytes/cause/refund checks remain. Tests and
+compiler are **NOT_RUN**. AST9/diff9, stable owned rustfmt8, changed-file LLM and
+production God pass. SDK joined owner has a concurrent foreign successor;
+only the one guard hunk is ours, with successor diff retained separately.
+
+Current shared-query God passes. SDK FULL/private join, Java receiving ledger
+and raw descriptor frames already exist on their actual caller paths. PTA
+already has genuine FD/pin/native receiving. These are removed from new-code
+assignments. Actual remaining code is the genuine PTA whole-cohort/binary-input
+fixture and coupled V1 handoff/topology consumers. Complete owner/feature/SDK/
+PTA/Graph/CHECK proof and complete Semantica local-main integration remain open.
+
+Normal claim/beforeimages, owned patch, current per-path SHAs, independent
+reviews and current SDK/God readbacks are R330–R333 evidence in
+`query-owner-build-r1`. This lane performs no Semantica Cargo/rustc/tests/QBC/
+runtime/source-controller capture/stage/commit/push and sends no outbound app
+messages. QGLang documentation is a separate local-main checkpoint.
+
+
+## R334 QGLang local CI checkpoint
+
+One `just ci` run exits0 on `09276c57…` plus the five owned documentation
+paths before this receipt note. Source snapshot is
+`f1b8ab5f5a7879675bff980cdba5ec057dead0dc38e53986caceda6734cfecad`.
+All groups pass, including current/MSRV Clippy, size/architecture and policy;
+Nextest executes1,514 with1,514 passes and0 skips. External facade executes
+positive1 and negative23 with0 mismatches; its156 public roots match the pin.
+Changed-document links138 and diff check pass. This is local QGLang CI,
+not `qualify-local`, Semantica execution, or downstream product acceptance.
+Log and exact pre-note document SHAs are `r334-gqlang-just-ci.log` and
+`r334-gqlang-ci-receipt.json` in the evidence root. The receipt-only prose is
+added after that run; no Rust/manifest/tool change accompanies it.

@@ -1,11 +1,21 @@
 # Substrate closeout execution plan
 
+Latest source audit: [R333 reconciliation and remaining work](native-identity-boundary.md#current-source-reconciliation-and-remaining-work--r333).
+Four direct HIR guards and common ledger first-cause receiving are authored.
+Current SDK FULL/private receiving, Java raw descriptor receiving and shared-query
+God are present/passing at their scoped source boundaries. Remaining code is
+the coupled genuine PTA fixture producer/retained topology/handoff consumer;
+complete owner/product proof and Semantica main integration remain open.
+
 Status: implementation in progress; source edits and execution attempts are
 recorded in the R49 update below and the
 [current execution handoff](../../work/substrate-repair-checkpoints-2026-10-07.md#fixed-candidate-compile-and-ownership-checkpoints).
 No product qualification is claimed.
-Latest QGLang local CI is R167: `just ci` passes Nextest1,514 and external
-facade positive1/negative23 at `b559c49…` plus documentation dirt. The
+Latest QGLang local CI is R334: `just ci` exits0, Nextest1,514/1,514 and
+external facade positive1/negative23 (zero mismatches), at `09276c57…` plus
+five owned documentation paths; source snapshot `f1b8ab5f…`. The CI receipt
+note was added afterward. This is local frontend proof, not clean-HEAD
+qualification or Semantica proof. Historical R167 retains its own input. The
 [fixed-candidate checkpoints](../../work/substrate-repair-checkpoints-2026-10-07.md#fixed-candidate-compile-and-ownership-checkpoints)
 accept interproc1,105 and the scoped storage-error/copy owners separately.
 R183 accepts R107 frozen Kernel whole-lib569, and R192 confirms the separate
