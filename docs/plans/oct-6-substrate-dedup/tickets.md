@@ -1,6 +1,6 @@
 # Substrate closeout tickets
 
-Updated: 2026-10-09. Initial audit inputs: QGLang `01cfe39ca0571b4fc099d41b24628fda70e754fe`,
+Updated: 2026-10-10. Initial audit inputs: QGLang `01cfe39ca0571b4fc099d41b24628fda70e754fe`,
 Semantica `871224b2059422a8f36eca91ffb0c9119238ac9c`. Committed source was read;
 foreign dirty overlays were excluded from that audit. R49 authored source and
 execution attempts are recorded separately in the plan; they are not passing
@@ -42,7 +42,7 @@ assignment alone does not transfer another owner's files.
 
 Current source/proof reconciliation:
 [2026-10-09 completion plan](parallel-dispatch.md#current-completion-plan--2026-10-09),
-QGLang `231707d879de`, Semantica `a63f536b1b3` plus shared WIP. Original Shape/SCC's five
+QGLang observed `5ec537f48e92`, Semantica `8217a38bf04d` plus shared WIP. Original Shape/SCC's five
 paths are committed, clean and unchanged. Python/Java lifetime repairs are now
 committed. Current JSON production/test callers use external state; the obsolete
 R146 stale-call assignment is superseded. Current Native compilation is not
@@ -62,6 +62,18 @@ Current open owner work includes Foundation external history/commit banks,
 genuine SDK generation assembly, typed worker storage/selection/constraints,
 and owned Runtime registry/memo/persist/packet. V4 loan presence is not a solver
 or Product verdict.
+
+Latest scoped acceptance: Cut9 facts157/157 with verified publication on its
+own exact source. Core Cut11 UNKNOWN is retained; Cut12 is compile RED25/tests0.
+Root resolves six CFG size findings (God5/allowed0), repairs the reached module/
+import/diagnostic test callers, and fixes early Fact publication at its constructor
+owner. Cut13 accepts Contract191/191 and reaches Core360 pass/two fixture failures.
+The fixture contracts are repaired with two added strict negatives. Cut14 locked
+refusal runs zero tests; Cut15 Core acceptance passes364/364 with verified publication after metadata recovery. Nonzero lambda still
+needs an actual final SSA handle/binding join and Source DFG row consumer; selected
+FileText still needs Source B validation/output A copy and consuming ownership.
+These are implementation gaps within existing IDs, not new tickets. B is usage-
+limited and A/C are not confirmed running; root has taken the safe scoped work.
 
 ## Current completion package map — 2026-10-09
 
@@ -107,7 +119,7 @@ scope. Implementation, frozen owner proof and product qualification are separate
 | ID | Priority | State | Remaining kind / owner |
 | --- | --- | --- | --- |
 | CHECKED-LANG-SUPPLIERS | P1 | PARTIAL | Ordinary owners accepted and Rust regression integrated; controlled refusal/custody remain |
-| CHECKED-DEFUSE | P0 | PROOF_PENDING | All inventoried source cuts integrated, including Python27d950; actual owner proof remains |
+| CHECKED-DEFUSE | P0 | PARTIAL | Ordinary language source cuts integrated; Cut9 facts157/157 is scoped accepted. Source nonzero Lambda final SSA handle/binding join, actual DFG row consumers and adapter keeper/refund remain implementation and acceptance work |
 | CHECKED-RETAINED-CONTROL | P0 | OPEN | Genuine member handoff, admitted PTA/DFG publication and general facts output authority; R220 copy/visitor, R230 encoder, R239 [result receiving10](code-map.md#r239-qra-result-receiving-source-cut) and R246 controlled axes source authored. R304 confirms SDK4 already uses external receiving; owner proof pending. The [genuine positive test-support co-cut](code-map.md#r249-ordinary-receiving-and-positive-fixture-co-cut) remains: R308 PTA QRA receiving is authored, R310 genuine binary provider/whole-cohort finalization and V3 fixture consumers are open. Native ID [R333 current source and remainder](native-identity-boundary.md#current-source-reconciliation-and-remaining-work--r333): shared SourceWire terminal cause selection, four direct Parser/SDK HIR guards, semantic error-projection ordering and common stable preparation authored. SDK FULL/private product receiving and Java raw descriptor receiving exist; current shared-query God passes. R338 [retained topology receiving](native-identity-boundary.md#retained-topology-receiving--r337r338) is source-authored: AST6/rustfmt6, scoped LLM5/God5 and diff pass; two actual fixture-entry negative oracles are NOT_RUN. Genuine PTA binary-provider/whole-cohort/inventory sealing and retained handoff consumer, complete owner/product proof and Semantica integration remain open. New/extended genuine terminal regressions are NOT_RUN. Local-ledger/Kotlin source repairs integrated |
 | F7 | P1 | ACCEPTANCE_OPEN | Real SDK deadline regression plus existing owner proof |
 | QG-DIAG | P2 | RESOLVED | Existing private exact-field consumer contract; ADR-0008 |
@@ -121,7 +133,7 @@ scope. Implementation, frozen owner proof and product qualification are separate
 | D4/D5-CUSTODY | P1 | SCOPED_ACCEPTED | SCV2 34 + solver225/API2 accepted; active source closures match main f574 |
 | SUBSTRATE-POLICY | P1 | INCOMPLETE | Scoped Honesty/GOD/boundary checks pass; Python-search floor policy bundle integrated as3b8f86d; whole affected policy closure remains |
 | F2 | P1 | PROOF_PENDING | Native registry and real Preview path |
-| FCP-COMPILE | P0 | ACCEPTANCE_PENDING | Latest main8217 imports source; no current owner acceptance. W014 Cut2 reaches Core retained-header E0599 and CFG child-module E0583, both repaired in source; Cut3 stops before Rust at fresh local lock edges, recovered with unchanged registry pins. Cut4 reaches rustix public-doc denial and Cut5 reaches a native map reexport E0432; both are repaired in source. Cut6 reaches Repo identity child-mount E0583, repaired in source. Cuts1–8 execute zero tests. Cut9 DFG facts passes157/157 with verified publication on its separate exact input; Parser/SDK/product acceptance remains open. Cut7 reaches SourceWire lib-test and stops at52 diagnostics on its fixed input; Root repairs eight mounts plus canonical imports/receiver visibility in source, while retired copy/retain consumer migration remains open. W2 custody review also requires external Parser sealed/files/inventory births; fixture capture is held. Foundation external history/commit banks, SDK admitted generation assembly, typed worker consumers and owned registry/memo/persist/packet remain coupled implementation gaps. Historical error counts and separate Java76/Python7 receipts retain their inputs. |
+| FCP-COMPILE | P0 | ACCEPTANCE_PENDING | Latest main8217 imports source; complete compatible Source/SDK/Runtime acceptance remains open. W014 Cut2 reaches Core retained-header E0599 and CFG child-module E0583, both repaired in source; Cut3 stops before Rust at fresh local lock edges, recovered with unchanged registry pins. Cut4 reaches rustix public-doc denial and Cut5 reaches a native map reexport E0432; both are repaired in source. Cut6 reaches Repo identity child-mount E0583, repaired in source. Cuts1–8 execute zero tests. Cut9 DFG facts passes157/157 with verified publication on its separate exact input; Core Cut11 UNKNOWN/Cut12 compile RED25/tests0 retain separate inputs. Core God6 findings and reached caller/mount/import causes have root source repairs; Fact validation-before-publication and every-poll/last-digest regressions are authored; Cut13 Contract191/191 is published; Core360 pass/two fixture failures are repaired with two new strict negatives. Cut14 locked refusal runs zero tests; Cut15 Core364/364 is published after registry-preserving metadata recovery. SourceWire Cut16 reaches41 diagnostics/tests0; root repairs nine nested mounts; Cut17 reaches28 remaining diagnostics/tests0 and no missing-module/wrong-test diagnostics; retired owned copy/retain callers remain coupled implementation work. Parser/SDK/product acceptance remains open. Cut7 reaches SourceWire lib-test and stops at52 diagnostics on its fixed input; Root repairs eight mounts plus canonical imports/receiver visibility in source, while retired copy/retain consumer migration remains open. W2 custody review also requires external Parser sealed/files/inventory births; fixture capture is held. Foundation external history/commit banks, SDK admitted generation assembly, typed worker consumers and owned registry/memo/persist/packet remain coupled implementation gaps. Historical error counts and separate Java76/Python7 receipts retain their inputs. |
 | FCP-PTA | P1 | REVERIFY | Historical PTA bootstrap refusal; reproduce on current source |
 | FCP-PROCESS | P1 | NOT_RUN | Real Graph/CHECK daemon process results |
 | FCP-INSTALL | P1 | EXTERNAL_PREREQUISITE | Release-owned installed Linux CHECK trust |

@@ -1,12 +1,12 @@
 # Remaining work
 
-Updated: 2026-10-09. Historical R77 RCA input: clean QGLang `b8dd3c29e43a`,
+Updated: 2026-10-10. Historical R77 RCA input: clean QGLang `b8dd3c29e43a`,
 committed Semantica `f574fa82bf1` and separately inventoried moving WIP.
 The [R77 RCA](../plans/oct-6-substrate-dedup/rca.md) owns the cause/dependency
 analysis; this file owns the 18 active states.
 
 Latest plan/source: [W0–W7 completion plan](../plans/oct-6-substrate-dedup/parallel-dispatch.md#current-completion-plan--2026-10-09),
-QGLang `d8e7417eb40b` and Semantica `8217a38bf04d` plus separately inventoried WIP.
+QGLang `5ec537f48e92` and Semantica `8217a38bf04d` plus separately inventoried WIP.
 The16:18/16:48 audits retain their own inputs. The later main commit imports
 source; current owner acceptance remains pending.
 The audit distinguishes committed source, authored source and accepted execution.
@@ -29,7 +29,10 @@ Native topology receiving is source-authored at [R337–R338](../plans/oct-6-sub
   are now repaired in source.
 
 Current execution: [W014 parallel implementation](../plans/oct-6-substrate-dedup/execution-r79.md#w014-parallel-implementation-and-first-owner-cut--2026-10-09).
-Three workers are implementing SDK generation, PTA/DFG/facts and trace/context.
+Three lanes were dispatched for SDK generation, PTA/DFG/facts and trace/context.
+B is now usage-limited; A/C have no confirmed running state. Root takes Core CFG
+size/diagnostic fixes and the early Fact publication repair; serial local proofs
+continue. A replacement spawn is rejected by the agent thread limit.
 Lower genuine pair/TARGET, pre-key/guard, source-facts and fixture inventory cuts
 are authored. Cut2 runs zero tests at shared Core API/CFG module compilation;
 both causes are repaired in source. Cut3 stops before Rust on fresh lock edges,
@@ -46,12 +49,36 @@ and independent archive readback. This excludes Parser/SDK/product acceptance.
 W2 external Parser sealed/files/inventory API and two-Source caller are released
 source. Qualification stays HOLD for import/provider local map/row custody.
 Nonzero Source lambda CFG,
-facts and exact binding producer remain implementation work. W4's TraceCtx unit
+Parser predicate and facts branch are authored; exact final SSA binding producer
+and production consumers remain implementation work. Core CFG Cut11 has no
+completed receipt after runner disappearance: UNKNOWN, no publication. Root resolves all six CFG function-size findings with zero God
+allowances, and shares duplicate assignment/generated issuance. Cut12 is RED at
+25 lib-test diagnostics, zero tests; reached path/mount/import/diagnostic API
+causes have source repairs. Cut13 accepts the semantic-dependency Contract191/191,
+including every-poll/last-digest publication regressions, with verified publication.
+Core executes362 tests:360 pass/two diagnostic fixture failures. Those contracts
+are repaired with two added rejection oracles. Cut14 runs zero tests at locked
+input; registry-preserving metadata recovery passes. Cut15 Core accepts364/364
+with verified publication and independent archive readback.
+W4's TraceCtx unit
 receiver is source-only. Owned Integrated entry/registry/Core source and genuine SDK
 ordinary-input rejection are authored; FileText selected Original typed input,
 registered handler ownership, snapshot/persist/packet remain open. See the
 [W014 successor](../plans/oct-6-substrate-dedup/execution-r79.md#latest-local-checks-and-released-source--w014-successor)
 for exact source and receipt boundaries.
+
+Latest accepted local scopes (separate inputs): frontend CI1514/1514;
+Cut9 DFG facts157/157; Cut13 semantic-dependency Contract191/191;
+Cut15 Core CFG364/364. Contract/Core publication and independent archive hashes
+are verified. SourceWire Cut16 stops at41 compile diagnostics/tests0 on its278-path reviewed
+input. Root repairs nine nested mounts in three files. Cut17 whole-owner recheck
+stops at28 compile diagnostics/tests0 on its separately reviewed278-path input;
+no missing-module/wrong-test diagnostics remain. Full API/custody migration and
+seven denied unused imports still block SourceWire acceptance. There is no complete current Source/SDK/Runtime/product acceptance.
+The [exact producer cut table](../plans/oct-6-substrate-dedup/parallel-dispatch.md#exact-remaining-producer-cuts--2026-10-10)
+records the Java HIR exterior producer, final SSA handle/DFG row publication,
+B/A selected typed-input consumer and installed prerequisites without closing
+their existing tickets.
 
 Historical root successor: [R121–R146](../plans/oct-6-substrate-dedup/execution-r79.md#r79-root-r121r128-successor-closure).
 Original Shape/SCC is committed; five selected canonical files are clean and

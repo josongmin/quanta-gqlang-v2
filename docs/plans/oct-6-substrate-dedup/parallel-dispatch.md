@@ -1,21 +1,29 @@
 # Parallel closeout dispatch — R78
 
-Updated: 2026-10-09. This is a plan, not an implementation or runtime verdict.
+Updated: 2026-10-10. This is a plan, not an implementation or runtime verdict.
 All execution is local. [R77 RCA](rca.md) owns cause analysis;
 [tickets](tickets.md) own scope/DoD and [remaining work](../../work/remaining.md)
 owns current states.
 
 Latest local frontend CI:1514/1514 at `2d5b1852f077` plus document WIP.
-Current `d8e7417eb40b` adds documentation only. Cut4/Cut5 downstream compiler
-failures and released W1/W2/W3 source are recorded in the [W014 successor](execution-r79.md#latest-local-checks-and-released-source--w014-successor); current Rust/product acceptance remains pending.
+Later frontend changes through observed main `5ec537f48e92` are documentation only.
+Cut9 downstream DFG facts passes157/157 on its own exact source with verified
+publication. Core CFG Cut11 stays UNKNOWN. Cut13 accepts the Fact contract191/191; Core
+executes362 tests and reaches two diagnostic fixture failures. Those fixtures are
+repaired with two added strict negatives. Cut14 runs zero tests at `--locked`;
+registry-preserving metadata recovery passes. Cut15 Core accepts364/364 with
+verified publication on its separately reviewed29-path input. Parser/SDK/product acceptance remains open. Exact inputs, source candidates and
+limits are in the [W014 successor](execution-r79.md#latest-local-checks-and-released-source--w014-successor).
 
 ## Current completion plan — 2026-10-09
 
 Objective: finish the existing Native/Original producer-to-consumer chain, accept
 all18 active tickets and integrate complete compatible bundles into local main.
 This section supersedes the historical R78 waves below. It is an executable
-plan. Implementation is now dispatched to three workers; the root owns one
-serial verification queue. [W014 execution](execution-r79.md#w014-parallel-implementation-and-first-owner-cut--2026-10-09)
+plan. Three implementation lanes were dispatched; B has since stopped on a usage
+limit and A/C remain pending initialization. Root has taken the Core CFG split,
+Fact validation repair and one serial verification queue. A replacement worker
+request is rejected by the agent thread limit; dispatch is not active capacity. [W014 execution](execution-r79.md#w014-parallel-implementation-and-first-owner-cut--2026-10-09)
 records actual released source, the first zero-test lockfile refusal and repair.
 Dispatch does not establish owner acceptance or integration.
 Latest main is Semantica `8217a38bf04d` plus successor WIP; previous readbacks
@@ -23,6 +31,39 @@ below are historical. Cut2/Cut3 run zero tests on distinct dependency/lock
 prerequisites. Keep A on SDK/Foundation external births, B on genuine Source
 CFG/facts/V4 publication, C on owned execution/registry/memo/persist, and root
 on typed QRA consumption and one serial owner queue.
+
+Current next cuts: A finishes external Parser import/provider fact/map/row birth
+and actual SDK generation admission; the analysis lane still needs Source Lambda final SSA handle and
+FunctionRef/declaration consumers; root has resolved all six CFG size findings
+in source with zero God allowances; C connects the
+selected FileText token to actual B/A typed-input/key/registered handler ownership.
+Root also fixes the confirmed early Fact publication bug, preserving input on
+every refusal, and migrates old diagnostic tests to strict current APIs. Cut13
+accepts Fact191/191 and reaches Core360 pass/two fixture failures. Both fixture
+contracts are repaired with two additional rejection oracles; after Cut14 locked
+refusal and metadata recovery, Cut15 Core whole-library acceptance passes364/364
+with verified publication and independent archive readback. Root records UNKNOWN
+launches without inferred counts, and waits for compatible supplier/consumer bundles before Semantica Git.
+Cut9 facts157/157 is one qualified lower input; W5–W7 remain separate exits.
+
+### Exact remaining producer cuts — 2026-10-10
+
+The following cuts remain implementation work. A receiver or lower diagnostic
+GREEN does not close the corresponding positive producer/consumer oracle.
+
+| Existing package | Reachable current boundary | Required coupled change and exit |
+| --- | --- | --- |
+| W0 / W6 | SourceWire copy/retain callers still reference retired owned APIs; Cut7 records52 fixed-input compile diagnostics | Reuse the existing into-slot/into-birth owners; migrate complete production and test callers with exterior partial/full-error banks. Cut16 stops at41 compile diagnostics/tests0; nine nested mounts are repaired; Cut17 stops at28 remaining compile diagnostics/tests0, with no missing-module/wrong-test diagnostics. Do not restore removed owned returns to obtain compilation |
+| W1 | Java `language_parser_plugin/hir_lowering.rs::hir_from_controlled_read_v1` calls the owned `hir_from_read_v1`; Parser `conversion.rs::convert_original_registered_target_hir_v3` receives that owned HIR | Extend the same Java declaration/call/argument/parameter/position/quarantine engine with exterior DATA and unit completion, then connect the real Parser/D4 receiving seam. All paid partials and full causes survive the highest Source refusal; no second HIR engine or bank around an already-owned return |
+| W1 / W2 | Parser external generation-files/inventory banks and two-Source fixture receiving are authored; lower import/provider projection still has local map/row births | Finish the actual file/entity/import/body producers and canonical fact-map/index publication. Sealed/files/inventory consumers preserve their exact full selected cause after Source; verify a genuine nonempty provider/cohort route and late refusal/refund |
+| W3 | Source Lambda CFG/facts exists; evidence stays `BindingRequired`; actual final SSA and DFG storage are missing | Extend the existing finalizer to emit authentic final definition handles keyed by the exact semantic event, use the canonical FunctionRef binding join, then publish actual DFG rows/constraints to workers. Parser anchor count or facts ordinal cannot mint a final handle |
+| W4 | Source-aware input hooks exist, while `typed_input_unit_copy_v3.rs` and `request_input_storage_v3.rs` still lend output A alone | Reuse `QueryOutputCurrentsReadBirthV3` to validate the selected child under genuine B and fund copy/key/output under A. Construct workareas/full-error banks before highest Source; connect the consuming registered FileText handler and owned context/packet/memo path |
+| W5 / W6 | Original Shape/SCC routing is committed; current lower owners are separately accepted | Run the actual affected feature/consumer witnesses on one compatible complete bundle; exact owned staging and committed-source continuity precede complete local-main integration |
+| W7 | Darwin arm64; signed Linux artifact/trust/generation inputs are unset | Release-owned immutable artifact tuple and Linux executor are prerequisites for installed positive Graph/CHECK. Keep installed positive and non-Linux refusal as separate NOT_RUN claims |
+
+Root currently accepts Fact191 at Cut13 and Core364 at Cut15 on separate
+source tuples. Cut9 facts157 remains separate. Source/SDK/runtime/product and
+all18-ticket rollup are not accepted by adding those counts together.
 
 ### Current source and changed assignments
 

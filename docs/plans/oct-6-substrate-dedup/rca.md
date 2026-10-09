@@ -1,6 +1,6 @@
 # Closeout root-cause analysis — R77
 
-Updated: 2026-10-09. This records the R77 cause and dependency map for the
+Updated: 2026-10-10. This records the R77 cause and dependency map for the
 [18 active tickets](tickets.md). [Remaining work](../../work/remaining.md)
 owns their states. All execution is local.
 
@@ -14,7 +14,7 @@ the later complete resolution and two reached pretest failures have separate inp
 ## Successor cause reconciliation
 
 Current source and plan: [W0–W7 completion](parallel-dispatch.md#current-completion-plan--2026-10-09),
-QGLang `d8e7417eb40b`, Semantica `8217a38bf04d` plus shared WIP.
+QGLang observed `5ec537f48e92`, Semantica `8217a38bf04d` plus shared WIP.
 [W014 execution](execution-r79.md#w014-parallel-implementation-and-first-owner-cut--2026-10-09)
 separates the released lower source from zero-test locked Cargo refusal and
 the subsequent version-preserving lock repair.
@@ -23,9 +23,42 @@ source repairs. Cut3 stops before Rust on a fresh locked dependency graph.
 Cut7 reaches SourceWire lib-test and stops at52 fixed-input diagnostics with zero
 tests. Root authors eight existing mount repairs and canonical imports/checked
 receiver visibility. Return-shaped text/retain consumers remain a migration gap.
-New W2 custody review requires Parser sealed/files/inventory external births;
-W4 additionally needs genuine FileText selected typed input and consuming
-registered handler ownership before final snapshot/packet support.
+Cut9 independently passes the DFG facts whole owner157/157 at `0162aa2d8d91`
+with verified publication. Core CFG Cut11 has no completed receipt and remains
+UNKNOWN after runner disappearance; its cause is unknown. The selected structural
+gate found six oversized CFG functions; root now resolves them at the same
+owner and shares duplicate issuance helpers. The five-file God scan has zero
+allowances. Cut12 reaches25 lib-test compile diagnostics, zero tests; root repairs
+the new child path and existing diagnostic test API/mount/import callers. Cut13
+accepts Fact191/191 and reaches Core360 pass/two fixture failures. The faulty
+fixtures assumed a missing successful allocator callback was physical failure and
+a non-diagnostic probe could issue error detail. Both are repaired while adding
+strict rejection regressions. Cut14 stops at locked input before tests; after
+registry-preserving full metadata recovery, Cut15 Core acceptance passes364/364
+with verified publication.
+W2 external Parser sealed/files/inventory API and two-Source fixture caller are
+authored; lower import/provider projection still owns local paid maps/rows and
+must migrate before genuine qualification. W4 additionally needs Source B-aware
+selected typed-input validation/copy, key and consuming registered handler
+ownership before final snapshot/packet support.
+A separate confirmed candidate defect is early Fact publication: fallible
+constructors expose `Some(validated Fact)` before validation. Root repairs the
+existing owner to borrow raw external input through the final work poll and issue
+Fact only on success, preserving partial backing and exact first failure. The
+new regression oracles cover all work polls and a last-field contract refusal;
+the owning whole-library Contract passes191/191 in Cut13 with verified publication.
+This repairs the Fact invariant; it does not issue genuine Java HIR or final DFG handles.
+
+SourceWire Cut16 reproduces the current whole-library boundary:41 compile
+diagnostics and zero tests, with held-lease postflight and independent archive8
+readback. It is a separate input from Cut7's52 diagnostics. Nine additional
+nested child/test mounts are repaired in three existing files; rustfmt/diff pass.
+Cut17 reaches28 remaining compile diagnostics/tests0; no missing-module/wrong-
+sibling test diagnostics remain. Full postflight and archive8 hashes pass, with
+no publication. Remaining removed owned copy/retain callers need
+exterior DATA through their enclosing Source; restoring the old return APIs would
+retain the same paid-partial cleanup defect.
+
 The remaining causes are:
 
 - **Original objective:** Shape/SCC canonical owner routing is committed and its
@@ -38,20 +71,28 @@ The remaining causes are:
   and genuine pair hydration/TARGET retention are now authored. Preparation
   success still stops earlier at the raw Original receipt frontdoor and ordinary
   producer/assembly/evidence births, before exact-route evidence cloning and
-  build context. Production Original receipt admission is absent. This blocks genuine D4 positive custody
+  build context. A genuine Java receipt branch is authored but the actual SDK
+  producer/admission chain is not connected. This blocks genuine D4 positive custody
   before the receiver. An ordinary installed fixture cannot prove that producer.
-- **Analysis/facts birth gap:** live PTA still refuses nonempty relation outputs;
-  DFG rejects Original source-world before ordinary births. The general facts
-  request/context carries Native input control but lacks canonical output
-  admission. Complete actual formal/alias/catalog/transaction, retained DFG and
-  extractor/final-keeper custody together; void-only output is insufficient.
-- **Fixture prerequisite:** existing QRA Native-parts receiving is authored, but
-  PTA fixture still uses diagnostic/V1 cohort/type finalization and raw topology.
-  Genuine binary-input issuance and retained consumers need one compatible cut;
+- **Analysis/facts birth gap:** general PTA transaction and retained DFG/worker
+  storage remain incomplete. Empty/Copy/generated Source branches have canonical
+  admitted CFG/facts, and a strict returning-lambda Parser/CFG/facts branch is
+  authored. Its actual final SSA definition handle and canonical binding join
+  are missing: Source evidence remains `BindingRequired`, never false ExactZero.
+  Complete formal/alias/catalog/transaction, retained DFG and final-keeper custody
+  together; a diagnostic structural CFG test cannot prove a genuine Source path.
+- **Fixture prerequisite:** genuine FD/binary/cohort inputs and the two-Source
+  retained→sealed→inventory caller are authored. Lower Parser import/provider
+  projection still needs external map/row/parts births before that path is safe
+  through late refusal. Genuine binary-input issuance and retained consumers need one compatible cut;
   depending the fixture back on SDK would risk a Cargo cycle.
 - **Consumer/output gap:** product arm/key and context copy require ordinary
   values, Native finalization refuses and snapshot/packet/memo receiving is
-  ordinary-only. Completing event storage does not complete retained execution.
+  incomplete. FileText selected input belongs to Source B, while the old typed
+  copy/validation lender supplies only output A; passing A as B cannot authenticate
+  the selected child. Reuse the existing B/A unit engine and external failure
+  banks, then connect the actual handler and final output consumers. Completing
+  event storage does not complete retained execution.
 - **Failure cleanup:** guard Drop now discards through all16 recorder implementors;
   its ordinary and genuine Original regressions still need execution. Keep this
   cleanup independent of intentional ordinary TraceFrame finalization.

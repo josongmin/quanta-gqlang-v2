@@ -19,6 +19,20 @@ Successor compiler/tests, complete consumer implementation and main integration
 remain pending. Installed Linux trust/artifact inputs are unavailable on this
 Darwin arm64 host; no installed positive result is claimed.
 
+Latest scoped results: W014 Cut13 publishes semantic-dependency Contract191/191,
+including the validation-before-publication invariant and refusal regressions.
+Core Cut13 executes360 pass/two diagnostic fixture failures; the fixtures are
+repaired with two added strict negatives. Cut14 stops before tests at `--locked`;
+full offline metadata recovery preserves registry pins/checksums. Cut15 Core
+whole-library acceptance passes364/364 on29/29 independently reviewed postimages,
+with verified publication and independent archive readback.
+SourceWire Cut17 stops at28 compile diagnostics/tests0 after nine nested module
+mount repairs. Full SourceWire copy/retain caller custody migration is open.
+The earlier Cut9 facts157/157 remains a separate accepted source. None of these
+qualifies Parser/SDK/runtime product or installed Graph/CHECK.
+B is usage-limited and A/C are not confirmed running. Root has taken scoped
+Core/Fact repairs; a replacement spawn is rejected by the thread limit.
+
 Latest code checkpoint: [R337–R338 retained topology receiving](native-identity-boundary.md#retained-topology-receiving--r337r338).
 The raw DTO receiver is replaced by genuine checked lowering/evidence reads;
 two source-oracle rejection regressions are authored. AST6, rustfmt6, scoped
@@ -35,11 +49,12 @@ Status: implementation in progress; source edits and execution attempts are
 recorded in the R49 update below and the
 [current execution handoff](../../work/substrate-repair-checkpoints-2026-10-07.md#fixed-candidate-compile-and-ownership-checkpoints).
 No product qualification is claimed.
-Latest QGLang local CI is R334: `just ci` exits0, Nextest1,514/1,514 and
-external facade positive1/negative23 (zero mismatches), at `09276c57…` plus
-five owned documentation paths; source snapshot `f1b8ab5f…`. The CI receipt
-note was added afterward. This is local frontend proof, not clean-HEAD
-qualification or Semantica proof. Historical R167 retains its own input. The
+Latest QGLang local CI: `just ci` exits0, Nextest1,514/1,514 (skipped0,
+leaked0), MSRV Clippy and all frontend groups pass at `2d5b1852f077` plus seven
+owned documentation inputs. Snapshot `dc936ad4f2ff5617ad440349a7cd188a817f48a35fefede8baf482aae4b8378e`;
+CI log SHA256 `ae537a6f23d7c4c79000b774a1ae34238e347ca0bfed6cee74039772df2bdde1`.
+Later changes through observed main `9a5e8e5e4be6` are documentation only.
+This is local frontend proof, not clean committed-HEAD qualification or Semantica proof. Historical R167 retains its own input. The
 [fixed-candidate checkpoints](../../work/substrate-repair-checkpoints-2026-10-07.md#fixed-candidate-compile-and-ownership-checkpoints)
 accept interproc1,105 and the scoped storage-error/copy owners separately.
 R183 accepts R107 frozen Kernel whole-lib569, and R192 confirms the separate
@@ -49,7 +64,7 @@ selectors not run. R194 SDK owner also stops at pretest compile on its separate
 R191 source; R206 canonical successor capture refused moving untracked input.
 Original positive, SDK behavior and product acceptance remain open. See the
 [R201–R206 successor](../../work/substrate-repair-checkpoints-2026-10-07.md#r201r206-final-batch-and-sdk-capture-checkpoint).
-Updated: 2026-10-09.
+Updated: 2026-10-10.
 
 R220 authors the four-file QRA component-copy/input-visitor producer; R230
 confirms matching encoder receiving source. R239 now authors the
@@ -120,8 +135,14 @@ executed supplier, Original and consumer lanes from R79 onward. Local-main
 integration is serial per complete compatible bundle.
 
 Latest local frontend CI:1514/1514 at `2d5b1852f077` plus document WIP.
-Current `d8e7417eb40b` adds documentation only. Cut4/Cut5 downstream compiler
-failures and released W1/W2/W3 source are recorded in the [W014 successor](execution-r79.md#latest-local-checks-and-released-source--w014-successor); current Rust/product acceptance remains pending.
+Later frontend changes through observed main `5ec537f48e92` are documentation only.
+Cut9 downstream DFG facts passes157/157 on its own exact source with verified
+publication. Core CFG Cut11 stays UNKNOWN. Cut13 accepts the Fact contract191/191; Core
+executes362 tests and reaches two diagnostic fixture failures. Those fixtures are
+repaired with two added strict negatives. Cut14 runs zero tests at `--locked`;
+registry-preserving metadata recovery passes. Cut15 Core accepts364/364 with
+verified publication on its separately reviewed29-path input. Parser/SDK/product acceptance remains open. Exact inputs, source candidates and
+limits are in the [W014 successor](execution-r79.md#latest-local-checks-and-released-source--w014-successor).
 
 ## Historical remaining audit — R77
 

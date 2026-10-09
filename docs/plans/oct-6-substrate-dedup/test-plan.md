@@ -23,9 +23,33 @@ The nine C-lane resolves are request discovery only. F2 minimal has two required
 witnesses; parser checks are compilation only. The generated-getter facts keeper
 does not cover general callable, DFG source-world/Tree C or PTA transaction output.
 
+Cut9 executes DFG facts whole lib/all-features157/157, with publication and
+independent archive readback. This excludes adapter keeper/refund and downstream
+Parser/SDK tests. Core Cut15 executes the literal four-block assignment/return
+edge and late-refusal retained-backing regressions; Cut11 lacks a completed
+receipt and is UNKNOWN. Cut12 is compile RED, zero tests; source fixes preserve
+strict current test APIs and literal fields. Cut13 accepts the whole Contract191/191
+and reaches Core360 pass/two fixture failures. Two new strict negatives accompany
+the fixture repairs. Cut14 executes zero tests at locked input; after metadata
+recovery, Cut15 Core whole lib/all-features passes364/364 with verified publication. Fact
+regressions require every failed work poll (including the final one) to retain
+raw input and leave validated output empty; invalid last digest has the same
+no-publication oracle, while success moves the original pointer.
+Nonzero Source topology additionally requires actual
+final SSA definition-handle issuance and the canonical FunctionRef binding join.
+For FileText typed input, validate selected path/source under actual Source B and
+fund typed owner/key/output under A using the existing two-current unit engine.
+An ordinary key or A-only selected-token copy cannot satisfy the positive oracle.
+
 Latest local frontend CI:1514/1514 at `2d5b1852f077` plus document WIP.
-Current `d8e7417eb40b` adds documentation only. Cut4/Cut5 downstream compiler
-failures and released W1/W2/W3 source are recorded in the [W014 successor](execution-r79.md#latest-local-checks-and-released-source--w014-successor); current Rust/product acceptance remains pending.
+Later frontend changes through observed main `5ec537f48e92` are documentation only.
+Cut9 downstream DFG facts passes157/157 on its own exact source with verified
+publication. Core CFG Cut11 stays UNKNOWN. Cut13 accepts the Fact contract191/191; Core
+executes362 tests and reaches two diagnostic fixture failures. Those fixtures are
+repaired with two added strict negatives. Cut14 runs zero tests at `--locked`;
+registry-preserving metadata recovery passes. Cut15 Core accepts364/364 with
+verified publication on its separately reviewed29-path input. Parser/SDK/product acceptance remains open. Exact inputs, source candidates and
+limits are in the [W014 successor](execution-r79.md#latest-local-checks-and-released-source--w014-successor).
 
 ## Current acceptance matrix — 2026-10-09
 

@@ -1,6 +1,6 @@
 # Local parallel closeout execution — R79 onward
 
-Updated: 2026-10-09. This is the executed successor of the [R78 dispatch](parallel-dispatch.md),
+Updated: 2026-10-10. This is the executed successor of the [R78 dispatch](parallel-dispatch.md),
 within the existing [18-ticket queue](tickets.md). All execution is local.
 Source integration, WIP implementation, compilation and product acceptance are
 separate states. The [R77 RCA](rca.md) retains its original inputs.
@@ -1248,14 +1248,139 @@ independent nine-file archive readback matches
 (`w0-facts-cut9-independent-archive-readback.json`). These lower cuts do not
 compile the adapter keeper/refund regressions or qualify Parser/SDK.
 
+Core CFG successor cuts remain unqualified. Cut10 deliberately stops at source
+review before owner resolve/Rust because both live locks differ from the previous
+released tuple. Their new local edges preserve registry versions/checksums;
+root/nested full locked offline metadata pass without changing either lock
+(`w0-lock-cut11-metadata.json`). Cut11 reviews17 exact postimages at source
+`6e8c0e82d134917f365523e83983ef31a2a002cf964b1d930af5f8df19644023`
+and resolves the Core CFG owner, but its runner disappears without an owner
+locator, completed receipt or postflight. Verdict/test counts are UNKNOWN,
+publication absent; cause is unknown (`w0-core-cfg-cut11-unknown-launch.json`).
+No old receipt is substituted. A stable selected four-file structural scan finds
+six oversized CFG functions, zero allowances; fixture and QRA consumer leaf
+have no findings. Root takes over the stopped B lane and splits the existing
+owners, sharing assignment/generated neighbors and statement value issuance.
+Graph-axis birth/assembly moves into the private `graph_parts_v3` child.
+Five selected files pass God with no allowances/baseline change; external partial
+banks, Native calls/order and completion semantics are preserved.
+
+Cut12 independently matches18 postimages at source
+`37e8c35af1f5daa0e6fff73766631f4640e300bc3b9d2431fde70fed7bc17cb9`.
+Core CFG whole lib/all-features stops at25 lib-test compile diagnostics, zero
+executed tests. The split introduced one wrong `super` path; root corrects it.
+The other reached causes are a missing existing test-child mount, a missing
+canonical work-helper import, and old diagnostic tests that still require removed
+error equality or unchecked `SharedSourceTextV1::contains`. Root migrates them to
+literal variant/field/text oracles with explicit ordinary-only diagnostic reads;
+retained text remains rejected by that read. No production escape is restored.
+Receipt SHA256 `b79aa436f0ad0d81f030f838933a5967f7c2cc757782b460a81542abf1f4c4d4`;
+postflight `8e7efd1ac6d910fb1d156dc1bf00df63fc92fca51d0977ce4b6a7d34ceb28d79`.
+Archived source/result remains RED, without publication.
+
+Root also confirms and repairs a source invariant defect in the new external
+import/provider Fact constructors: they previously moved raw input into the
+public validated Fact type before fallible validation. An error left `Some(Fact)`
+accessible to getters/serialization. The same validators now borrow the raw
+external input and preserve every work check and field order. Only after the
+final successful work check does an infallible transfer issue the Fact.
+Every work refusal retains input backing and leaves output empty; regressions
+cover every poll, the final poll, successful original-pointer transfer and invalid
+last digest for both Fact types. Format/diff/God pass. Cut13 captures27 reviewed
+postimages and executes semantic-dependency Contract and Core CFG whole lib/all
+features. The completed results and fixture RCA follow below.
+
+Cut13 source is `c14e9640d4a046074bc60d87c1dfd0630b80bd26b3d5fb7b1ecdc00e4754586f`.
+The semantic-dependency Contract whole lib/all-features passes191/191, ignored0,
+filtered0. Receipt SHA256
+`3002fc32be32d10b73824534c39a91277cdb7cbd854ab1fb17e0bcac64831859`;
+verified publication marker
+`01ec90f04784c9a609e628ef85bf356d1eea669a4f55ff9be42ff2a098087f2b`.
+Core CFG executes362 tests:360 pass, two fail. Both new structural Lambda CFG
+and refusal/refund regressions pass; they use diagnostic admission and do not
+establish genuine Original authority. Core has no GREEN publication on Cut13.
+The combined postflight is
+`e9b68b071b1aea07fb70f5d652751c5be9e56c2a270092bab69d4df8de5a1e37`;
+all16 archived evidence files pass independent hash readback.
+
+The two reached failures are test fixture contract mismatches:
+
+- `pre_callback_rejection_records_cause_before_input_drop`: a producer returned
+  successful `Ok(false)` without invoking the allocator. The Native owner correctly
+  rejects a missing successful receipt as `InvalidBoundary`. The pre-callback
+  physical-failure fixture now returns that actual failure. A separate new
+  regression preserves the missing-callback protocol rejection and drop ordering.
+- `grouped_item_indexes_filter_namespace_and_future_rows_before_duplicate_callback`:
+  a non-diagnostic probe has no genuine error-detail Source issuer. The diagnostic
+  grouping oracle now uses the canonical diagnostic admission, preserving its
+  literal index/order/text assertions. A new non-diagnostic regression requires
+  the existing typed `UnsupportedOperation` refusal.
+
+No production fallback, error equality or retained ordinary read is restored.
+Cut14 captures29 reviewed postimages and stops before tests at a fresh locked
+local dependency edge. Receipt
+`661e7d7c35277a70c6805e9b671b0bdf33687359952818a108e7e040c297b070`;
+postflight `344474813ec1b0be96795c6470f1dfba045aa0d08e2c08edd7cf239cf83fbfff`.
+Full root/nested offline metadata recovery preserves all registry versions and
+checksums; both full locked checks then pass. `w0-lock-cut15-metadata.json`
+records the old/new lock hashes. Metadata is not Rust proof.
+Cut15 source `c24596d2128afe69ebddca7dd2c621f0279a7288065108c870e70eddc276b248`
+has29/29 independent reviewed postimage matches under a held source lease.
+Core whole lib/all-features passes364/364, ignored0, filtered0, including both
+new strict rejection regressions. Request `bd314d029d8d0e35f87e84ac6969737f`,
+run `20261009T150627.754883Z-6487090899b4`;
+receipt SHA256 `e7c2488554d48ae827fd5092a7455132f954e06b66ca97d95ce08dbf6830f30f`,
+verified publication marker
+`9f6b85320060e99b5b6c30b07982aecae3891116fc0e5ec509696ebf93af8924`.
+Held-lease postflight `683c0c917b1dfba3606b15b02348e5074506ba34fadb762d8196e3d87c566045`;
+all9 archived evidence files pass independent hash readback. This accepts the
+Core owner at Cut15; Fact191 and facts157 retain their separate source inputs.
+SourceWire Cut16 whole lib/all-features stops at41 compile diagnostics, zero tests,
+on `cf93044fac3c81342c819393dc35be4d950b08072b5cbc2a6ef65c30df5acbb9`.
+Receipt `dd6712c9445013475a68abc953d7c2b470a75f6d04acbc451f0bddc714ee7405`;
+held-lease postflight `4cf02f9f041921768a716faf613ac1e0f0b1a90829b100c1faed6ca0e62b9d96`;
+all8 archived files pass independent hash readback, with no publication.
+Root repairs nine existing nested child/test module mounts in three preserved
+files. A path-mounted parent otherwise resolves the wrong sibling directory,
+including a different tests file under the wrong parent. The proper children now
+have explicit paths; no algorithm, test oracle or public contract changes.
+Scoped rustfmt/diff pass. Cut17 rechecks the fresh whole owner with278/278 reviewed
+postimages on `6f27d95fe5b58572242dd52087e9fc18eadf08cc3f33e0f3b3521cbaaacd5466`.
+Cut17 stops at28 compile diagnostics and executes zero tests. All missing child
+module/wrong-sibling test diagnostics reached in Cut16 are gone. The remaining
+fixed-input diagnostics are10 unresolved imports of retired copy APIs, four
+removed function calls, two retired trait methods, one missing current trait
+method, four retired text-retain calls and seven denied unused imports.
+Receipt `2f4e613a1854426db26d1621c307951132a355993ffb133e8428b0a85f5ac05a`;
+held-lease postflight `54ad2c7633dede37244c005a7f3289e2bf541b8b8e67a3fc959763eb37b23a3e`;
+all8 archived files pass independent readback; no publication.
+`w0-cut17-reached-diagnostics.json` preserves each exact path/line and diagnostic.
+These28 errors are not28 independent defects or a test failure count. Retired
+owned copy/retain calls require the complete canonical exterior producer/consumer
+migration, including SourceWire initial pin/issuer/capture and SDK enclosing
+custody. No compatibility owned-return wrapper is restored.
+Parser/SDK/Runtime product acceptance and complete Source integration remain open.
+
+B has stopped on a usage limit. A/C do not report a running worker and remain
+pending initialization; root interrupts A before taking its two Fact files.
+An additional worker request is rejected by the agent thread limit. Root-owned
+edits and serial proofs continue; the three-lane plan does not imply three active
+workers. Existing external owners retain their exact other hunks and suppliers.
+
 The Parser Source2 external sealed/files/inventory facade and W2 two-Source
 fixture caller are released source; scoped format/diff pass, Rust NOT_RUN.
 `w1-parser-source2-external-birth-a.json` records the supplier's nine postimages.
 Fixture qualification remains on hold for the Original import/provider
-projection's local map/row births; A is migrating that canonical owner externally.
+projection's local map/row births; that canonical external-birth migration remains partial.
 Nonzero Source lambda needs
 actual CFG statement/return edges, admitted facts and exact DFG binding inventory;
 Parser anchor counting or upstream refusal does not satisfy that implementation.
+The four-block CFG has diagnostic structural/refund proof at Cut13; the strict
+two-statement Parser predicate and Source Lambda definition/return-read branch
+remain source-authored without genuine Source consumer acceptance. Evidence remains
+`BindingRequired` until the existing SSA/finalizer emits an authentic final
+definition handle keyed by the exact semantic event and the canonical binding
+join consumes it. Facts ordinal and Parser anchor count cannot issue that handle.
 
 W4 releases the two-file TraceCtx unit receiving ABI using the existing Kernel
 `QueryOutputCurrentsReadBirthV3` engine. Owner and consumer full errors remain in
