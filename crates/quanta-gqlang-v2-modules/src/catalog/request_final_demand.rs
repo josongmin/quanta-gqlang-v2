@@ -40,6 +40,7 @@ pub(crate) fn request_final_catalog_bytes_v3(
         input.profile_admissions.len(),
     )?;
     add::<DocumentCatalogDependencyV2>(&mut retained, dependency_slots)?;
+    add::<(&CatalogAssetIdV2, &CatalogAssetIdV2, Option<usize>)>(&mut scratch, dependency_slots)?; // family-reference duplicate lookup
     for activation in &input.activations {
         retained = retained.checked_add(activation.pack_id.as_str().len())?;
     }
@@ -75,7 +76,7 @@ pub(crate) fn request_final_catalog_bytes_v3(
                 .map(|activation| &activation.pack_id),
         )?;
         add::<&CatalogAssetIdV2>(&mut scratch, queue_slots)?; // queue
-        add::<&CatalogAssetIdV2>(&mut scratch, queue_slots)?; // seen
+        add::<(&CatalogAssetIdV2, bool)>(&mut scratch, queue_slots)?; // sorted visited index
         add::<&ExternalCatalogAssetV2>(&mut scratch, profile_slots)?;
     }
     let longest_excerpt = input

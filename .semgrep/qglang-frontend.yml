@@ -11,6 +11,7 @@ rules:
       include:
         - /crates/quanta-gqlang-v2-algebra/src/**/*.rs
         - /crates/quanta-gqlang-v2-binder/src/**/*.rs
+        - /crates/quanta-gqlang-v2-execution-contract/src/**/*.rs
         - /crates/quanta-gqlang-v2-hir/src/**/*.rs
         - /crates/quanta-gqlang-v2-logic/src/**/*.rs
         - /crates/quanta-gqlang-v2-modules/src/**/*.rs

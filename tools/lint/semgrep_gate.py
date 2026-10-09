@@ -20,7 +20,7 @@ RULE = "qglang-v2-no-string-typed-error-results-in-core"
 EXPECTED_PATH = "tools/lint/tests/fixtures/semgrep/%s.rs" % RULE
 EXPECTED_LINES = {1, 5, 9}
 CORE_CRATES = (
-    "algebra", "binder", "hir", "logic", "modules", "pipeline", "planning",
+    "algebra", "binder", "execution-contract", "hir", "logic", "modules", "pipeline", "planning",
     "sema", "surface", "types",
 )
 

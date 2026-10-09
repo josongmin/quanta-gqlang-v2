@@ -1254,6 +1254,44 @@ fn require_certified_traverses_activated_external_pack_contracts() {
             location: checked(&host, 1, 8),
             dependencies: vec![],
         })?;
+        let mut pack_dependencies = vec![ExternalCatalogDependencyInputV2 {
+            target: asset_ref(
+                &host,
+                &external_module,
+                NamespaceKindV2::Profile,
+                "policy",
+                10,
+            ),
+            expected_kind: NamespaceKindV2::Profile,
+            location: checked(&host, 1, 11),
+        }];
+        // The sealed pack dependencies are sorted by ID, then popped in
+        // reverse. This exercises a descending 48-target reachability walk.
+        for index in 0..48 {
+            let name = format!("policy_{index:03}");
+            builder.try_add_external(ExternalCatalogAssetInputV2 {
+                module_name: "host".into(),
+                local_name: name.clone(),
+                kind_token: "profile".into(),
+                typed_payload: ExternalCatalogPayloadInputV2::Profile(
+                    ProfileAdmissionV2::CertifiedOnly,
+                ),
+                provenance: "host".into(),
+                location: checked(&host, 1, 20 + index),
+                dependencies: vec![],
+            })?;
+            pack_dependencies.push(ExternalCatalogDependencyInputV2 {
+                target: asset_ref(
+                    &host,
+                    &external_module,
+                    NamespaceKindV2::Profile,
+                    &name,
+                    100 + index,
+                ),
+                expected_kind: NamespaceKindV2::Profile,
+                location: checked(&host, 1, 200 + index),
+            });
+        }
         builder.try_add_external(ExternalCatalogAssetInputV2 {
             module_name: "host".into(),
             local_name: "security".into(),
@@ -1264,17 +1302,7 @@ fn require_certified_traverses_activated_external_pack_contracts() {
             )),
             provenance: "host".into(),
             location: checked(&host, 1, 9),
-            dependencies: vec![ExternalCatalogDependencyInputV2 {
-                target: asset_ref(
-                    &host,
-                    &external_module,
-                    NamespaceKindV2::Profile,
-                    "policy",
-                    10,
-                ),
-                expected_kind: NamespaceKindV2::Profile,
-                location: checked(&host, 1, 11),
-            }],
+            dependencies: pack_dependencies,
         })?;
         let parts = builder.finish(
             CurrentModuleSelectionInputV2 {

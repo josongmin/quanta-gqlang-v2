@@ -154,7 +154,7 @@ repair is assigned for these follow-ups.
 The current-target planner, dominance and concurrency engine/schema deadlocks
 also reuse the canonical SCC. Tarjan10 includes PTA adapter/Andersen, but its
 selectors and historical45 do not cover all callers. The
-[current tickets](../plans/oct-6-substrate-dedup/tickets.md#d2-caller-coverage)
+[remaining acceptance](../work/remaining.md#substrate-verification)
 retain the expanded caller proof without assigning new SCC implementations.
 The distinct `codegraph-import-graph` cycle substrate joins that owner as
 `daf8bb00bfa`; its cycle domain oracles remain separate from navigation.
@@ -167,7 +167,7 @@ The remaining original-control/output acceptance belongs to
 [CHECKED-RETAINED-CONTROL](../work/remaining.md#substrate-verification).
 The five SDK mapper tests are distinct from engine/adapter deadline behavior and
 missing real SDK deadline result coverage. These unfinished tasks are scheduled
-in the [successor execution plan](../plans/oct-6-substrate-dedup/readme.md);
+in the [downstream execution map](../../../semantica-codegraph-v2/docs/handoff/oct-10/oct-10-compiled.md);
 this audit is source evidence, not a new owner or product execution receipt.
 
 ### Executable regression custody — 2026-10-08
@@ -181,6 +181,30 @@ refusals, with committed IR dependencies matched before integration. Required
 witness names must be observed in finished owner results. A source `#[test]`
 count alone cannot close coverage. Current proof inputs and remaining controlled
 custody are recorded in the active handoff, not defined by this ADR.
+
+### R356 source integration readback — 2026-10-10
+
+Read-only Semantica committed source
+`7836ed9c03e98126f2dece066c7814de3027bfaf` matches all ten hashes in the original
+`r356-postimages.json`; the corresponding live paths match those committed blobs.
+The old description of that ten-path packet as uncommitted WIP is superseded.
+This is exact source integration, not an executed owner or product verdict.
+
+Retain the existing outer identity/occurrence/index births in the final-generation
+caller. Owned inputs, paid partial key copies, completed binding/topology state,
+pending insertion, final backing and complete failure causes stay in external
+DATA through the Source finisher. One `copy_key_v3` owns exact tuple copying;
+the return-shaped duplicate copier is removed. The FunctionRef lender and
+consumer share the same callback/failure-slot contract. No new algorithm,
+authority issuer, engine or public DTO is selected.
+
+Completed-output retention does not prove the canonical binding index's inner
+partial births or full selected PTA ingress. Genuine Source SSA/DFG, actual
+Runtime grant, public fixture/consumer, structural and execution exits stay at
+the existing downstream owner. Recheck current source before assigning those
+tasks; the retired audit is not a current missing-code census.
+The exact comparison is retained in the Oct-10 consolidation evidence directory
+named by [ADR-0001](0001-frontend-campaign-consolidation.md#2026-10-10-reconciliation).
 
 ### Historical focused proof record
 

@@ -13,11 +13,13 @@ use crate::session_identity::DocumentSessionIdentityV2;
 use crate::session_identity::PredeclaredRequestCustodyV3;
 use crate::signature::{CallableKindV2, SignatureInputV2, SignatureV2};
 
+mod family_merge;
 mod predeclaration;
 mod request_final_demand;
 mod view_topology;
 
 use crate::ModuleDiagnosticV2;
+use family_merge::merge_family_references;
 pub use predeclaration::DocumentPredeclareRequestErrorV3;
 pub(crate) use predeclaration::PredeclaredDocumentAssetsV2;
 use quanta_gqlang_v2_hir::{
@@ -1061,101 +1063,6 @@ fn admit_profiles(
     Ok(profiles)
 }
 
-fn merge_family_references(
-    family_references: Vec<DocumentCatalogFamilyReferenceInputV2>,
-    context: &CatalogSealContext<'_>,
-    session: &mut ModuleBudgetSessionV2,
-) -> Result<Vec<DocumentCatalogDependencyV2>, ModuleDiagnosticV2> {
-    let topology = context.topology;
-    let predeclared = context.predeclared;
-    let visible = context.visible;
-    let external = context.external;
-    let source_registry = context.source_registry;
-    let session_key = context.session_key;
-    let mut dependency_edges = topology.state().dependencies.to_vec();
-    for reference in family_references {
-        session.charge_edge()?;
-        ensure_registry(&reference.location, source_registry)?;
-        ensure_registry(&reference.source.location, source_registry)?;
-        ensure_registry(&reference.target.location, source_registry)?;
-        if !reference.source.belongs_to(session_key) || !reference.target.belongs_to(session_key) {
-            return Err(ModuleDiagnosticV2::new(
-                "modules.catalog_reference_session_mismatch",
-                "family reference proof belongs to another document validator",
-                &reference.location,
-            ));
-        }
-        let source_id = reference.source.id.clone();
-        if predeclared.get(&source_id) != Some(reference.family.source_kind())
-            || predeclared.location(&source_id) != Some(&reference.source.location)
-            || reference.source.kind != reference.family.source_kind()
-        {
-            return Err(ModuleDiagnosticV2::new(
-                "modules.catalog_dependency_source_wrong_kind",
-                "family reference source is not the matching predeclared local asset",
-                &reference.location,
-            ));
-        }
-        if reference.target.kind != reference.family.target_kind() {
-            return Err(ModuleDiagnosticV2::new(
-                "modules.catalog_reference_kind_mismatch",
-                "family reference target kind differs from required kind",
-                &reference.location,
-            ));
-        }
-        let target_id = reference.target.id.clone();
-        let target_exists = predeclared.get(&target_id) == Some(reference.target.kind)
-            || external
-                .asset(&target_id)
-                .is_some_and(|asset| asset.kind() == reference.target.kind)
-            || visible.visible_bindings().iter().any(|binding| {
-                binding.resolved_asset_id() == &target_id
-                    && binding.namespace_kind() == reference.target.kind
-            });
-        if !target_exists {
-            return Err(ModuleDiagnosticV2::new(
-                "modules.unknown_catalog_reference",
-                "family reference target is absent from sealed document or host authority",
-                &reference.location,
-            ));
-        }
-        let edge = DocumentCatalogDependencyV2 {
-            source_asset_id: source_id,
-            target_asset_id: target_id,
-            expected_target_kind: reference.family.target_kind(),
-            family: Some(reference.family),
-            location: reference.location,
-        };
-        match dependency_edges.binary_search_by(|existing| {
-            (&existing.source_asset_id, &existing.target_asset_id)
-                .cmp(&(&edge.source_asset_id, &edge.target_asset_id))
-        }) {
-            Ok(index) => {
-                let Some(existing) = dependency_edges.get_mut(index) else {
-                    return Err(ModuleDiagnosticV2::without_location(
-                        "modules.internal_dependency_index_mismatch",
-                        "sorted dependency index is outside the sealed edge set",
-                    ));
-                };
-                if existing.expected_target_kind != edge.expected_target_kind
-                    || existing.family != edge.family
-                {
-                    return Err(ModuleDiagnosticV2::new(
-                        "modules.catalog_dependency_kind_conflict",
-                        "duplicate edge disagrees on expected kind",
-                        &edge.location,
-                    ));
-                }
-                if loc_key(edge.location.location()) < loc_key(existing.location.location()) {
-                    *existing = edge;
-                }
-            }
-            Err(index) => dependency_edges.insert(index, edge),
-        }
-    }
-    Ok(dependency_edges)
-}
-
 fn reachable_external_profiles<'a>(
     edges: &'a [DocumentCatalogDependencyV2],
     external: &'a ExternalCatalogV2,
@@ -1198,13 +1105,38 @@ fn reachable_external_profiles<'a>(
             | ExternalCatalogPayloadV2::Rule(_) => None,
         }));
     }
+    // Every reachable ID is either an initial target or an external edge
+    // target. Index all candidates once, then only flip a visited bit.
     let mut seen = Vec::with_capacity(queue_slots);
+    seen.extend(queue.iter().copied().map(|id| (id, false)));
+    seen.extend(external.iter().flat_map(|asset| {
+        asset
+            .dependencies
+            .iter()
+            .map(|edge| (&edge.target_asset_id, false))
+    }));
+    seen.sort_unstable_by(|left, right| left.0.cmp(right.0));
+    seen.dedup_by(|left, right| left.0 == right.0);
     let mut profiles = Vec::with_capacity(profile_slots);
     while let Some(id) = queue.pop() {
-        match seen.binary_search(&id) {
-            Ok(_) => continue,
-            Err(index) => seen.insert(index, id),
+        let index = seen
+            .binary_search_by(|candidate| candidate.0.cmp(id))
+            .map_err(|_index_error| {
+                ModuleDiagnosticV2::without_location(
+                    "modules.internal_dependency_index_mismatch",
+                    "reachable target is outside the sealed candidate index",
+                )
+            })?;
+        let Some(entry) = seen.get_mut(index) else {
+            return Err(ModuleDiagnosticV2::without_location(
+                "modules.internal_dependency_index_mismatch",
+                "visited index is outside the sealed candidate set",
+            ));
+        };
+        if entry.1 {
+            continue;
         }
+        entry.1 = true;
         if let Some(asset) = external.asset(id) {
             if asset.kind == NamespaceKindV2::Profile {
                 profiles.push(asset);

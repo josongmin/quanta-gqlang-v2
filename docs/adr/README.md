@@ -11,6 +11,7 @@ wave ledgers, and source-bound campaign receipts do not define current behavior.
 - [ADR-0006: Code-query evaluation and dependency adoption boundary](0006-code-query-evaluation-boundary.md)
 - [ADR-0007: Typed code-query contract proposal (Proposed)](0007-typed-code-query-contract-proposal.md)
 - [ADR-0008: Private diagnostics primary-location contract](0008-private-diagnostics-primary-location-contract.md)
+- [ADR-0009: Frontend common owners and execution-contract extraction](0009-frontend-owner-dedup-and-execution-contract.md)
 
 Current language behavior and proof remain owned by the
 [language reference](../language/README.md),

@@ -7,7 +7,9 @@ use super::{
     ExternalCatalogAssetV2, ExternalCatalogV2, PredeclaredDocumentAssetsV2,
 };
 use crate::budget::ModuleBudgetSessionV2;
-use crate::graph::{loc_key, CatalogAssetIdV2, NamespaceKindV2};
+use crate::graph::{
+    loc_key, CatalogAssetIdV2, CatalogAssetRefInputV2, ModuleIdV2, NamespaceKindV2,
+};
 use crate::manifest::cycle_with_legacy_steps;
 use crate::session_identity::DocumentSessionIdentityV2;
 use crate::ModuleDiagnosticV2;
@@ -82,6 +84,15 @@ pub(crate) fn request_topology_bytes_v3(
     let assets = predeclared.assets.len();
     let mut views = 0_usize;
     let mut copied_id_bytes = 0_usize;
+    // The authored inputs stay alive while the sorted borrowed lookup is in
+    // use, so each retained edge identity copies its two owned names.
+    for input in inputs {
+        for reference in [&input.source, &input.target] {
+            copied_id_bytes = copied_id_bytes
+                .checked_add(reference.module_id.as_str().len())?
+                .checked_add(reference.local_name.len())?;
+        }
+    }
     for (id, kind, _) in predeclared.iter_borrowed() {
         if kind == NamespaceKindV2::View {
             views = views.checked_add(1)?;
@@ -95,6 +106,11 @@ pub(crate) fn request_topology_bytes_v3(
     let mut retained = 0_usize;
     let mut scratch = 0_usize;
     add::<DocumentCatalogDependencyV2>(&mut retained, edges)?;
+    add::<(
+        &CatalogAssetRefInputV2,
+        &CatalogAssetRefInputV2,
+        Option<usize>,
+    )>(&mut scratch, edges)?; // authored edge lookup
     add::<&DocumentCatalogDependencyV2>(&mut scratch, edges)?; // filtered
     add::<&CatalogAssetIdV2>(&mut scratch, edges)?; // roots
     add::<(
@@ -160,8 +176,17 @@ impl DocumentViewTopologyProofV2 {
                 "predeclaration belongs to another document validator",
             ));
         }
+        // Resolve in authored order for diagnostic precedence. The lookup is
+        // sorted once; the retained edge Vec stays append-only until sealing.
+        let mut edge_lookup: Vec<_> = inputs
+            .iter()
+            .map(|input| (&input.source, &input.target, None::<usize>))
+            .collect::<Vec<_>>();
+        edge_lookup.sort_unstable_by(|left, right| {
+            (input_id(left.0), input_id(left.1)).cmp(&(input_id(right.0), input_id(right.1)))
+        });
         let mut dependencies: Vec<DocumentCatalogDependencyV2> = Vec::with_capacity(inputs.len());
-        for input in inputs {
+        for input in &inputs {
             session.charge_edge()?;
             session.charge_string(input.source.module_id.as_str())?;
             session.charge_string(&input.source.local_name)?;
@@ -177,8 +202,18 @@ impl DocumentViewTopologyProofV2 {
                     &input.location,
                 ));
             }
-            let source_asset_id = input.source.derive()?;
-            let target_asset_id = input.target.derive()?;
+            let source_asset_id = CatalogAssetIdV2::derive(
+                input.source.module_id.clone(),
+                input.source.namespace_kind,
+                &input.source.local_name,
+                &input.source.location,
+            )?;
+            let target_asset_id = CatalogAssetIdV2::derive(
+                input.target.module_id.clone(),
+                input.target.namespace_kind,
+                &input.target.local_name,
+                &input.target.location,
+            )?;
             if predeclared.get(&source_asset_id) != Some(NamespaceKindV2::View) {
                 return Err(ModuleDiagnosticV2::new(
                     "modules.catalog_dependency_source_wrong_kind",
@@ -188,10 +223,14 @@ impl DocumentViewTopologyProofV2 {
             }
             let local_target = predeclared.get(&target_asset_id);
             let external_target = external.asset(&target_asset_id);
-            let visible_target = visible
-                .visible_bindings()
-                .iter()
-                .find(|binding| binding.resolved_asset_id() == &target_asset_id);
+            let visible_target = if local_target.is_none() && external_target.is_none() {
+                visible
+                    .visible_bindings()
+                    .iter()
+                    .find(|binding| binding.resolved_asset_id() == &target_asset_id)
+            } else {
+                None
+            };
             let actual = local_target
                 .or_else(|| external_target.map(ExternalCatalogAssetV2::kind))
                 .or_else(|| visible_target.map(crate::ResolvedBindingV2::namespace_kind));
@@ -240,13 +279,19 @@ impl DocumentViewTopologyProofV2 {
                 target_asset_id,
                 expected_target_kind: input.expected_target_kind,
                 family: None,
-                location: input.location,
+                location: input.location.clone(),
             };
-            match dependencies.binary_search_by(|existing| {
-                (&existing.source_asset_id, &existing.target_asset_id)
-                    .cmp(&(&resolved.source_asset_id, &resolved.target_asset_id))
-            }) {
-                Ok(index) => {
+            let key = (input_id(&input.source), input_id(&input.target));
+            let index = edge_lookup
+                .partition_point(|existing| (input_id(existing.0), input_id(existing.1)) < key);
+            let Some(slot) = edge_lookup.get_mut(index) else {
+                return Err(ModuleDiagnosticV2::without_location(
+                    "modules.internal_dependency_index_mismatch",
+                    "edge lookup is outside the sealed edge set",
+                ));
+            };
+            match slot.2 {
+                Some(index) => {
                     let Some(existing) = dependencies.get_mut(index) else {
                         return Err(ModuleDiagnosticV2::without_location(
                             "modules.internal_dependency_index_mismatch",
@@ -267,9 +312,16 @@ impl DocumentViewTopologyProofV2 {
                         *existing = resolved;
                     }
                 }
-                Err(index) => dependencies.insert(index, resolved),
+                None => {
+                    slot.2 = Some(dependencies.len());
+                    dependencies.push(resolved);
+                }
             }
         }
+        dependencies.sort_unstable_by(|left, right| {
+            (&left.source_asset_id, &left.target_asset_id)
+                .cmp(&(&right.source_asset_id, &right.target_asset_id))
+        });
         if let Some(cycle) = document_cycle(&dependencies, &predeclared.assets, session)? {
             let witness = cycle.iter().map(|location| location.location()).collect();
             let Some(first) = cycle.first() else {
@@ -295,6 +347,10 @@ impl DocumentViewTopologyProofV2 {
             session_key,
         ))
     }
+}
+
+fn input_id(input: &CatalogAssetRefInputV2) -> (&ModuleIdV2, NamespaceKindV2, &str) {
+    (&input.module_id, input.namespace_kind, &input.local_name)
 }
 
 type PredeclaredAssetSlotV2 = (

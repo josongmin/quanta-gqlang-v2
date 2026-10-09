@@ -1,9 +1,7 @@
 # QGLang documentation
 
-- [잔여 작업](work/remaining.md): 미완료 frontend 계약 검토, downstream 검증·설치 전제와 제안 작업
-- [Substrate 병렬 실행 계획](plans/oct-6-substrate-dedup/readme.md): 현재 소스·작성 소유권, 변경 범위, 테스트·완료 조건과 메인 checkpoint
-- [Substrate 잔여 티켓](plans/oct-6-substrate-dedup/tickets.md): 잔여 19개 closeout ID의 우선순위·소유자·선행·DoD와 완료된 진단 계약 결정; 제안 roadmap은 별도
-- [Substrate 작업 배치](plans/oct-6-substrate-dedup/parallel-dispatch.md): 통합자 1명 + 작업자 3명, 공유 파일 소유권, 단계별 병렬 작업과 로컬 검증 순서
+- [잔여 작업](work/remaining.md): paired gate, downstream 미완료 18개 ID와 별도 제안 roadmap
+- [검증 handoff](work/substrate-repair-checkpoints-2026-10-07.md): 기존 owner의 acceptance·source freeze·receipt 조건
 - [아키텍처 결정 기록](adr/README.md): 완료된 조사·수리·티켓의 결정과 증거 경계
 - [언어와 owner stack](language/README.md): 현재 지원 범위와 CLI·diagnostics 경계
 - [Frontend execution V3](contracts/frontend-execution-v3.md): 공개 DTO·digest·발행 권한
@@ -14,5 +12,5 @@
 
 현재 동작은 소스·계약·owner 테스트가 정의한다. ADR은 결정과 근거를 기록한다.
 완료된 감사·계획·티켓·checkpoint 원문은
-[ADR-0001의 Git 복구 기준](adr/0001-frontend-campaign-consolidation.md#recover-original-source-bound-records)에서
+[ADR-0001의 최신 Git 복구 기준](adr/0001-frontend-campaign-consolidation.md#2026-10-10-reconciliation)에서
 찾는다. Proposed ADR과 오래된 receipt는 현재 구현·제품 qualification이 아니다.

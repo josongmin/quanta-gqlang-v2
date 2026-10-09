@@ -1301,6 +1301,140 @@ fn reverse_authored_views_materialize_in_stable_dependency_first_order() {
 }
 
 #[test]
+fn reverse_unique_catalog_edges_seal_in_id_order_and_keep_earliest_duplicate() {
+    let host = registry();
+    let names: Vec<_> = (0..48).map(|index| format!("query_{index:03}")).collect();
+    let external: Vec<_> = names
+        .iter()
+        .map(|name| ("query", name.as_str(), ExternalCatalogPayloadInputV2::Query))
+        .collect();
+    let (parts, app, ext) = authority(&host, profile(100, 100), &external);
+    let registry = extended(&host);
+    let mut validator = DocumentCatalogValidatorV2::try_new(registry.clone(), &parts).unwrap();
+    validator
+        .predeclare_assets(vec![local(
+            registry.combined(),
+            &app,
+            NamespaceKindV2::View,
+            "root",
+            20,
+        )])
+        .unwrap();
+    let edge = |name: &str, at: usize| DocumentCatalogDependencyInputV2 {
+        source: CatalogAssetRefInputV2 {
+            module_id: app.clone(),
+            namespace_kind: NamespaceKindV2::View,
+            local_name: "root".into(),
+            location: checked(registry.combined(), 9, at),
+        },
+        target: CatalogAssetRefInputV2 {
+            module_id: ext.clone(),
+            namespace_kind: NamespaceKindV2::Query,
+            local_name: name.into(),
+            location: checked(registry.combined(), 9, at),
+        },
+        expected_target_kind: NamespaceKindV2::Query,
+        location: checked(registry.combined(), 9, at),
+    };
+    let mut edges = names
+        .iter()
+        .rev()
+        .enumerate()
+        .map(|(index, name)| edge(name, 100 + index))
+        .collect::<Vec<_>>();
+    edges.push(edge("query_023", 70));
+    let topology = validator.validate_view_topology(edges).unwrap();
+    let catalog = validator
+        .validate_predeclared(topology, final_input())
+        .unwrap();
+    assert_eq!(
+        catalog
+            .dependencies()
+            .iter()
+            .map(|edge| edge.target_asset_id().local_name())
+            .collect::<Vec<_>>(),
+        names.iter().map(String::as_str).collect::<Vec<_>>()
+    );
+    assert_eq!(
+        catalog.dependencies()[23].location().location().span.start,
+        70
+    );
+}
+
+#[test]
+fn reverse_unique_family_edges_seal_in_id_order_and_keep_earliest_duplicate() {
+    let host = registry();
+    let names: Vec<_> = (0..48).map(|index| format!("query_{index:03}")).collect();
+    let external: Vec<_> = names
+        .iter()
+        .map(|name| ("query", name.as_str(), ExternalCatalogPayloadInputV2::Query))
+        .collect();
+    let (parts, app, ext) = authority(&host, profile(100, 100), &external);
+    let registry = extended(&host);
+    let mut validator = DocumentCatalogValidatorV2::try_new(registry.clone(), &parts).unwrap();
+    let source = validator
+        .predeclare_assets(vec![local(
+            registry.combined(),
+            &app,
+            NamespaceKindV2::View,
+            "root",
+            20,
+        )])
+        .unwrap()
+        .pop()
+        .unwrap();
+    let mut input = final_input();
+    for (index, name) in names.iter().rev().enumerate() {
+        let at = 100 + index;
+        let target = validator
+            .resolve_reference(DocumentCatalogReferenceInputV2 {
+                module_id: Some(ext.clone()),
+                local_name: name.clone(),
+                expected_kind: NamespaceKindV2::Query,
+                location: checked(registry.combined(), 9, at),
+            })
+            .unwrap();
+        input
+            .family_references
+            .push(DocumentCatalogFamilyReferenceInputV2 {
+                family: DocumentCatalogReferenceFamilyV2::ViewQuery,
+                source: source.clone(),
+                target,
+                location: checked(registry.combined(), 9, at),
+            });
+    }
+    let target = validator
+        .resolve_reference(DocumentCatalogReferenceInputV2 {
+            module_id: Some(ext),
+            local_name: "query_023".into(),
+            expected_kind: NamespaceKindV2::Query,
+            location: checked(registry.combined(), 9, 70),
+        })
+        .unwrap();
+    input
+        .family_references
+        .push(DocumentCatalogFamilyReferenceInputV2 {
+            family: DocumentCatalogReferenceFamilyV2::ViewQuery,
+            source,
+            target,
+            location: checked(registry.combined(), 9, 70),
+        });
+    let catalog = finalize(&mut validator, input).unwrap();
+    assert_eq!(
+        catalog
+            .dependencies()
+            .iter()
+            .map(|edge| edge.target_asset_id().local_name())
+            .collect::<Vec<_>>(),
+        names.iter().map(String::as_str).collect::<Vec<_>>()
+    );
+    assert_eq!(
+        catalog.dependencies()[23].location().location().span.start,
+        70
+    );
+}
+
+#[test]
 fn topology_phase_rejects_skip_repeat_and_foreign_session_proof() {
     let host = registry();
     let (parts, _, _) = authority(&host, profile(100, 100), &[]);

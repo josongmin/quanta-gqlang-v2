@@ -71,7 +71,10 @@ are not another shipped closed-compilation profile.
 Producer maintenance extracted typed preparation, encoding, projection and
 candidate owners, preserved request-root scratch accounting, and attached
 current/MSRV and size/dependency checks to the existing CI composition. No
-reverse Pipeline-to-facade dependency or wholesale DTO move is introduced.
+reverse Pipeline-to-facade dependency or wholesale DTO move was introduced by
+that maintenance. The later Oct-10 [ADR-0009](0009-frontend-owner-dedup-and-execution-contract.md)
+records the completed execution-contract extraction; Pipeline retains request
+permits and compiler orchestration.
 
 ## Executable evidence
 
@@ -115,7 +118,8 @@ they do not make the unrelated staged SHOW entries public or qualified.
 - Private diagnostics stdio currently exposes primary locations and wraps
   authority failures as `authority_error`; secondary locations and structured
   owner authority codes are not present on that wire. The historical transport
-  finding is retained as [QG-DIAG](../work/remaining.md#qg-diag), not recorded as a repair.
+  finding was resolved as the narrower private contract in
+  [ADR-0008](0008-private-diagnostics-primary-location-contract.md), with no wire behavior change.
 - Direct owner APIs consume checked prerequisites. Raw HIR construction,
   contextual keyword roles, reserved execution tags and optional refactors are
   not independently successful closed compilation.

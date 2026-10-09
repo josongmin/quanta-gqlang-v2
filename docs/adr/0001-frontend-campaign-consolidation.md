@@ -280,3 +280,40 @@ Future execution documents contain only outstanding work. At closeout, merge
 the durable outcome into its ADR/contract and remove the completed work order.
 Preserve original IDs for remaining acceptance; a pass from another source
 tuple does not replace an old failed receipt.
+
+## 2026-10-10 reconciliation
+
+Clean input: QGLang `25fad76cf5b4510244157c2e009b4dc37aa958ff`, tree
+`99501ba1aabfa37361fccfb7dee388cd91055ee1`. The clean local qualification
+receipt was read back with matching source/CI/raw-event hashes before edits;
+it remains evidence for that incoming commit, not this documentation overlay.
+
+| Retired authority | Retained owner |
+| --- | --- |
+| Four Oct-10 frontend audit/closeout files and completed D01–D07/QFC source checkboxes | [ADR-0009](0009-frontend-owner-dedup-and-execution-contract.md), current code/contracts; QFC-02 remains in remaining.md, QFC-04/05 follow exact-HEAD receipts |
+| Eleven substrate RCA/code-map/ticket/dispatch/test/execution files | [Remaining work](../work/remaining.md) preserves all Parent18 states and the unchanged Proposed A-series; Semantica Oct-10 compiled owns downstream execution |
+| 912-line remaining index and 1,931-line checkpoint retry history | One 165-line unfinished index and 98-line [proof handoff](../work/substrate-repair-checkpoints-2026-10-07.md); exact history remains in Git |
+| Stale R356 ten-path uncommitted/WIP assertion | ADR-0005's exact 10/10 committed/live postimage observation at Semantica `7836ed9c03e98126f2dece066c7814de3027bfaf`; execution qualification remains separate |
+
+Eleven plan files are deleted. Four substrate paths remain only as short retired
+reference aliases because the downstream compiled map links to those historical
+inputs: `completion-dispatch-r356.md`, `implementation-r356.md`, `tickets.md`
+and `execution-r79.md`. They carry no state, checklists or source assignments.
+No downstream source, plan, tracker, chat, branch or worktree is changed here.
+Resolved QG-DIAG and scoped accepted D4/D5 are not reopened or added to Parent18.
+
+Every original plan and both full working indexes were clean tracked bytes at
+the input above. Recover the exact files, selectors, code maps, source tuples
+and historical receipt locators without relying on a local archive:
+
+```sh
+git show 25fad76cf5b4510244157c2e009b4dc37aa958ff:docs/plans/oct-10-frontend-closeout/dedup-audit.md
+git show 25fad76cf5b4510244157c2e009b4dc37aa958ff:docs/plans/oct-6-substrate-dedup/test-plan.md
+git show 25fad76cf5b4510244157c2e009b4dc37aa958ff:docs/work/substrate-repair-checkpoints-2026-10-07.md
+```
+
+Local readback evidence is under
+`/Users/songmin/.codex/task-evidence/doc-consolidation-20261010-01a1142d/`:
+`before-state.json`, `incoming-head-qualification.json`, `r356-current-source.json`,
+`retired-plans.json` and `retained-ids.json`. It preserves before-edit hashes,
+the observed downstream source and retention checks; it is not new runtime proof.

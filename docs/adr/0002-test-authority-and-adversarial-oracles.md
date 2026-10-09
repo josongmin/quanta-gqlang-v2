@@ -166,8 +166,8 @@ Completed TA/RA work is retained by exact owner assertions:
 
 These decisions consolidate TA-01/05/06/07/08/09/10, RA-01–05 and subsequent
 transport/custody review outcomes. Historical mutations/counts remain
-source-bound Git history; none becomes current qualification. An unclosed
-diagnostics-wire decision remains in [remaining work](../work/remaining.md#qg-diag).
+source-bound Git history; none becomes current qualification. The later
+diagnostics-wire decision is resolved in [ADR-0008](0008-private-diagnostics-primary-location-contract.md).
 
 Deleting a tracked subtree is valid dirty-checkout input. The CI source snapshot
 records missing files and containing directories explicitly, still detects
