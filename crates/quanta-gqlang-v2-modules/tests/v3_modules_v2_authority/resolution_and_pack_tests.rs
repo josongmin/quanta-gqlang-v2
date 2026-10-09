@@ -1445,7 +1445,7 @@ fn lock_order_all_permutations_preserve_first_mismatch_and_canonical_bytes() {
             continue;
         }
         checked_permutations += 1;
-        let names = indices.map(|index| canonical[index]);
+        let names = indices.map(|index| *canonical.get(index).expect("two-bit canonical index"));
         let lines = names.map(|name| format!("{name} 1.0.0 {digest}\n"));
         let lock = lines.concat();
         let result = finish_pack_inputs(Some(&lock), |sources| {
@@ -1480,7 +1480,10 @@ fn lock_order_all_permutations_preserve_first_mismatch_and_canonical_bytes() {
                 error.primary(),
                 Some(LocatedSpanV2 {
                     source_id: SourceIdV2::from_raw(2),
-                    span: SpanV1::new(start, start + lines[first].len() - 1),
+                    span: SpanV1::new(
+                        start,
+                        start + lines.get(first).expect("mismatching line").len() - 1
+                    ),
                 })
             );
             assert!(error.secondary().is_none());

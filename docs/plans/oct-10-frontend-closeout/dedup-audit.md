@@ -289,6 +289,10 @@ Nextest1524)다. 이는 아래 변경 후 source의 qualification이 아니며 �
 - 초기 focused 실행의 새 test accessor 오기와 fixture digest mismatch는 수정했다.
   각각 `lock-parser-initial-compile.log`, `lock-parser-initial-fixture.log`를 보존하며
   최종 `lock-parser-focused.log`가122/122 성공 증거다. full qualification은 current-HEAD receipt로 판정한다.
+- 최초 full qualification `36e3444bb99ebda9bcf16583d1b5d78fd5589c4c`는 새 permutation test의
+  배열 인덱싱2곳에 대한 `clippy::indexing_slicing`에서 exit101로 중단했다. 해당 SHA의
+  `target/qualification/<SHA>/receipt.json`과 `ci.log`를 보존한다. `.get().expect()`로 수정하며
+  lint allowance/정책은 바꾸지 않는다. 수정 HEAD의 same-source receipt가 필요하다.
 - 추가 source 대조: Version parse의 `.ok()`는 overflow를 typed invalid-version으로 거절한다.
   lock source-length mismatch의 `.ok()`는 error 진단 위치 부착에만 쓰이며 성공으로 바꾸지 않는다.
   Types candidate generation은 finite-domain shape cost를 mutation 전에 charge하며 propagation의
