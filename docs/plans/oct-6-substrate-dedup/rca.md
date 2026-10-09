@@ -14,7 +14,10 @@ the later complete resolution and two reached pretest failures have separate inp
 ## Successor cause reconciliation
 
 Current source and plan: [W0–W7 completion](parallel-dispatch.md#current-completion-plan--2026-10-09),
-QGLang `231707d879de`, Semantica `a63f536b1b3` plus selected WIP at16:48 KST.
+QGLang `c411d60c7627`, Semantica `a63f536b1b3` plus shared WIP.
+[W014 execution](execution-r79.md#w014-parallel-implementation-and-first-owner-cut--2026-10-09)
+separates the released lower source from zero-test locked Cargo refusal and
+the subsequent version-preserving lock repair.
 The remaining causes are:
 
 - **Original objective:** Shape/SCC canonical owner routing is committed and its
@@ -24,8 +27,10 @@ The remaining causes are:
   to external DATA. The old R14423-error report does not describe current source.
   Compatible current owner compilation/publication is still pending.
 - **Producer birth gap:** genuine SDK FULL selector/provider/caller already exist,
-  but pair hydration refuses and preparation never returns success; production
-  Original receipt admission is absent. This blocks genuine D4 positive custody
+  and genuine pair hydration/TARGET retention are now authored. Preparation
+  success still stops earlier at the raw Original receipt frontdoor and ordinary
+  producer/assembly/evidence births, before exact-route evidence cloning and
+  build context. Production Original receipt admission is absent. This blocks genuine D4 positive custody
   before the receiver. An ordinary installed fixture cannot prove that producer.
 - **Analysis/facts birth gap:** live PTA still refuses nonempty relation outputs;
   DFG rejects Original source-world before ordinary births. The general facts
@@ -42,10 +47,14 @@ The remaining causes are:
 - **Failure cleanup:** guard Drop now discards through all16 recorder implementors;
   its ordinary and genuine Original regressions still need execution. Keep this
   cleanup independent of intentional ordinary TraceFrame finalization.
-- **Platform prerequisite:** a newer Runtime request reaches three denied SQLite
-  unused imports. Linux-only spawn/environment/AsFd are imported outside the Linux
-  branch; unused OsStrExt also remains in current source. Repair their owner and
-  exercise affected platform branches; do not weaken unused-import denial.
+- **Platform prerequisite:** the reached SQLite imports are repaired in source;
+  Linux-only imports are cfg-scoped and unused OsStrExt removed. TaskLocal's
+  checkpoint formatting passes. Current compiler proof remains pending after
+  the first locked-input refusal; unused-import denial stays intact.
+- **Locked input prerequisite:** first W014 capture runs zero tests because
+  Cargo rejects stale lock ordering. Root and nested full offline resolution now
+  preserve all registry versions/checksums and pass locked metadata. Re-capture
+  compatible source and run canonical owner tests; metadata is not Rust proof.
 - **Evidence/integration gap:** lower and newer Java/Python GREEN receipts have
   different source tuples. Shared WIP/index moves during the audit. Freeze a
   compatible tuple before current acceptance and record complete committed paths.

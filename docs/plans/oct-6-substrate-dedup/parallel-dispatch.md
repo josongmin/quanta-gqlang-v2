@@ -10,7 +10,10 @@ owns current states.
 Objective: finish the existing Native/Original producer-to-consumer chain, accept
 all18 active tickets and integrate complete compatible bundles into local main.
 This section supersedes the historical R78 waves below. It is an executable
-plan; no worker is dispatched and no implementation/proof is claimed by this update.
+plan. Implementation is now dispatched to three workers; the root owns one
+serial verification queue. [W014 execution](execution-r79.md#w014-parallel-implementation-and-first-owner-cut--2026-10-09)
+records actual released source, the first zero-test lockfile refusal and repair.
+Dispatch does not establish owner acceptance or integration.
 
 ### Current source and changed assignments
 

@@ -9,6 +9,12 @@ in the [active handoff](../../work/substrate-repair-checkpoints-2026-10-07.md#fi
 
 Current execution order: [W0–W7 completion plan](parallel-dispatch.md#current-completion-plan--2026-10-09).
 Latest frozen owner requests/results are in [R79 onward execution](execution-r79.md).
+The [W014 first cut](execution-r79.md#w014-parallel-implementation-and-first-owner-cut--2026-10-09)
+executes zero tests because `--locked` rejects the root lockfile. After the
+version-preserving root/nested repair, run a successor locked capture. Include
+the actual SDK pair/store-drop, pre-key/nested guard, unpublished source-facts
+keeper/rejection and genuine binary/cohort/inventory targets; none is accepted
+from source presence. General facts/PTA/DFG publication requires actual consumers.
 The nine C-lane resolves are request discovery only. F2 minimal has two required
 witnesses; parser checks are compilation only. The generated-getter facts keeper
 does not cover general callable, DFG source-world/Tree C or PTA transaction output.

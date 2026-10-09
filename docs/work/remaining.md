@@ -6,7 +6,7 @@ The [R77 RCA](../plans/oct-6-substrate-dedup/rca.md) owns the cause/dependency
 analysis; this file owns the 18 active states.
 
 Latest plan/source: [W0–W7 completion plan](../plans/oct-6-substrate-dedup/parallel-dispatch.md#current-completion-plan--2026-10-09),
-QGLang `231707d879de` and Semantica `a63f536b1b3` plus separately inventoried WIP,
+QGLang `c411d60c7627` and Semantica `a63f536b1b3` plus separately inventoried WIP,
 read back at16:48 KST. The original16:18 audit retains its own input.
 The audit distinguishes committed source, authored source and accepted execution.
 Native topology receiving is source-authored at [R337–R338](../plans/oct-6-substrate-dedup/native-identity-boundary.md#retained-topology-receiving--r337r338), against QGLang `c411d60c7627` and Semantica `a63f536b1b3` plus exact six-path WIP. The earlier [R333 source reconciliation](../plans/oct-6-substrate-dedup/native-identity-boundary.md#current-source-reconciliation-and-remaining-work--r333) retains its input. QGLang local CI R334 passes1,514 tests and facade1/23 before the receipt note. Downstream compiler/tests/QBC/publication are NOT_RUN for R338.
@@ -24,7 +24,17 @@ Native topology receiving is source-authored at [R337–R338](../plans/oct-6-sub
   SourceWire259, QCP387 and relation19 retain their exact historical sources.
 - Newer Java76 and Python type-facts7 published receipts have separate input
   tuples; they do not qualify current shared WIP. A later Runtime request stops
-  before tests at SQLite platform imports, still present in current source.
+  before tests at SQLite platform imports on its recorded input; those imports
+  are now repaired in source.
+
+Current execution: [W014 parallel implementation](../plans/oct-6-substrate-dedup/execution-r79.md#w014-parallel-implementation-and-first-owner-cut--2026-10-09).
+Three workers are implementing SDK generation, PTA/DFG/facts and trace/context.
+Lower genuine pair/TARGET, pre-key/guard, source-facts and fixture inventory cuts
+are authored. First canonical owner capture runs zero tests on stale root lock;
+root/nested recovery preserves all registry pins and passes locked metadata.
+This does not establish Rust acceptance. Earliest W1 product gap is raw receipt
+frontdoor/admitted generation assembly; general nonempty facts/PTA/DFG and
+owned context/final packet remain. W7 installed inputs are unset on Darwin arm64.
 
 Historical root successor: [R121–R146](../plans/oct-6-substrate-dedup/execution-r79.md#r79-root-r121r128-successor-closure).
 Original Shape/SCC is committed; five selected canonical files are clean and
@@ -57,9 +67,9 @@ the existing installed Scenario02 fixture uses ordinary preparation.
 Remaining dependency order; detailed owner paths, parallel waves and exits are
 in the completion plan. All18 active IDs map to its packages.
 
-1. Accept the current SourceWire JSON caller/test cut and affected runtime/SDK
-   owners on one compatible frozen source; repair the reached SQLite platform
-   imports and inherited owner formatting.
+1. Capture the compatible successor after version-preserving lock recovery;
+   accept current SourceWire JSON and affected runtime/SDK/facts/fixture owners.
+   SQLite import and TaskLocal format source repairs still need compiler proof.
 2. In parallel: W1 actual SDK durable generation/receipt/evidence/context;
    W2 genuine fixture provider/cohort/type/inventory and retained handoff;
    its R338 topology source repair still needs the coupled owner regression run;

@@ -7,6 +7,14 @@ slots, one heavy-build integrator queue and actual proof/commit/product exits.
 SDK Original generation, nonempty PTA/DFG and general facts output admission,
 trace/context/snapshot/packet/memo and genuine fixture receiving remain open.
 
+Latest execution: [W014 parallel implementation and owner cut](execution-r79.md#w014-parallel-implementation-and-first-owner-cut--2026-10-09).
+Three workers have released lower SDK pair, trace/guard and facts/fixture source.
+The first captured owner request executes zero tests on stale `Cargo.lock`;
+root/nested recovery preserves all versions/checksums and passes locked metadata.
+Successor compiler/tests, complete consumer implementation and main integration
+remain pending. Installed Linux trust/artifact inputs are unavailable on this
+Darwin arm64 host; no installed positive result is claimed.
+
 Latest code checkpoint: [R337–R338 retained topology receiving](native-identity-boundary.md#retained-topology-receiving--r337r338).
 The raw DTO receiver is replaced by genuine checked lowering/evidence reads;
 two source-oracle rejection regressions are authored. AST6, rustfmt6, scoped

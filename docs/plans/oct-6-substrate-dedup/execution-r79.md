@@ -1043,6 +1043,58 @@ remain distinct; hosted execution and push are not requested.
 
 <a id="r79-root-r121r128-successor-closure"></a>
 
+## W014 parallel implementation and first owner cut — 2026-10-09
+
+Input: QGLang `c411d60c7627`, Semantica `a63f536b1b3` plus explicitly
+captured shared WIP. Three implementation workers own SDK generation,
+PTA/DFG/facts and Runtime trace; the root serializes builds and integration.
+Evidence root: `~/.codex/task-evidence/oct8-closeout-execution-r79/`.
+
+- **W0 authored:** Linux-only SQLite imports are cfg-scoped; unused OsStrExt
+  is removed. TaskLocal's four-path trace checkpoint passes scoped rustfmt.
+  Foreign automatic staging was observed; these edits are not a main commit.
+- **W1 authored lower checkpoint:** genuine base/target hydration and consuming
+  TARGET selection retain both paid backings after Store drop. Original selection
+  uses a separate request; the ordinary public input remains compatible.
+  Product success still needs the upstream raw receipt frontdoor, admitted
+  producer/assembly/evidence and build context. Ordinary cloning cannot close it.
+- **W2/W3 authored:** a genuine pinned binary provider and same-batch
+  World→retained→sealed inventory fixture are being connected. The lower source
+  facts writer adds an admitted unpublished assignment row and keeper/refusal
+  oracles. These do not establish general extractor/PTA/DFG publication success.
+- **W4 authored lower checkpoint:** typed pre-key arm/bind/verify and actual SDK
+  B/A nested guard discard regression. A separate snapshot receiver reuses the
+  canonical external shared-retain birth. Positive finalization, owned Product
+  context and packet/persist/memo still need their coupled owner proof.
+
+The first canonical capture is `17d073f8b77f1fd057fc375320c4d64b6a06420de29a7efdd019d3fde4d6c8b7`.
+All11 released W0/W1/W4 postimages match under the snapshot execution lease.
+SourceWire whole-target resolve succeeds, but Cargo exits101 on a stale root
+lockfile **before any tests**. Passed/failed/ignored/filtered are all0; there is
+no publication. Dependent SDK pair, Native/ordinary trace and SDK source requests
+are NOT_RUN on this input. Postflight and archive are completed under the lease.
+
+Lock RCA: root quarantine-owner dependency ordering was stale; the nested
+workspace also lacked six current local dependency edges. Incremental offline
+full metadata repaired both locks without changing any registry package version
+or checksum. Root and nested `metadata --locked --offline --all-features` exit0;
+this is recovery metadata, not compilation or owner acceptance. Successor QBC
+retains `--locked`.
+
+Exact artifacts: `source-capture-w014-cut1.json`,
+`owner-postflight-w014-cut1.json` (SHA256 `99020d0fa2477acc1f37f3826a662a4276d80682f71de198b86ef739c0455568`),
+`w0-lockfile-pin-continuity.json`, `w0-lockfile-locked-metadata-continuity.json`,
+`w1-original-pair-selected-target-source-corrected-a.json`,
+`w4-trace-prekey-checkpoint-c.json` and `w4-snapshot-retain-checkpoint-c.json`.
+Subsequent worker postimages require a successor capture; do not rebind this
+failed tuple to later source.
+
+W7 preflight records Darwin arm64 and all10 required installed process inputs
+unset in `w7-installed-prerequisite-preflight-20261009.json`. Linux positive
+CHECK remains an external release prerequisite; non-Linux installed refusal is
+also NOT_RUN without its actual artifact tuple. No worker/product verdict is
+inferred from metadata, source edits or host inspection.
+
 ## R79 root R121–R146 successor closure
 
 Updated: 2026-10-09 KST. This section supersedes the source-only state of the

@@ -49,6 +49,14 @@ R146 stale-call assignment is superseded. Current Native compilation is not
 accepted; the newer Runtime search request stops at SQLite platform imports.
 Foreign Semantica staging during the audit is not completed integration.
 
+Successor [W014 execution](execution-r79.md#w014-parallel-implementation-and-first-owner-cut--2026-10-09):
+SQLite imports and TaskLocal formatting are repaired in source. SDK pair/TARGET,
+typed pre-key/guard and lower facts/genuine fixture cuts are authored. The first
+locked owner executes zero tests; both locks are now repaired with unchanged
+registry pins and locked metadata PASS. Consumer tests/publication and complete
+main integration remain pending. W1's earliest open owner is raw Original receipt
+frontdoor plus admitted generation assembly, not only exact-route cloning.
+
 ## Current completion package map — 2026-10-09
 
 All18 active IDs map to the current W0–W7 packages. QG-DIAG remains RESOLVED and
@@ -107,7 +115,7 @@ scope. Implementation, frozen owner proof and product qualification are separate
 | D4/D5-CUSTODY | P1 | SCOPED_ACCEPTED | SCV2 34 + solver225/API2 accepted; active source closures match main f574 |
 | SUBSTRATE-POLICY | P1 | INCOMPLETE | Scoped Honesty/GOD/boundary checks pass; Python-search floor policy bundle integrated as3b8f86d; whole affected policy closure remains |
 | F2 | P1 | PROOF_PENDING | Native registry and real Preview path |
-| FCP-COMPILE | P0 | ACCEPTANCE_PENDING | Compatible Native caller/authority bundle remains unaccepted. Current JSON old production/test APIs are migrated. Repair the reached SQLite platform imports and inherited owner formatting, then capture and prove affected runtime/SDK owners. Historical R98 PTA error1, R99 PTA result37, R103 Core447, R183 Kernel569 and R192 driver11 retain their recorded sources. The separate newer Java76/Python type-facts7 published scopes do not qualify current WIP. Older 34/33/23-error reports are not current defect totals. SDK pair/preparation/receipt and trace finalization remain real implementation seams; complete coupled integration requires their actual consumer proof. |
+| FCP-COMPILE | P0 | ACCEPTANCE_PENDING | Compatible Native caller/authority bundle remains unaccepted. Current JSON callers, SQLite imports and checkpoint TaskLocal formatting are repaired in source. W014 first owner runs zero tests on stale lockfile; root/nested repair preserves registry pins and passes locked metadata, with successor QBC pending. SDK lower pair/TARGET and trace/pre-key/guard are authored; admitted generation assembly/receipt/context, final trace and complete actual consumer proof remain open. Historical R98/R99/R103/R183/R192 and separate Java76/Python7 retain their exact inputs; old 34/33/23 errors are not current defect totals. |
 | FCP-PTA | P1 | REVERIFY | Historical PTA bootstrap refusal; reproduce on current source |
 | FCP-PROCESS | P1 | NOT_RUN | Real Graph/CHECK daemon process results |
 | FCP-INSTALL | P1 | EXTERNAL_PREREQUISITE | Release-owned installed Linux CHECK trust |
