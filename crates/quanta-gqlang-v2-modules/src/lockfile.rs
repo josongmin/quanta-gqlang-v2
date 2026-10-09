@@ -92,6 +92,19 @@ impl LockPinV2 {
     }
 }
 
+fn canonical_lock_text(pins: &BTreeMap<PackIdV2, LockPinV2>) -> String {
+    let mut output = String::new();
+    for pin in pins.values() {
+        output.push_str(pin.pack_id.as_str());
+        output.push(' ');
+        output.push_str(&pin.version.to_string());
+        output.push(' ');
+        output.push_str(&pin.content_digest.to_hex());
+        output.push('\n');
+    }
+    output
+}
+
 #[derive(Clone, Debug)]
 pub struct LockfileV2 {
     pins: BTreeMap<PackIdV2, LockPinV2>,
@@ -269,16 +282,7 @@ impl LockfileV2 {
 
     #[must_use]
     pub fn to_text(&self) -> String {
-        let mut output = String::new();
-        for pin in self.pins.values() {
-            output.push_str(pin.pack_id.as_str());
-            output.push(' ');
-            output.push_str(&pin.version.to_string());
-            output.push(' ');
-            output.push_str(&pin.content_digest.to_hex());
-            output.push('\n');
-        }
-        output
+        canonical_lock_text(&self.pins)
     }
 
     #[must_use]
@@ -362,16 +366,7 @@ impl VerifiedLockSetV2 {
     }
     #[must_use]
     pub fn to_text(&self) -> String {
-        let mut output = String::new();
-        for pin in self.pins.values() {
-            output.push_str(pin.pack_id.as_str());
-            output.push(' ');
-            output.push_str(&pin.version.to_string());
-            output.push(' ');
-            output.push_str(&pin.content_digest.to_hex());
-            output.push('\n');
-        }
-        output
+        canonical_lock_text(&self.pins)
     }
 }
 

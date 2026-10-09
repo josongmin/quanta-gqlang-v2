@@ -42,6 +42,8 @@ pub use extension::{
     ComposedModelFactV2, ComposedModelV2, LocatedModelValueInputV2, ModelAttributeInputV2,
     ModelFactInputV2, ModelPackInputV2, ModelSchemaInputV2, ModelSchemaV2,
 };
+#[doc(hidden)]
+pub use graph::indexed_scc;
 pub use graph::{
     AmbiguousCandidateV2, CatalogAssetIdV2, CatalogAssetRefInputV2, CurrentModuleSelectionInputV2,
     LocatedEdgeV2, ModuleDeclarationInputV2, ModuleGraphBuilderV2, ModuleIdV2, ModuleImportInputV2,

@@ -99,6 +99,30 @@ impl ExternalPackContractV2 {
     }
 }
 
+// Checked and input payloads share the namespace vocabulary. Keep this mapping
+// in one place while retaining their separate signature validation and types.
+macro_rules! catalog_payload_namespace_kind {
+    ($payload:expr) => {
+        match $payload {
+            Self::Value(_) => NamespaceKindV2::Value,
+            Self::Relation(_) => NamespaceKindV2::Relation,
+            Self::Predicate(_) => NamespaceKindV2::Predicate,
+            Self::Type(_) => NamespaceKindV2::Type,
+            Self::Query => NamespaceKindV2::Query,
+            Self::Check => NamespaceKindV2::Check,
+            Self::Capability => NamespaceKindV2::Capability,
+            Self::ModelSource => NamespaceKindV2::ModelSource,
+            Self::PackSource => NamespaceKindV2::PackSource,
+            Self::View(_) => NamespaceKindV2::View,
+            Self::Model(_) => NamespaceKindV2::Model,
+            Self::Pack(_) => NamespaceKindV2::Pack,
+            Self::Profile(_) => NamespaceKindV2::Profile,
+            Self::Gate(_) => NamespaceKindV2::Gate,
+            Self::Rule(_) => NamespaceKindV2::Rule,
+        }
+    };
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ExternalCatalogPayloadV2 {
     Value(ValueTypeV1),
@@ -120,23 +144,7 @@ pub enum ExternalCatalogPayloadV2 {
 impl ExternalCatalogPayloadV2 {
     #[must_use]
     pub const fn namespace_kind(&self) -> NamespaceKindV2 {
-        match self {
-            Self::Value(_) => NamespaceKindV2::Value,
-            Self::Relation(_) => NamespaceKindV2::Relation,
-            Self::Predicate(_) => NamespaceKindV2::Predicate,
-            Self::Type(_) => NamespaceKindV2::Type,
-            Self::Query => NamespaceKindV2::Query,
-            Self::Check => NamespaceKindV2::Check,
-            Self::Capability => NamespaceKindV2::Capability,
-            Self::ModelSource => NamespaceKindV2::ModelSource,
-            Self::PackSource => NamespaceKindV2::PackSource,
-            Self::View(_) => NamespaceKindV2::View,
-            Self::Model(_) => NamespaceKindV2::Model,
-            Self::Pack(_) => NamespaceKindV2::Pack,
-            Self::Profile(_) => NamespaceKindV2::Profile,
-            Self::Gate(_) => NamespaceKindV2::Gate,
-            Self::Rule(_) => NamespaceKindV2::Rule,
-        }
+        catalog_payload_namespace_kind!(self)
     }
 }
 
@@ -160,23 +168,7 @@ pub enum ExternalCatalogPayloadInputV2 {
 }
 impl ExternalCatalogPayloadInputV2 {
     fn namespace_kind(&self) -> NamespaceKindV2 {
-        match self {
-            Self::Value(_) => NamespaceKindV2::Value,
-            Self::Relation(_) => NamespaceKindV2::Relation,
-            Self::Predicate(_) => NamespaceKindV2::Predicate,
-            Self::Type(_) => NamespaceKindV2::Type,
-            Self::Query => NamespaceKindV2::Query,
-            Self::Check => NamespaceKindV2::Check,
-            Self::Capability => NamespaceKindV2::Capability,
-            Self::ModelSource => NamespaceKindV2::ModelSource,
-            Self::PackSource => NamespaceKindV2::PackSource,
-            Self::View(_) => NamespaceKindV2::View,
-            Self::Model(_) => NamespaceKindV2::Model,
-            Self::Pack(_) => NamespaceKindV2::Pack,
-            Self::Profile(_) => NamespaceKindV2::Profile,
-            Self::Gate(_) => NamespaceKindV2::Gate,
-            Self::Rule(_) => NamespaceKindV2::Rule,
-        }
+        catalog_payload_namespace_kind!(self)
     }
     fn try_into_checked(
         self,

@@ -24,11 +24,29 @@ finite Graph/Path, CHECK/Composition and installed product. Its sections9–10
 specify original cross-cut controls, eleven SCC consumer oracles and source
 observations that prevent reissuing old repaired gaps as new implementation.
 
-No separate required GQLang code change was identified for this substrate
-closeout: file/test splits and local size/MSRV gates are present. DTO physical
+The [Oct-10 frontend closeout packet](../plans/oct-10-frontend-closeout/README.md)
+records the latest scoped audit and QGLang-local finish sequence. Its
+[actions](../plans/oct-10-frontend-closeout/actions.md) separate clean local
+qualification from paired bootstrap/source reconciliation and downstream product
+acceptance. The Semantica closeout subtree/vector pins match the audited producer;
+its separate external-workspace bootstrap still pins an older full revision.
+This is an input-reconciliation obligation for the existing downstream E13 owner,
+not a second implementation queue or a closed Parent18 state.
+
+The follow-up [production AST audit](../plans/oct-10-frontend-closeout/dedup-audit.md)
+identifies two Modules duplicate implementation groups and consolidates their
+namespace mapping and canonical lock serializer in the existing owner. The
+focused authority suite passes120/120 and dirty-source local CI passes1514/1514.
+The semantic caller audit also consolidated Modules Kosaraju/Logic Tarjan into
+one borrowed iterative partition owner (QFC-06), preserving caller-owned
+work/diagnostic/witness policy and recalculating scratch phase bounds. Actual
+Modules/Logic graph, 50k narrow-stack, first-refusal and request-storage boundary
+owners pass. The current committed HEAD's `target/qualification/<HEAD>/receipt.json`
+is authoritative for standalone local qualification; no matching successful
+receipt means NOT_QUALIFIED. Paired downstream acceptance remains OPEN under
+E13. File/test splits and local size/MSRV gates are present. DTO physical
 extraction and automatic fuzz cadence remain deferred/optional. The proposed
-V4 A03/A04/A08-Q work below remains a separate roadmap. This consolidation
-changes no implementation or ticket acceptance state and executes no Rust.
+V4 A03/A04/A08-Q work below remains a separate roadmap. This source closeout does not close downstream Parent18 or the separate V4 roadmap.
 Peer repair successor [R356](../plans/oct-6-substrate-dedup/peer-audit-r343.md#current-checkpoint--r356)
 connects the existing external occurrence/index births and removes the live
 copy duplicate. Its [ten-path code map and acceptance plan](../plans/oct-6-substrate-dedup/implementation-r356.md)

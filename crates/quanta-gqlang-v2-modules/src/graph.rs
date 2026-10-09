@@ -1,5 +1,7 @@
 //! Checked module/import authority and deterministic visibility resolution.
 
+pub mod indexed_scc;
+
 use std::collections::BTreeMap;
 use std::collections::VecDeque;
 
@@ -889,30 +891,17 @@ pub(crate) fn minimal_cycle_witness<K: Ord + Clone>(graph: &[Vec<(usize, K)>]) -
     {
         return None;
     }
-    // Kosaraju's two passes are iterative, including on narrow-stack hosts.
-    let mut visited = vec![false; graph.len()];
-    let mut finish = Vec::with_capacity(graph.len());
-    for root in 0..graph.len() {
-        if visited[root] {
-            continue;
-        }
-        visited[root] = true;
-        let mut stack = Vec::with_capacity(graph.len());
-        stack.push((root, 0usize));
-        while let Some((node, next_edge)) = stack.last_mut() {
-            if *next_edge == graph[*node].len() {
-                finish.push(*node);
-                stack.pop();
-                continue;
-            }
-            let target = graph[*node][*next_edge].0;
-            *next_edge += 1;
-            if !visited[target] {
-                visited[target] = true;
-                stack.push((target, 0));
-            }
-        }
-    }
+    let roots = vec![(); graph.len()]; // ZST: no backing allocation.
+    let component = indexed_scc::partition_v1(
+        &roots,
+        |node| graph[node].len(),
+        |node, position| graph[node].get(position).map(|edge| (edge.0, &())),
+        |_, _| Ok::<_, std::convert::Infallible>(()),
+    )
+    .ok()?
+    .component_of;
+    // Tarjan scratch has been dropped; reverse adjacency is needed only for
+    // the caller-owned canonical witness search.
     let mut incoming = vec![0_usize; graph.len()];
     for edges in graph {
         for (target, _) in edges {
@@ -928,27 +917,6 @@ pub(crate) fn minimal_cycle_witness<K: Ord + Clone>(graph: &[Vec<(usize, K)>]) -
             reverse[edge.0].push(source);
         }
     }
-    let mut component = vec![usize::MAX; graph.len()];
-    let mut component_count = 0usize;
-    for root in finish.into_iter().rev() {
-        if component[root] != usize::MAX {
-            continue;
-        }
-        let id = component_count;
-        component_count += 1;
-        let mut stack = Vec::with_capacity(graph.len());
-        stack.push(root);
-        component[root] = id;
-        while let Some(node) = stack.pop() {
-            for &next in &reverse[node] {
-                if component[next] == usize::MAX {
-                    component[next] = id;
-                    stack.push(next);
-                }
-            }
-        }
-    }
-
     // The canonical rotation begins at the smallest labeled edge belonging to
     // any cycle. An edge belongs to a cycle exactly when its ends share an SCC.
     let mut first: Vec<(usize, usize)> = Vec::with_capacity(graph.iter().map(Vec::len).sum());
@@ -1007,23 +975,20 @@ pub(crate) fn minimal_cycle_witness<K: Ord + Clone>(graph: &[Vec<(usize, K)>]) -
     best
 }
 
-/// Sum of the live Vec capacities reachable through the indexed SCC witness
-/// path. Each loop iteration drops its previous candidate and reachability
-/// scratch, so one candidate and one reachability traversal cover the peak.
+/// Bound the two disjoint phases: SCC traversal, then witness construction.
+/// Traversal scratch drops before reverse adjacency is allocated. Each witness
+/// iteration drops its previous candidate and reachability scratch, so one
+/// candidate and one reachability traversal cover the second phase's peak.
 pub(crate) fn minimal_cycle_scratch_bytes_v3<K>(nodes: usize, edges: usize) -> Option<usize> {
     fn add<T>(total: &mut usize, count: usize) -> Option<()> {
         *total = total.checked_add(count.checked_mul(std::mem::size_of::<T>())?)?;
         Some(())
     }
     let mut total = 0_usize;
-    add::<bool>(&mut total, nodes)?; // visited
-    add::<usize>(&mut total, nodes)?; // finish
-    add::<(usize, usize)>(&mut total, nodes)?; // DFS stack
     add::<usize>(&mut total, nodes)?; // incoming counts
     add::<Vec<usize>>(&mut total, nodes)?; // reverse headers
     add::<usize>(&mut total, edges)?; // reverse edges
     add::<usize>(&mut total, nodes)?; // SCC component
-    add::<usize>(&mut total, nodes)?; // reverse DFS stack
     add::<(usize, usize)>(&mut total, edges)?; // equal-minimum edges
     add::<Vec<usize>>(&mut total, nodes)?; // sorted adjacency headers
     add::<usize>(&mut total, edges)?; // sorted adjacency indices
@@ -1032,7 +997,7 @@ pub(crate) fn minimal_cycle_scratch_bytes_v3<K>(nodes: usize, edges: usize) -> O
     add::<K>(&mut total, nodes)?; // candidate path
     add::<bool>(&mut total, nodes)?; // reaches_source
     add::<usize>(&mut total, nodes)?; // reachability pending
-    Some(total)
+    Some(total.max(indexed_scc::scratch_bytes_v1(nodes)?))
 }
 
 #[expect(

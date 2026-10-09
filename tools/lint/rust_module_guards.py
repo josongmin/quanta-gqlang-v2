@@ -9,6 +9,8 @@ from tools.lint.semantic_honesty import node_text, parser
 
 
 TEST_MODULES = {
+    "crates/quanta-gqlang-v2-modules/src/graph/indexed_scc/tests.rs":
+        ("crates/quanta-gqlang-v2-modules/src/graph/indexed_scc.rs", "indexed_scc/tests.rs", "tests"),
     "crates/quanta-gqlang-v2-binder/src/resolve/request_tests.rs":
         ("crates/quanta-gqlang-v2-binder/src/resolve/request_owner.rs", "request_tests.rs", "request_tests"),
     "crates/quanta-gqlang-v2-surface/src/parser/request_owner_tests.rs":

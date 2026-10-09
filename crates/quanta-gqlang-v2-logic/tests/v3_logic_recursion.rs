@@ -699,3 +699,31 @@ fn fifty_thousand_deep_chain_step_charge_is_exact_and_bounded() {
     }
     assert_eq!(proof.components().len(), DEPTH);
 }
+
+#[test]
+fn shared_scc_budget_refusals_keep_incoming_literal_and_root_locations() {
+    let l = checked_locations(3);
+    let program = RecursiveProgramV1::from_rules(vec![
+        rule("a", vec![positive("b", &l[1])], &l[0]),
+        seed("b", &l[2]),
+    ]);
+    // Hand-derived charge order: discover a, discover b, emit b, emit a,
+    // scan a->b, relax a->b. b's discovery/emission must use the incoming
+    // literal l[1], rather than its distinct defining-rule location l[2].
+    for (limit, expected_location) in [(1, &l[1]), (2, &l[1]), (3, &l[0]), (4, &l[1]), (5, &l[1])] {
+        let error = stratify(&program, &receipt(2, 1, limit)).expect_err("next charge refuses");
+        let LogicDiagnosticV1::RuleGraphBudgetExceeded {
+            dimension,
+            limit: observed,
+            span,
+        } = error
+        else {
+            panic!("expected a located step refusal");
+        };
+        assert_eq!(dimension, RuleGraphBudgetDimensionV1::Steps);
+        assert_eq!(observed, limit);
+        assert_eq!(&span, expected_location);
+    }
+    let proof = stratify(&program, &receipt(2, 1, 6)).expect("exact six steps admit");
+    assert_eq!(proof.components(), vec![vec![pred("a")], vec![pred("b")]]);
+}

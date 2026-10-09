@@ -75,6 +75,7 @@
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
+use quanta_gqlang_v2_modules::indexed_scc;
 use quanta_gqlang_v2_sema::{CheckedLocatedSpanV2, DownstreamBudgetReceiptV2};
 use quanta_gqlang_v2_types::ResolvedPredicateIdV2;
 
@@ -349,7 +350,7 @@ pub fn stratify(
     }
     let mut charge = RuleGraphChargeV1::new(budget);
     let graph = RuleGraphV1::build(program, &mut charge)?;
-    let components = TarjanStateV1::run(&graph, &mut charge)?;
+    let components = rule_components(&graph, &mut charge)?;
     let (negated, aggregated) = scan_offending_edges(&graph, &components, &mut charge)?;
 
     if let Some(offending) = negated {
@@ -697,155 +698,47 @@ fn internal_membership_error(span: &CheckedLocatedSpanV2) -> LogicDiagnosticV1 {
     }
 }
 
-/// One Tarjan frame. The frame owns the checked location that introduced its
-/// vertex, so SCC emission charges the exact authored location.
-#[derive(Clone, Debug)]
-struct TarjanFrameV1 {
-    node: usize,
-    next_edge: usize,
-    location: CheckedLocatedSpanV2,
-}
-
-/// Iterative Tarjan working state, kept off the process stack.
-struct TarjanStateV1 {
-    index: Vec<Option<usize>>,
-    lowlink: Vec<usize>,
-    on_stack: Vec<bool>,
-    stack: Vec<usize>,
-    frames: Vec<TarjanFrameV1>,
-    components: Vec<Vec<usize>>,
-    next_index: usize,
-}
-
-impl TarjanStateV1 {
-    fn new(vertices: usize) -> Self {
-        Self {
-            index: (0..vertices).map(|_| None).collect(),
-            lowlink: (0..vertices).map(|_| 0).collect(),
-            on_stack: (0..vertices).map(|_| false).collect(),
-            stack: Vec::new(),
-            frames: Vec::new(),
-            components: Vec::new(),
-            next_index: 0,
+/// The common partition owner preserves discovery/emission charge order and
+/// the exact incoming-edge location. Canonical rendering belongs to Logic.
+#[expect(
+    clippy::indexing_slicing,
+    reason = "kernel labels and source indices are bounded by the supplied root slice"
+)]
+fn rule_components(
+    graph: &RuleGraphV1,
+    charge: &mut RuleGraphChargeV1,
+) -> Result<Vec<Vec<usize>>, LogicDiagnosticV1> {
+    let partition = indexed_scc::partition_v1(
+        &graph.node_locations,
+        |node| graph.edge_count(node),
+        |node, position| {
+            graph
+                .edge(node, position)
+                .map(|edge| (edge.target, &edge.literal_location))
+        },
+        |_, location| charge.charge_step(location),
+    )
+    .map_err(|error| match error {
+        indexed_scc::SccErrorV1::Rejected(error) => error,
+        indexed_scc::SccErrorV1::InvalidEdge { source, position } => {
+            // `source` was enumerated from node_locations by the kernel.
+            // Retain the authored edge location if the target was malformed.
+            let location = graph
+                .edge(source, position)
+                .map_or(&graph.node_locations[source], |edge| &edge.literal_location);
+            internal_membership_error(location)
         }
+    })?;
+    let mut counts = vec![0; partition.component_count];
+    for &component in &partition.component_of {
+        counts[component] += 1;
     }
-
-    fn index_of(&self, node: usize) -> Option<usize> {
-        self.index.get(node).copied().flatten()
+    let mut components: Vec<Vec<usize>> = counts.into_iter().map(Vec::with_capacity).collect();
+    for (node, component) in partition.component_of.into_iter().enumerate() {
+        components[component].push(node);
     }
-
-    fn lowlink_of(&self, node: usize) -> usize {
-        self.lowlink.get(node).copied().unwrap_or(0)
-    }
-
-    fn is_on_stack(&self, node: usize) -> bool {
-        self.on_stack.get(node).copied().unwrap_or(false)
-    }
-
-    fn set_on_stack(&mut self, node: usize, value: bool) {
-        if let Some(slot) = self.on_stack.get_mut(node) {
-            *slot = value;
-        }
-    }
-
-    fn set_lowlink_min(&mut self, node: usize, value: usize) {
-        if let Some(slot) = self.lowlink.get_mut(node) {
-            *slot = (*slot).min(value);
-        }
-    }
-
-    /// Discover one vertex: assign its index/lowlink, push it on the SCC stack,
-    /// and open its frame.
-    fn discover(&mut self, node: usize, location: CheckedLocatedSpanV2) {
-        let index = self.next_index;
-        self.next_index = self.next_index.saturating_add(1);
-        if let Some(slot) = self.index.get_mut(node) {
-            *slot = Some(index);
-        }
-        if let Some(slot) = self.lowlink.get_mut(node) {
-            *slot = index;
-        }
-        self.stack.push(node);
-        self.set_on_stack(node, true);
-        self.frames.push(TarjanFrameV1 {
-            node,
-            next_edge: 0,
-            location,
-        });
-    }
-
-    /// Tarjan's strongly-connected components over an explicit frame stack.
-    ///
-    /// Charging: one step per frame push (exactly one per vertex) and one per
-    /// SCC emission. Components are returned in canonical form — members
-    /// ascending by vertex index (which is ascending predicate identity) and
-    /// components ordered by their member lists — so the result is invariant
-    /// under rule/edge insertion permutation.
-    fn run(
-        graph: &RuleGraphV1,
-        charge: &mut RuleGraphChargeV1,
-    ) -> Result<Vec<Vec<usize>>, LogicDiagnosticV1> {
-        let mut state = Self::new(graph.nodes.len());
-        // `build` stores exactly one defining-rule location per vertex, so the
-        // root frame push always has an exact authored location to charge at.
-        for (root, root_location) in graph.node_locations.iter().enumerate() {
-            if state.index_of(root).is_some() {
-                continue;
-            }
-            charge.charge_step(root_location)?;
-            state.discover(root, root_location.clone());
-
-            while !state.frames.is_empty() {
-                let Some(frame) = state.frames.last() else {
-                    break;
-                };
-                let node = frame.node;
-                let next_edge = frame.next_edge;
-                if next_edge < graph.edge_count(node) {
-                    if let Some(top) = state.frames.last_mut() {
-                        top.next_edge = top.next_edge.saturating_add(1);
-                    }
-                    let Some(edge) = graph.edge(node, next_edge) else {
-                        continue;
-                    };
-                    if state.index_of(edge.target).is_none() {
-                        charge.charge_step(&edge.literal_location)?;
-                        state.discover(edge.target, edge.literal_location.clone());
-                    } else if state.is_on_stack(edge.target) {
-                        let target_index = state.index_of(edge.target).unwrap_or(0);
-                        state.set_lowlink_min(node, target_index);
-                    }
-                } else {
-                    let Some(finished) = state.frames.pop() else {
-                        break;
-                    };
-                    if let Some(parent) = state.frames.last() {
-                        let lowlink = state.lowlink_of(finished.node);
-                        state.set_lowlink_min(parent.node, lowlink);
-                    }
-                    if state.lowlink_of(finished.node) == state.index_of(finished.node).unwrap_or(0)
-                    {
-                        charge.charge_step(&finished.location)?;
-                        let mut component: Vec<usize> = Vec::new();
-                        while let Some(member) = state.stack.pop() {
-                            state.set_on_stack(member, false);
-                            component.push(member);
-                            if member == finished.node {
-                                break;
-                            }
-                        }
-                        state.components.push(component);
-                    }
-                }
-            }
-        }
-
-        for component in &mut state.components {
-            component.sort_unstable();
-        }
-        state.components.sort();
-        Ok(state.components)
-    }
+    components.sort();
+    Ok(components)
 }
 
 /// One candidate offending edge inside a recursive component.

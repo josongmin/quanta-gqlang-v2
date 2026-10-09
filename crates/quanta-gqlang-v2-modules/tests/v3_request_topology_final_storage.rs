@@ -714,6 +714,116 @@ fn final_catalog_foreign_root_refusal() {
 
 struct TestSink(Arc<TestLedger>);
 
+/// Observe the actual sink boundary, independently of production demand helpers.
+struct PeakSink {
+    inner: TestSink,
+    peak: AtomicU64,
+}
+
+impl FrontendRequestStorageSinkV3 for PeakSink {
+    fn reserve_v3(
+        &self,
+        logical_bytes: u64,
+    ) -> Result<Box<dyn FrontendRequestStoragePermitV3>, FrontendStorageRefusalV3> {
+        let requested = self.inner.0.live.load(Ordering::SeqCst)
+            + logical_bytes
+            + u64::try_from(std::mem::size_of::<TestCharge>()).unwrap();
+        self.peak.fetch_max(requested, Ordering::SeqCst);
+        self.inner.reserve_v3(logical_bytes)
+    }
+
+    fn owns_permit_v3(&self, permit: &dyn FrontendRequestStoragePermitV3) -> bool {
+        self.inner.owns_permit_v3(permit)
+    }
+}
+
+#[test]
+fn topology_acyclic_and_scc_witness_admit_exact_peak_and_refuse_one_byte_short() {
+    for cyclic in [false, true] {
+        let mut observed_peak = 0;
+        // First observe the reservation peak, then replay at exact/one-short.
+        // This tests admission/custody, not measured allocator peak bytes.
+        for attempt in 0..3 {
+            let case = TestCase::new();
+            let ledger = Arc::new(TestLedger {
+                live: AtomicU64::new(0),
+                limit: AtomicU64::new(u64::MAX),
+            });
+            let sink = PeakSink {
+                inner: TestSink(Arc::clone(&ledger)),
+                peak: AtomicU64::new(0),
+            };
+            let root = FrontendRequestMaterializationRootV3::from_issued_sink_v3(
+                case.document_id,
+                &case.source,
+                &sink,
+            );
+            let mut permit = root.reserve_v3(case.document_id, &case.source, 0).unwrap();
+            let mut validator = DocumentCatalogValidatorV2::try_new_with_request_owner_v3(
+                case.extended.clone(),
+                &case.parts,
+                &root,
+                case.document_id,
+                &case.source,
+                &mut permit,
+            )
+            .unwrap();
+            let proofs = validator
+                .predeclare_assets_with_request_owner_v3(
+                    case.assets(),
+                    &root,
+                    case.document_id,
+                    &case.source,
+                    &mut permit,
+                )
+                .unwrap();
+            let before = ledger.live.load(Ordering::SeqCst);
+            sink.peak.store(before, Ordering::SeqCst);
+            if attempt != 0 {
+                ledger
+                    .limit
+                    .store(observed_peak - u64::from(attempt == 2), Ordering::SeqCst);
+            }
+            let mut edges = case.edges();
+            if cyclic {
+                edges.get_mut(0).unwrap().target.local_name = "first".to_owned();
+            }
+            let result = validator.validate_view_topology_with_request_owner_v3(
+                edges,
+                &root,
+                case.document_id,
+                &case.source,
+                &permit,
+            );
+            if attempt == 0 {
+                observed_peak = sink.peak.load(Ordering::SeqCst);
+                assert!(observed_peak > before);
+            }
+            if attempt == 2 {
+                assert!(matches!(
+                    result,
+                    Err(DocumentTopologyRequestErrorV3::Storage(
+                        FrontendStorageRefusalV3::BudgetRejected
+                    ))
+                ));
+                assert_eq!(ledger.live.load(Ordering::SeqCst), before);
+            } else if cyclic {
+                assert!(matches!(&result,
+                    Err(DocumentTopologyRequestErrorV3::Domain(diagnostic))
+                        if diagnostic.reason_code() == "modules.view_inline_cycle"
+                ));
+            } else {
+                assert!(result.is_ok());
+            }
+            drop(result);
+            drop(proofs);
+            drop(validator);
+            drop(permit);
+            assert_eq!(ledger.live.load(Ordering::SeqCst), 0);
+        }
+    }
+}
+
 struct TestCharge {
     ledger: Arc<TestLedger>,
     bytes: u64,
