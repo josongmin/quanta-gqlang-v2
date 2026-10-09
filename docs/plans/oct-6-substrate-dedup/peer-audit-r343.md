@@ -97,6 +97,13 @@ custody and last-drop refund remain **NOT_RUN**. A result-only cancellation test
 would not detect the old early-drop bug: observe retained DATA/grants at the outer
 finisher and verify the refund after their final drop.
 
+R350 revalidated all fourteen applied postimages without drift and recorded
+`r350-workspace-owner-proof-handoff.json`, including four direct dependency hashes
+and the required owner regressions. This peer's write claim was released after
+the source changes and independent review completed. The packet is ready for the
+existing serial owner proof queue; it is not accepted execution, an integration
+receipt or a message sent to another task. No Semantica staging or commit occurred.
+
 ## A2: complete the existing supplier and consumer contract
 
 The staged Java DFG producer publishes a Source member. Its ordinary member
@@ -141,6 +148,46 @@ and lambda positives; declaration/function identity, duplicate/missing/foreign
 rejection, charged work and cancellation; independent authored/final function-ref
 census; and explicit final refs=0 for VoidReturnOnly. Unsupported nested/captured
 cases must remain typed refusals until their contract is supported and proved.
+
+### Concrete remaining code cut — R350
+
+Source readback remains Semantica `8217a38bf04d` plus concurrent work.
+Two independent lanes inspected the DFG key path and full fixture path. Their
+exact source snapshots are in `r350-dfg-key-owner-contract-audit.json` (17 paths)
+and `r350-original-fixture-contract-audit.json` (14 paths).
+
+| Owner / code | Before | Required after |
+| --- | --- | --- |
+| DFG `original_evidence_backing_v1` and retained Java Source producer | Source retains semantic identity/declaration, CFG/facts and ExactZero refs, but not the exact DFG lookup tuple | Producer-authenticated exact key, or a checked selected-key-to-Source declaration/ordinal mapping. Semantic digests and CFG identity do not prove equality to the key axes |
+| PTA `dfg_declaration_index_v3` and `native_occurrence_admission_v1` | Actual entry still builds the return-shaped ordinary index. New `OriginalDfgDeclarationIndexBirthV3` has no caller and itself reads ordinary rows | Wire the existing external birth through the occurrence owner, consume the canonical Source contract, retain failed key/map DATA through the highest Source, then transfer after success |
+| PTA `dfg_declaration_index_v3` selected lookup | Birth lookup uses ordinary `with_row_into_birth_v3`; the separate return-shaped declaration read already uses Source identity | Source-capable selected member lookup with the same caller-owned full errors and finishers; Source failures stay typed |
+| Test-support `original_inventory_fixture_v3` and full `owner_stages_v1` | Separate genuine Original inventory exists; full fixture still uses ordinary inventory | Reuse the existing producer with the caller's session, FD capture, pin and build digest, including the alternate-build-axis fixture |
+| `pta_native_mixed_source_owner_contract_test` | One consumer uses an owned ordinary workspace-handoff Arc | Migrate that consumer with the genuine Original loan/producer contract, or keep its explicitly ordinary test route; an Original borrowed handoff cannot escape as a fabricated owned Arc |
+
+The DFG lookup key axes are `function_name`, `entity_id` and `symbol_uid`.
+ExactZero FunctionRefs does not imply an empty declaration index. The producer
+must supply the missing key/mapping contract before PTA connects it; do not
+derive a legacy key from a semantic digest or manufacture a legacy DFG result.
+
+The existing external index birth is concurrent work owned by
+`PTA-SOURCE248-OCT9-EXTERNAL-ISSUANCE-MATERIALIZER`. Reuse that change. After its
+cutover, remove the old duplicate exact-key copier; retaining both copy routines
+would leave two implementations of the same responsibility. Wiring the birth
+alone currently moves the ordinary-row refusal without repairing Source support.
+
+Parser's Source2 external sealed-files/inventory producer already exists and the
+genuine fixture calls it. A new Parser facade, issuer or binary-input factory is
+unnecessary. The genuine helper currently issues its own session/FD capture and
+hardcodes the default build digest; the full fixture must reuse its existing
+context and preserve its alternate digest case. This is a dev-only fixture
+integration task, not evidence of a missing production caller for a runtime API.
+
+Acceptance remains one genuine compatible full-generation path with exact key
+selection and declaration identity, duplicate/missing/foreign/stale rejection,
+charged work/cancellation, external partial/full-error custody and last-drop
+refund. Required void/alias/lambda and alternate-build fixtures must actually run;
+the selected-row validation/publication path must also use genuine Source
+authority. None of these executions or a full main bundle is proved here.
 
 ## T2: Source-zero completion state in the R346 patch
 
