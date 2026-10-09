@@ -5,26 +5,185 @@ All execution is local. [R77 RCA](rca.md) owns cause analysis;
 [tickets](tickets.md) own scope/DoD and [remaining work](../../work/remaining.md)
 owns current states.
 
-## Current dispatch boundary — 2026-10-09
+## Current completion plan — 2026-10-09
 
-Use the [current-main audit](execution-r79.md#current-main-audit--2026-10-09),
-Semantica `a63f536b1b3` plus selected WIP. This audit uses read-only A/C lanes;
-no worker edits, Cargo or Semantica staging are performed for this request.
-The original Shape/SCC source is already committed; do not assign another traversal.
+Objective: finish the existing Native/Original producer-to-consumer chain, accept
+all18 active tickets and integrate complete compatible bundles into local main.
+This section supersedes the historical R78 waves below. It is an executable
+plan; no worker is dispatched and no implementation/proof is claimed by this update.
 
-| Ready lane | Next owned work | Acceptance boundary |
+### Current source and changed assignments
+
+- Source readback at16:48 KST: clean QGLang `231707d879de6024e47ba6f6665b90f571aa0213`;
+  Semantica `a63f536b1b3fa6e6990acd3dff0b6ef8a8f1a740` plus shared WIP, with4,854
+  foreign staged paths. An index is not a source commit. Refresh claims, HEAD,
+  selected postimages and integration barriers before writing or capturing.
+- Postflight16:55 KST: both HEADs unchanged, all selected SDK/trace/terminal/
+  PTA/DFG/facts hashes stable; the foreign index has4,857 staged paths. This
+  selected-source continuity does not freeze or accept the rest of that index.
+- Original Shape/SCC canonical routing is committed. JSON old production/test
+  calls are migrated. R333's first-cause/terminal guards are authored;8/9 recorded
+  postimages match. The SDK joined-owner file has a foreign successor, whose direct
+  `ensure_open_v3` guard remains first on current readback. Reconcile its complete
+  signature/format closure; do not restore an older whole-file postimage.
+- SDK FULL/private binding receiving and paid provider exist. The provider has
+  a newer external-birth source successor. Its upstream durable pair hydration,
+  preparation success and Original receipt/evidence admission still refuse.
+- PTA still rejects nonempty Original relation outputs in
+  `original_java_workspace_v1/prepared_workspace_v3.rs`; DFG's
+  `adapter/java_source_closure/retained_workspace_issuance_v1.rs` rejects its
+  unadmitted source-world birth. General facts context has Native input control,
+  but no canonical output admission. These are implementation work, not only tests.
+- PTA test-support still uses diagnostic/V1 cohort/type finalization and raw
+  topology receiving. Its genuine binary provider and retained consumers must
+  change together. Already authored QRA receiving is reused.
+- Product pre-key/context, Native finalizer and final trace/snapshot/packet/memo
+  remain incomplete. Discard-only cleanup is authored; genuine guard proof is open.
+- R334 local QGLang CI passes1,514/1,514 and facade positive1/negative23 on
+  `09276c57…` plus five document inputs, snapshot `f1b8ab5f…`. Receipt/log readback
+  matches. Current main has no non-document delta; this is neither committed-HEAD
+  qualification nor Semantica proof. Evidence: `closeout-plan-oct9-current-before.json`
+  in the R79 root and `r334-gqlang-ci-receipt.json` in the existing recovery root.
+
+### Work packages and concrete exits
+
+Package IDs are scheduling units under the existing tickets, not new defect IDs.
+
+| Package / role | Concrete work and owning source | Exit condition |
 | --- | --- | --- |
-| JSON/platform owner | Current external-DATA production/tests are authored; repair SQLite cfg imports and inherited owner formatting | Compatible affected owner/runtime/SDK proof; old23 diagnostics are historical |
-| SDK producer owner | Genuine durable pair → FULL selection → paid generation/evidence/context → existing provider | Real Original TARGET/D4 success and refusal/cancel/refund; no ordinary fixture substitute |
-| Trace/runtime owner | Product pre-key arm/key + owned context, admitted finalizer/read → snapshot/packet/memo | Discard ordinary and genuine Original guard regressions, then actual positive receiving |
-| Consumer owners | Remaining Shape/SCC/PTA/DFG/taint, language/feature, registry/deadline scopes | Exact owner witnesses on a compatible supplier cut |
-| Root integrator | Reconcile shared claims/index and freeze the completed packet; run heavy owners serially | Publication/custody, separate installed product gates and complete local-main integration |
+| W0 / I+A: compatible baseline | Reconcile foreign staging and supplier claims; repair SQLite Linux-only imports/unused OsStrExt and inherited TaskLocal formatting; accept JSON production/test cut on actual feature closures | Selected supplier/caller hashes stable; current affected parser/SourceWire/Runtime/SDK requests compile and resolve nonzero witnesses. No lint/feature weakening |
+| W1 / A: SDK Original generation | `quanta-sdk-session-backend-owner`: durable pair hydration → exact preparation → FULL selected member → paid generation/evidence/build context → existing binding provider; finish Original receipt admission and live-base custody | Actual installed SDK route issues genuine Original TARGET and reaches D4; exact source/session/generation and paid backing survive producer drop. Missing/foreign/stale authority, first refusal, late cancel and final refund proven |
+| W2 / B: genuine PTA fixture | `quanta-runtime-test-support-pta/exact_native_generation_fixture_v1`: genuine binary-input provider + whole cohort/type finalization; retained handoff and checked lowering/evidence topology consumers | Actual fixture pin/current/provider; exact alias/lambda/callable/relation census and foreign-source rejection. No diagnostic/V1 adapter, empty positive or ordinary DTO reconstruction under Source |
+| W3 / B with A contract handoff: PTA/DFG/facts output | Finish nonempty PTA formal/alias/catalog/transaction births, DFG retained source-world/digest/Tree-C/callable publication, and `FactExtractionRequestV1` → `DefUseFactsParseContextV1` → real extractors → final facts keeper output admission | Nonempty real Java output first, then required controlled language matrix; independent expected facts/relations, atomic no-publication on refusal, same permits to last reader and full refund. Complete signature consumers in one candidate |
+| W4 / C: Runtime trace and memo | Product pre-key arm/key and owned RuntimeCtx; canonical Native admitted finalizer/read → checked snapshot → packet, persistence, leader/waiter memo retain | Ordinary guard discard1/finalize0/publish0 and nested-parent preservation; genuine Original B/A guard; deterministic positive trace facts/hash/order, first cause, retained success across producer drop, no unauthorized ordinary conversion |
+| W5 / free implementation slot + I: consumers | Re-resolve existing Shape/Cost, PTA/Andersen, taint/deep50k, DFG/MemSSA, language/callback/cursor, SCC callers, F2 registry/Preview and F7 deadline owners | Required named witnesses actually execute and pass under correct features; zero selection fails; ignored50k explicit; no duplicate traversal or rebuilt passing scope without changed inputs |
+| W6 / I: policy and main | Complete canonical supplier/consumer packet review, affected mandatory static rails, locked manifests and exact staged-path integrity; coordinated local-main integration | Complete compiling candidate, published owner results and stable held-lease postflight; normal integration preserves foreign hunks. Commit SHA/path set recorded, required gates rebind to committed source |
+| W7 / I + release owner: product | Receipt-bound actual Graph/CHECK process rails and release-owned signed x86_64 Linux install trust; F1/D6/D7 rollup uses same artifacts | Independent positive/refusal process outputs, no skip/leak, immutable artifact/generation/trust identities and committed source. Unavailable external trust leaves its own ticket open |
 
-Refresh claims and capacity before implementation; this table assigns boundaries,
-not authorization to overwrite foreign work. The Semantica index becomes populated
-by another integration during the audit; staging alone does not close any ticket.
-Source implementation lanes may proceed independently when ownership is disjoint;
-dependent compiler/product proof waits for the compatible supplier closure.
+### Ownership and dependency decisions before implementation
+
+1. **One shared contract steward (A):** facts output/admission, source authority
+   and any shared context signature changes go through the existing owner. A
+   publishes exact new signature/postimages before B/C edit dependent callers.
+   I serializes manifest/lock/registry changes. A file has one writer at a time.
+2. **SDK owns durable generation; Parser owns HIR:** reuse the existing Source B
+   FULL selection and binding provider. Do not introduce another attribution,
+   mint, Source issuer, trace engine or backend in QGLang.
+3. **Fixture provider decision in W0/W2:** trace the actual SDK-private binary
+   provider to existing lower binary/type owners. Share only the demonstrated
+   factory/issuance seam needed by real fixture pin/current; keep SDK session
+   orchestration downstream. The fixture must not depend back on SDK or create
+   fake authority. Reject an extraction that introduces a Cargo cycle.
+4. **First positive is one real vertical path:** source/session → Original SDK
+   preparation → joined target HIR → nonempty PTA/DFG/facts → admitted trace →
+   checked success packet. Debug it on a guarded candidate; broaden to required
+   language/features before integrating coupled public signatures on main.
+5. **Finalizer and cleanup are separate:** keep discard infallible/no-publication.
+   Positive finalization consumes/checks genuine admitted ownership and returns
+   its retained read interface. Never enable Original by deleting a refusal alone.
+
+Each nontrivial source cut records compatibility before choosing its signature:
+all reachable constructors/consumers, public accessor or trait obligations and
+any DTO/digest change. Preserve existing IDs/order/diagnostics and ordinary
+compatibility; version a public wire contract only when its compatibility requires
+it. Native input control cannot be downcast into fabricated Source/output authority.
+Bound physical births, work, recursion and retained lifetime using the existing
+issuer/owner controls; establish comparable workload/source measurements before
+making performance or latency claims. No new library/framework is required for
+the inventoried seams: canonical SCC, binary/type, generation and admitted trace
+owners already exist, along with Clippy/Tokei/Semgrep and current boundary rails.
+
+```mermaid
+flowchart LR
+  W0[W0 Compatible baseline] --> W1[W1 SDK generation]
+  W0 --> W2[W2 Genuine fixture]
+  W0 --> W4[W4 Trace and memo]
+  W1 --> W3[W3 PTA DFG facts]
+  W2 --> W3
+  W1 --> W5[W5 Real consumers]
+  W3 --> W5
+  W4 --> W5
+  W5 --> W6[W6 Policy and main]
+  W6 --> W7[W7 Installed product]
+  Trust[Release trust preflight] --> W7
+```
+
+W1/W2/W4 implementation can overlap after contract handoffs; positive integrated
+proof waits for the joined supplier closure. Ordinary owners not depending on
+Original may run earlier. The graph governs completion, not blanket build blocking.
+
+### Three workers plus one integrator
+
+| Wave / exit | A: SDK/supplier | B: fixture/analysis/facts | C: trace/consumer | I: integration and one heavy queue |
+| --- | --- | --- | --- | --- |
+| 0: boundaries fixed | Platform/JSON/format source cut; shared contracts reviewed | Provider/cohort/topology reachable-path review and exact oracle inventory | Existing guard regressions and finalizer/read contract review | Claims/index/source census; installed trust preflight; resolve request catalog and compile-dependency groups |
+| 1: sources authored | W1 durable generation, receipt/evidence/context | W2 genuine fixture; prepare W3 nonempty/facts owners after A handoff | W4 cleanup/context/finalizer; packet consumer handoff | Capture ready complete owner cuts; run smallest affected owner; route actual first compiler cause |
+| 2: complete vertical path | Genuine SDK/D4 success and negative fixtures; free slot takes ready W5 | W3 actual PTA/DFG/facts publication and language custody | Finish W4 packet/persist/memo and genuine leader/waiter/guard cases | One compatible vertical-path capture; supplier→consumer owner queue, custody/publication readback |
+| 3: required consumers accepted | W5 Shape/SDK/registry/deadline | W5 PTA/DFG/taint/language/cursor | W5 SCC callers and product oracle preparation | Reuse identical accepted scopes; run changed owners + feature matrix; mandatory policy and bundle review |
+| 4: main/product closed | Review committed SDK custody | Review committed facts/analysis custody | Review actual process output | W6 coordinated complete integration; committed-source continuity; W7 installed Graph/CHECK and final18-ID audit |
+
+These are role slots, not claims that three workers are currently running. Use
+existing claim holders where active; if capacity is lower, retain the boundaries
+and run ready work sequentially. Heavy Cargo/QBC owners run one at a time on the
+shared host; workers do source/review/oracle work while that queue runs.
+
+### Execution and evidence discipline
+
+- Each handoff records owning paths/hunks, producer/consumer functions, contract
+  delta, pre/post hashes, invariants, rejection behavior and exact owner requests.
+  **Authored → source reviewed → owner accepted → main committed → product qualified**
+  are separate status columns, never one percentage.
+- Re-resolve the existing request catalog on the compatible input. Use
+  `scripts/quanta-build-cli owner resolve` and matching `owner run`; actual
+  `--compile-policy` and selector come from the owner manifest/current profile.
+  Reuse the R79 consumer map as discovery, not a passing result.
+- Hold the canonical snapshot execution lease through run, source postflight and
+  archive readback. A changing source capture has no owner verdict. An owner
+  receipt is accepted only with required witnesses/counts and committed publication.
+- After a shared compile failure, stop only dependent requests of that same
+  compile closure, route the concrete owning cause and capture one successor.
+  Repeated identical errors are one causal prerequisite, not more defect tickets.
+- Run the smallest affected owner after its coherent cut. Broaden once when the
+  compatible consumer bundle is ready; rerun only changed compile/owner closures.
+  `lib(test)` filtering does not avoid compilation of other tests.
+- QGLang remains local CI: one `just ci` at final repository completion when its
+  source/gate input changes; current R334 remains historical proof for its tuple.
+  `just qualify-local` only on clean committed HEAD when that receipt is required.
+  Hosted CI and remote push are not part of this plan.
+- External install trust is checked in wave0. Its absence blocks W7's installed
+  positive CHECK, not independent owner proof or integration of otherwise complete
+  accepted bundles. Final rollup retains EXTERNAL_PREREQUISITE/NOT_RUN truthfully.
+
+### Original frontend hardening items
+
+The current source owns module cuts, test suite splits, local size/MSRV rails,
+18 closed-authority examples and public DTO field map. Keep those accepted source
+boundaries; current `execution.rs` is at1200 Tokei code lines with no exceptions.
+If this work must add frontend code, split coherent internal execution types first
+and preserve export paths/digests; do not raise the ceiling.
+
+The facade currently depends on Pipeline. Moving DTO declarations into that same
+facade while Pipeline uses them would form a dependency cycle. Keep the current
+facade contract for this closeout. A later physical extraction requires a justified
+host-agnostic leaf owner and producer/consumer compatibility design; it is not a
+completed move. Fuzz smoke is a local explicit target outside qualification;
+automatic cadence remains a separate optional tooling item, not a product blocker.
+
+### Final completion checklist
+
+- [ ] W0 compatible current compile and formatting; all required request witnesses resolved.
+- [ ] W1 genuine SDK Original durable generation/receipt/evidence/context success and failures.
+- [ ] W2 real provider/cohort/type finalization and retained fixture/topology consumers.
+- [ ] W3 nonempty PTA/DFG/facts output, complete language custody and refund/atomicity.
+- [ ] W4 discard and positive admitted trace/context/snapshot/packet/persist/memo proof.
+- [ ] W5 all actual consumer/feature oracles, including ignored depth and SDK regressions.
+- [ ] W6 mandatory policy, exact complete main commit and committed-source evidence continuity.
+- [ ] W7 actual installed Graph/CHECK and18-ticket final rollup; external prerequisites recorded.
+
+Ticket mapping is in [tickets](tickets.md#current-completion-package-map--2026-10-09);
+required oracles are in [test plan](test-plan.md#current-acceptance-matrix--2026-10-09).
+
+## Historical dispatch and execution context
 
 Executed handoffs, source custody, serial main integration and owner outcomes
 are in [R79 onward execution](execution-r79.md). The capacity/error observations

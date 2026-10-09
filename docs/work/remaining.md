@@ -5,8 +5,9 @@ committed Semantica `f574fa82bf1` and separately inventoried moving WIP.
 The [R77 RCA](../plans/oct-6-substrate-dedup/rca.md) owns the cause/dependency
 analysis; this file owns the 18 active states.
 
-Latest source: [2026-10-09 current-main audit](../plans/oct-6-substrate-dedup/execution-r79.md#current-main-audit--2026-10-09),
-QGLang `09276c57d279` and Semantica `a63f536b1b3` plus separately inventoried WIP.
+Latest plan/source: [W0–W7 completion plan](../plans/oct-6-substrate-dedup/parallel-dispatch.md#current-completion-plan--2026-10-09),
+QGLang `231707d879de` and Semantica `a63f536b1b3` plus separately inventoried WIP,
+read back at16:48 KST. The original16:18 audit retains its own input.
 The audit distinguishes committed source, authored source and accepted execution.
 Native receiving status is superseded by the [R333 source reconciliation](../plans/oct-6-substrate-dedup/native-identity-boundary.md#current-source-reconciliation-and-remaining-work--r333); QGLang local CI R334 passes1,514 tests and facade1/23 before the receipt note. Downstream execution remains separate.
 
@@ -15,7 +16,9 @@ Native receiving status is superseded by the [R333 source reconciliation](../pla
 - **Authored WIP:** current JSON external-state caller/test cut, discard-only trace
   guard and coupled Native/Original receiving. All14 discard postimages remain exact.
 - **Implemented incompletely:** SDK Original pair hydration/preparation/receipt
-  admission and product pre-key/context/final trace/snapshot/packet/memo.
+  admission, genuine PTA fixture provider/cohort/topology consumers, nonempty
+  PTA/DFG publication and general facts output admission, plus product
+  pre-key/context/final trace/snapshot/packet/memo.
 - **Proof pending:** current compatible Native owner compilation/tests, actual
   consumer/feature regressions and installed product acceptance. Local CI1514,
   SourceWire259, QCP387 and relation19 retain their exact historical sources.
@@ -51,22 +54,28 @@ needs compatible compilation/proof. R144's23 errors are historical.
 Genuine D4 custody/cause regression requires the paid SDK producer cut;
 the existing installed Scenario02 fixture uses ordinary preparation.
 
-Remaining dependency order:
+Remaining dependency order; detailed owner paths, parallel waves and exits are
+in the completion plan. All18 active IDs map to its packages.
 
 1. Accept the current SourceWire JSON caller/test cut and affected runtime/SDK
    owners on one compatible frozen source; repair the reached SQLite platform
    imports and inherited owner formatting.
-2. Bind actual SDK repo/pinned-session axes into existing Source B FULL hydration
-   and member selection; finish paid generation carrier, receipt/evidence keeper
-   and live-base context. Verify the existing provider's coupled TARGET birth
-   and D4 receiving path. The binder has an actual product caller.
-3. Wire actual product pre-key arm/bind and owned RuntimeCtx receiving; finish
+2. In parallel: W1 actual SDK durable generation/receipt/evidence/context;
+   W2 genuine fixture provider/cohort/type and retained topology/handoff;
+   W4 product pre-key/context/trace. The existing SDK binder/provider is reused.
+3. Complete W3 nonempty PTA formal/alias/catalog/transactions, retained DFG
+   source-world and adapter→context→extractor→final facts output admission.
+   Establish one real Original positive path before broadening required features.
+4. Finish W4 actual product pre-key arm/bind and owned RuntimeCtx receiving;
    admitted final trace and checked snapshot → packet/memo. Qualify discard-only
    ordinary and genuine Original guard cleanup before positive finalization.
-4. Accept actual Shape/SCC/PTA/DFG/taint, language/features and SDK registry/deadline
+5. W5 accepts actual Shape/SCC/PTA/DFG/taint, language/features and SDK registry/deadline
    consumer scopes; source presence is not passing execution.
-5. Run separate installed product acceptance and integrate the complete compatible
-   local-main bundle. Foreign staging observed during this audit is not a commit.
+6. W6 integrates the complete accepted compatible local-main bundle through the
+   coordinator, with mandatory gates and committed-source continuity. W7 then
+   runs installed Graph/CHECK on its immutable artifacts. Check release trust in
+   wave0; unavailable external install trust remains a separate prerequisite.
+   Foreign staging observed during this audit is not a commit.
 
 Historical root proof: [R79 root R117–R120](../plans/oct-6-substrate-dedup/execution-r79.md#r79-root-r117r120-lower-owner-closure).
 On frozen source `45051e94534a…`, whole ContractIds82, ContractBase58 and

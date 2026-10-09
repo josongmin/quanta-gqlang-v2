@@ -41,13 +41,49 @@ assignment alone does not transfer another owner's files.
 ## Queue and state snapshot
 
 Current source/proof reconciliation:
-[2026-10-09 audit](execution-r79.md#current-main-audit--2026-10-09), QGLang
-`09276c57d279`, Semantica `a63f536b1b3` plus shared WIP. Original Shape/SCC's five
+[2026-10-09 completion plan](parallel-dispatch.md#current-completion-plan--2026-10-09),
+QGLang `231707d879de`, Semantica `a63f536b1b3` plus shared WIP. Original Shape/SCC's five
 paths are committed, clean and unchanged. Python/Java lifetime repairs are now
 committed. Current JSON production/test callers use external state; the obsolete
 R146 stale-call assignment is superseded. Current Native compilation is not
 accepted; the newer Runtime search request stops at SQLite platform imports.
 Foreign Semantica staging during the audit is not completed integration.
+
+## Current completion package map — 2026-10-09
+
+All18 active IDs map to the current W0–W7 packages. QG-DIAG remains RESOLVED and
+D4/D5-CUSTODY remains SCOPED_ACCEPTED; neither is reopened as new implementation.
+Package ownership is a scheduling responsibility; existing claims govern writes.
+
+| Active ID | Package | Required closure |
+| --- | --- | --- |
+| CHECKED-LANG-SUPPLIERS | W3 + W5 | Genuine controlled input/output custody and real language owners |
+| CHECKED-DEFUSE | W3 + W5 | Canonical facts output admission through actual extractors; integrated ordinary migrations reused |
+| CHECKED-RETAINED-CONTROL | W1 + W2 + W3 + W4 | SDK generation, genuine fixture/provider, nonempty analysis/facts and final retained packet/memo |
+| F7 | W5 | Actual SDK execute deadline/normal results, separate typed mapper proof |
+| CHECKED-CALLBACK-FIRST-CAUSE | W5 | Real Parser chronology and existing common/Kernel owner witnesses |
+| CHECKED-CURSOR | W5 | Exactly five existing Original-issued controls execute with no growth/typed stop |
+| D1-PROOF | W5 | Actual Shape/Cost SDK/feature and shared allocation projection matrix |
+| D2-PTA-PROOF | W5 | PTA adapter, Andersen and actual runtime precise-query consumers |
+| D2-TAINT-PROOF | W5 | Real solver/public contract + explicit ignored deep_chain_50k |
+| D2-CALLER-COVERAGE | W5 | Every affected SCC consumer's named partition/order/witness/resource oracle |
+| D3-PROOF | W3 + W5 | Retained DFG output plus PortDFG/MemSSA and real taint promotion |
+| SUBSTRATE-POLICY | W0 + W6 | Compatible baseline and final affected mandatory policy closure |
+| F2 | W5 | Registry → worker → actual Preview; provider-off and Apply refusal preserved |
+| FCP-COMPILE | W0 + W6 | Compatible supplier/caller feature closures, published owner proof and complete integration |
+| FCP-PTA | W5 | Reproduce actual bootstrap boundary on current source; repair only a reached cause |
+| FCP-PROCESS | W7 | Receipt-bound actual Graph/CHECK process outputs and cleanup |
+| FCP-INSTALL | W7; wave0 preflight | Release-owned Linux trust/assets and actual installed positive CHECK |
+| SUBSTRATE-PRODUCT | W7 | F1/D6/D7 rollup reuses the same qualified process/artifact/source tuple |
+
+Progress columns for each package are authored, source reviewed, owner accepted,
+main committed and product qualified. Source presence is not accepted behavior.
+Current R333 guard/ledger/provider receiving is source-ready; the older shared
+query God RED and missing-direct-guard assignments are superseded. General facts
+output, nonempty PTA/DFG publication and genuine fixture consumers remain real code
+work. New R334 QGLang CI does not close their downstream tickets.
+
+## Ticket states
 
 The original Shape/SCC dedup source and owner routing are committed on main;
 no additional traversal implementation is assigned. Rows below retain their

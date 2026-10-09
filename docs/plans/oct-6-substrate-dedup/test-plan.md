@@ -7,10 +7,52 @@ Current issued requests/results and the issued candidate are recorded
 in the [active handoff](../../work/substrate-repair-checkpoints-2026-10-07.md#fixed-candidate-compile-and-ownership-checkpoints).
 `qv2/` abbreviates Semantica `packages/analysis/quanta-v2/crates/`.
 
+Current execution order: [W0–W7 completion plan](parallel-dispatch.md#current-completion-plan--2026-10-09).
 Latest frozen owner requests/results are in [R79 onward execution](execution-r79.md).
 The nine C-lane resolves are request discovery only. F2 minimal has two required
 witnesses; parser checks are compilation only. The generated-getter facts keeper
 does not cover general callable, DFG source-world/Tree C or PTA transaction output.
+
+## Current acceptance matrix — 2026-10-09
+
+Input: QGLang `231707d879de`, Semantica `a63f536b1b3` plus selected shared WIP.
+This is a request/oracle plan; current candidate execution is NOT_RUN here.
+Use actual current manifests/features and re-resolve selectors before execution.
+R334 QGLang local CI is1514/1514 at `09276c57…` plus document inputs on
+`f1b8ab5f…`; its receipt/log is read back. Downstream acceptance remains separate.
+
+| Package | Smallest owning proof first | Independent acceptance oracle / failure controls |
+| --- | --- | --- |
+| W0 | Current SourceWire JSON tests and affected parser/Runtime/SDK compile classes; SQLite reader platform branch; inherited owner formatting | Correct external DATA completion, invalid UTF-8 category, late cancel/full retained error; unused-import denial intact. macOS typed UnsupportedPlatform and supported Linux branch are different claims; cross-check alone is not worker execution |
+| W1 | SDK pair/preparation/receipt owner, then actual composition provider → joined-target HIR/D4 route | Literal expected selected source/content/generation and D4 result; base/target/session mismatch, missing authority, quota short, cancellation before/after birth, exact first cause, external partial/error custody, producer-drop read and final refund. Installed Scenario02 ordinary preparation is insufficient |
+| W2 | Genuine PTA fixture binary/cohort/type finalization and topology/handoff consumer owners | Actual fixture pin/provider and checked retained inventory; exact alias/lambda/callable/relation census, mixed/foreign source rejection. A full positive must reject the old diagnostic/V1/raw-DTO route |
+| W3 | Nonempty PTA transaction, DFG retained source-world and actual facts adapter/context/extractor owners | Literal nonempty relations/facts/CFG correspondence; deterministic ID/order and no partial publication on failure. Real missing output authority, same-length foreign source/backend, post-consumer cancellation, complete grant lifetime, no growth after terminal failure and full last-owner refund |
+| W4 | Existing ordinary guard counter/nested panic tests, genuine Original B/A guard, Native finalizer/read; then actual packet/memo leader/waiter | Early guard drop discard1/finalize0/publish0; child panic preserves exact parent facts/no child hash. Actual positive inputs/calls/capabilities and trace hash; stale/foreign Current and late refusal; snapshot/packet/persist/memo retain after producer drop without ordinary conversion or unadmitted second holder |
+| W5 | Current named language/callback/cursor, Shape/Cost, PTA/DFG/taint, SCC caller, F2/F7 and bootstrap requests | Existing independent graph/output witnesses; five Original traversal controls; explicit ignored deep_chain_50k; provider-off/Apply refusal and timeout0/exact normal result. Zero selected, ignored required witnesses or compiler-only success fail acceptance |
+| W6 | Affected mandatory Honesty/God/AST/boundary/feature/lock rails and final current owner closure | No allowance/baseline reset, no unauthorized Source growth/ordinary fallback, canonical ownership and DAG intact. Exact compatible staged path/hash set, preserved foreign hunks, recorded main commit and source/dependency/recipe continuity |
+| W7 | Actual Graph/CHECK process requests and installed trust oracles on committed source | Exact positive/refusal outputs; Linux positive versus non-Linux refusal; signed profile/immutable slots/independent approval and active generation. Process exit/channel, timeout kill/reap, no skips/leaks and qualified immutable artifact/source identity |
+
+R333 genuine terminal tests are ready-source proof obligations, not new missing
+implementation: Java `failed_original_hash_factory_never_polls_fresh_output_v3`
+and `invalid_axis_detail_refusal_is_stored_before_terminal_retry_v3`, SourceWire
+observed-cause/semantic-only terminal tests and R324's two scoped-symbol controls.
+Preserve the independent legacy-ID oracle, exact selected Native cause, no later
+Current polling/work/bytes and final refund. The SDK direct joined-target HIR
+positive/refusal regression must exercise the actual product provider.
+
+For a retained-positive control, issue genuine Source/output authority through
+the existing issuer and preserve backing until the last consumer. Counter/stub
+DATA tests can prove pure chronology; they cannot substitute for actual authority.
+The same contract must reject missing authority before physical growth or publish.
+
+I maintains one request catalog with package, target, compile-policy, selector,
+required witness names/minimum counts, ignored policy, dependencies, source digest,
+receipt/publication/postflight and explicit NOT_RUN reason. Reuse the existing
+R79 request map as discovery. Do not introduce a second hand-maintained total or
+sum receipts from different inputs. Reuse matching accepted owner closures; rerun
+changed source/recipe/dependency inputs and the actual coupled product path.
+
+## Historical executed evidence
 
 The R79-family executed evidence includes QGLang `just ci` at67377d5 (Nextest1514,
 external facade positive1/negative23); SCC core CFG30/domain6/engine38/import

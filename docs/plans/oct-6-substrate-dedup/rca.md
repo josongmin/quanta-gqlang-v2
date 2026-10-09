@@ -13,8 +13,9 @@ the later complete resolution and two reached pretest failures have separate inp
 
 ## Successor cause reconciliation
 
-Current source and proof: [2026-10-09 audit](execution-r79.md#current-main-audit--2026-10-09),
-Semantica `a63f536b1b3` plus selected WIP. The remaining causes are:
+Current source and plan: [W0–W7 completion](parallel-dispatch.md#current-completion-plan--2026-10-09),
+QGLang `231707d879de`, Semantica `a63f536b1b3` plus selected WIP at16:48 KST.
+The remaining causes are:
 
 - **Original objective:** Shape/SCC canonical owner routing is committed and its
   five selected paths match HEAD. Further traversal rewrites have no demonstrated
@@ -26,6 +27,15 @@ Semantica `a63f536b1b3` plus selected WIP. The remaining causes are:
   but pair hydration refuses and preparation never returns success; production
   Original receipt admission is absent. This blocks genuine D4 positive custody
   before the receiver. An ordinary installed fixture cannot prove that producer.
+- **Analysis/facts birth gap:** live PTA still refuses nonempty relation outputs;
+  DFG rejects Original source-world before ordinary births. The general facts
+  request/context carries Native input control but lacks canonical output
+  admission. Complete actual formal/alias/catalog/transaction, retained DFG and
+  extractor/final-keeper custody together; void-only output is insufficient.
+- **Fixture prerequisite:** existing QRA Native-parts receiving is authored, but
+  PTA fixture still uses diagnostic/V1 cohort/type finalization and raw topology.
+  Genuine binary-input issuance and retained consumers need one compatible cut;
+  depending the fixture back on SDK would risk a Cargo cycle.
 - **Consumer/output gap:** product arm/key and context copy require ordinary
   values, Native finalization refuses and snapshot/packet/memo receiving is
   ordinary-only. Completing event storage does not complete retained execution.
@@ -39,6 +49,14 @@ Semantica `a63f536b1b3` plus selected WIP. The remaining causes are:
 - **Evidence/integration gap:** lower and newer Java/Python GREEN receipts have
   different source tuples. Shared WIP/index moves during the audit. Freeze a
   compatible tuple before current acceptance and record complete committed paths.
+
+R333 terminal guards and observed-first-cause selection are authored;8/9 recorded
+postimages match current readback. The SDK joined-owner file has a foreign
+successor, with its direct guard still first. Current provider receiving also
+has an external-birth successor. Those are no longer missing-code assignments;
+whole-file format/compile and genuine route proof remain unaccepted. The latest
+R334 QGLang local CI1514 passes on its document-overlay tuple; it does not prove
+these downstream production/fixture/output seams.
 
 The numbered reconciliation below is historical unless an explicit successor
 source/result is given; current source facts above take precedence.

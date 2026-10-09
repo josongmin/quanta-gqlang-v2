@@ -1,9 +1,16 @@
 # Substrate closeout execution plan
 
+Current execution order and final acceptance:
+[2026-10-09 W0–W7 completion plan](parallel-dispatch.md#current-completion-plan--2026-10-09).
+It maps all18 active tickets to owner paths, dependencies, three implementation
+slots, one heavy-build integrator queue and actual proof/commit/product exits.
+SDK Original generation, nonempty PTA/DFG and general facts output admission,
+trace/context/snapshot/packet/memo and genuine fixture receiving remain open.
+
 Latest source audit: [R333 reconciliation and remaining work](native-identity-boundary.md#current-source-reconciliation-and-remaining-work--r333).
 Four direct HIR guards and common ledger first-cause receiving are authored.
 Current SDK FULL/private receiving, Java raw descriptor receiving and shared-query
-God are present/passing at their scoped source boundaries. Remaining code is
+God are present/passing at their scoped source boundaries. Remaining Native-ID code is
 the coupled genuine PTA fixture producer/retained topology/handoff consumer;
 complete owner/product proof and Semantica main integration remain open.
 

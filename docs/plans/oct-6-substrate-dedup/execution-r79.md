@@ -5,8 +5,39 @@ within the existing [18-ticket queue](tickets.md). All execution is local.
 Source integration, WIP implementation, compilation and product acceptance are
 separate states. The [R77 RCA](rca.md) retains its original inputs.
 
-Latest source audit: [2026-10-09 current main](#current-main-audit--2026-10-09).
+Latest completion plan: [W0–W7](parallel-dispatch.md#current-completion-plan--2026-10-09).
+Earlier source audit: [2026-10-09 current main](#current-main-audit--2026-10-09).
 The [R121–R146](#r79-root-r121r128-successor-closure) runs retain their exact inputs.
+
+## Planning refresh — 2026-10-09
+
+Read-only basis at16:48 KST: QGLang `231707d879de`, Semantica `a63f536b1b3` plus
+shared WIP;4,854 foreign staged paths. R333 terminal source matches8/9 selected
+postimages. The SDK joined-owner foreign successor retains its own direct guard
+first; binding provider and generation-source execution authority also have
+newer successors. Exact selected hashes are recorded in
+`closeout-plan-oct9-current-before.json` at the existing R79 evidence root.
+`closeout-plan-oct9-current-post.json` rechecks at16:55: HEADs and selected hashes
+are stable; foreign staged paths advance to4,857. No Semantica mutation by root.
+
+R334 local CI receipt/log is read back at
+`~/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/query-owner-build-r1/`:
+receipt SHA `569d6fe6021c2fe30c921348399dac9c6a74ed0d52a5ce331bd0e5a7154a364e`,
+source `f1b8ab5f5a7879675bff980cdba5ec057dead0dc38e53986caceda6734cfecad`,
+Nextest1514/1514 and facade1/23. Current QGLang has no non-document delta from
+that run's HEAD. Its document overlay is distinct from current committed HEAD;
+no current-HEAD qualification or downstream proof is inferred.
+
+The updated plan includes previously underemphasized live nonempty PTA refusal,
+DFG source-world refusal and missing general facts output-admission bridge, as
+well as genuine fixture/provider/topology receiving. Existing SDK binding and
+Native terminal repairs are reused as source-ready inputs. All18 active ticket
+IDs map to W0–W7 with exact acceptance oracles; independent W1/W2/W4 work uses
+three implementation slots and I's single heavy queue. Complete accepted main
+integration precedes installed product qualification on the committed artifact.
+Release trust preflight occurs in wave0 and retains its external-prerequisite state.
+
+This request updates plans/documents; no new Rust/Cargo/QBC/product run is issued.
 
 ## Current main audit — 2026-10-09
 
