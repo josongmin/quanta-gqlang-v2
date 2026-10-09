@@ -5,7 +5,24 @@ committed Semantica `f574fa82bf1` and separately inventoried moving WIP.
 The [R77 RCA](../plans/oct-6-substrate-dedup/rca.md) owns the cause/dependency
 analysis; this file owns the 18 active states.
 
-Latest root successor: [R121–R146](../plans/oct-6-substrate-dedup/execution-r79.md#r79-root-r121r128-successor-closure).
+Latest source: [2026-10-09 current-main audit](../plans/oct-6-substrate-dedup/execution-r79.md#current-main-audit--2026-10-09),
+QGLang `09276c57d279` and Semantica `a63f536b1b3` plus separately inventoried WIP.
+The audit distinguishes committed source, authored source and accepted execution.
+
+- **Committed:** original Shape/SCC owner routing, QGLang hardening, Python search
+  feature policy and the later Python/Java lifetime repairs.
+- **Authored WIP:** current JSON external-state caller/test cut, discard-only trace
+  guard and coupled Native/Original receiving. All14 discard postimages remain exact.
+- **Implemented incompletely:** SDK Original pair hydration/preparation/receipt
+  admission and product pre-key/context/final trace/snapshot/packet/memo.
+- **Proof pending:** current compatible Native owner compilation/tests, actual
+  consumer/feature regressions and installed product acceptance. Local CI1514,
+  SourceWire259, QCP387 and relation19 retain their exact historical sources.
+- Newer Java76 and Python type-facts7 published receipts have separate input
+  tuples; they do not qualify current shared WIP. A later Runtime request stops
+  before tests at SQLite platform imports, still present in current source.
+
+Historical root successor: [R121–R146](../plans/oct-6-substrate-dedup/execution-r79.md#r79-root-r121r128-successor-closure).
 Original Shape/SCC is committed; five selected canonical files are clean and
 unchanged. Published lower proof: SourceWire259 at R124 and QCP387 at R132,
 on separate exact sources. R134 trace passes symbol-owner and stops at three
@@ -26,25 +43,29 @@ failure is an overlong fixture, now repaired; R146 accepts that whole owner19/19
 on `467abb121f9f…`, with verified publication and independent archive9 readback.
 R145's14-path discard-only port/guard cut covers all16 recorder implementations;
 two ordinary regressions are authored, NOT_RUN. Format is13/14, with inherited
-TaskLocal findings still open. Current JSON production3 calls are migrated after
-R144; three old decoder test calls and seven old scratch constructors remain
-under the active canonical owner. Current compile is UNKNOWN, not23 live errors.
+TaskLocal findings still open. At the current audit, all three old production
+calls and three old decoder test calls are migrated; inspected scratch constructors
+use external state. The current JSON cut remains under its canonical owner and
+needs compatible compilation/proof. R144's23 errors are historical.
 Genuine D4 custody/cause regression requires the paid SDK producer cut;
 the existing installed Scenario02 fixture uses ordinary preparation.
 
 Remaining dependency order:
 
-1. Complete SourceWire's JSON test/API cut and accept affected runtime/SDK owners
-   on one compatible frozen source; clear inherited formatting at that owner.
-2. Wire actual product pre-key arm/bind and owned RuntimeCtx receiving.
-3. Finish admitted final trace and checked snapshot → packet/memo receiving;
-   qualify the authored discard-only panic cleanup before positive finalization.
-4. Bind actual SDK repo/pinned-session axes into existing Source B FULL hydration
+1. Accept the current SourceWire JSON caller/test cut and affected runtime/SDK
+   owners on one compatible frozen source; repair the reached SQLite platform
+   imports and inherited owner formatting.
+2. Bind actual SDK repo/pinned-session axes into existing Source B FULL hydration
    and member selection; finish paid generation carrier, receipt/evidence keeper
    and live-base context. Verify the existing provider's coupled TARGET birth
    and D4 receiving path. The binder has an actual product caller.
-5. Run installed product acceptance and integrate the complete compatible bundle
-   into local main. No partial Semantica Native source commit is accepted.
+3. Wire actual product pre-key arm/bind and owned RuntimeCtx receiving; finish
+   admitted final trace and checked snapshot → packet/memo. Qualify discard-only
+   ordinary and genuine Original guard cleanup before positive finalization.
+4. Accept actual Shape/SCC/PTA/DFG/taint, language/features and SDK registry/deadline
+   consumer scopes; source presence is not passing execution.
+5. Run separate installed product acceptance and integrate the complete compatible
+   local-main bundle. Foreign staging observed during this audit is not a commit.
 
 Historical root proof: [R79 root R117–R120](../plans/oct-6-substrate-dedup/execution-r79.md#r79-root-r117r120-lower-owner-closure).
 On frozen source `45051e94534a…`, whole ContractIds82, ContractBase58 and
@@ -101,7 +122,8 @@ source routing, scoped accepted successors and the independent feature-policy
 commit are recorded in the execution record. General Original facts/DFG/PTA
 success and the Native source packet remain separate open implementation work.
 
-Latest observed source: Semantica `3b8f86dd9ea7` plus separately claimed WIP.
+Historical observation: Semantica `3b8f86dd9ea7` plus separately claimed WIP.
+The current main audit above supersedes this source label.
 The R78–R167 candidate receipts retain their own fixed input; none establishes
 whole-main runtime completion. Native allocation core all-features CHECK is
 GREEN with committed QBC publication (R87, zero tests). DFG keeper and Kernel

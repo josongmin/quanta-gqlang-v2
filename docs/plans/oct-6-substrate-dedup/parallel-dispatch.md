@@ -1,9 +1,30 @@
 # Parallel closeout dispatch — R78
 
-Updated: 2026-10-08. This is a plan, not an implementation or runtime verdict.
+Updated: 2026-10-09. This is a plan, not an implementation or runtime verdict.
 All execution is local. [R77 RCA](rca.md) owns cause analysis;
 [tickets](tickets.md) own scope/DoD and [remaining work](../../work/remaining.md)
 owns current states.
+
+## Current dispatch boundary — 2026-10-09
+
+Use the [current-main audit](execution-r79.md#current-main-audit--2026-10-09),
+Semantica `a63f536b1b3` plus selected WIP. This audit uses read-only A/C lanes;
+no worker edits, Cargo or Semantica staging are performed for this request.
+The original Shape/SCC source is already committed; do not assign another traversal.
+
+| Ready lane | Next owned work | Acceptance boundary |
+| --- | --- | --- |
+| JSON/platform owner | Current external-DATA production/tests are authored; repair SQLite cfg imports and inherited owner formatting | Compatible affected owner/runtime/SDK proof; old23 diagnostics are historical |
+| SDK producer owner | Genuine durable pair → FULL selection → paid generation/evidence/context → existing provider | Real Original TARGET/D4 success and refusal/cancel/refund; no ordinary fixture substitute |
+| Trace/runtime owner | Product pre-key arm/key + owned context, admitted finalizer/read → snapshot/packet/memo | Discard ordinary and genuine Original guard regressions, then actual positive receiving |
+| Consumer owners | Remaining Shape/SCC/PTA/DFG/taint, language/feature, registry/deadline scopes | Exact owner witnesses on a compatible supplier cut |
+| Root integrator | Reconcile shared claims/index and freeze the completed packet; run heavy owners serially | Publication/custody, separate installed product gates and complete local-main integration |
+
+Refresh claims and capacity before implementation; this table assigns boundaries,
+not authorization to overwrite foreign work. The Semantica index becomes populated
+by another integration during the audit; staging alone does not close any ticket.
+Source implementation lanes may proceed independently when ownership is disjoint;
+dependent compiler/product proof waits for the compatible supplier closure.
 
 Executed handoffs, source custody, serial main integration and owner outcomes
 are in [R79 onward execution](execution-r79.md). The capacity/error observations
@@ -355,9 +376,10 @@ remains separate.
 - C releases the14-path required discard port/guard cut after root finds two
   missing multiline implementations. All16 are covered; two ordinary regressions
   are authored, NOT_RUN. Format13/14; inherited TaskLocal findings remain.
-- Latest canonical JSON readback: three production calls migrated after R144;
-  three decoder test calls and seven scratch constructors remain with active83.
-  Coordinate that whole owner/test cut before new runtime/SDK acceptance.
+- R146 canonical JSON readback: three production calls migrated after R144 while
+  three decoder test calls and seven scratch constructors remained stale. The
+  current audit supersedes this inventory; inspected current calls use external
+  state. Coordinate the canonical owner and fresh runtime/SDK acceptance.
 - Actual product pre-key/owned-context receiving, admitted final trace/packet/memo
   and genuine SDK generation/receipt/preparation remain implementation work. Freeze
   and integrate one complete compatible bundle; keep Product acceptance separate.

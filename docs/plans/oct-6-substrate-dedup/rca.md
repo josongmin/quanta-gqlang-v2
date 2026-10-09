@@ -1,6 +1,6 @@
 # Closeout root-cause analysis — R77
 
-Updated: 2026-10-08. This records the R77 cause and dependency map for the
+Updated: 2026-10-09. This records the R77 cause and dependency map for the
 [18 active tickets](tickets.md). [Remaining work](../../work/remaining.md)
 owns their states. All execution is local.
 
@@ -12,6 +12,36 @@ Its `--no-deps` metadata result did not prove full locked dependency resolution;
 the later complete resolution and two reached pretest failures have separate inputs.
 
 ## Successor cause reconciliation
+
+Current source and proof: [2026-10-09 audit](execution-r79.md#current-main-audit--2026-10-09),
+Semantica `a63f536b1b3` plus selected WIP. The remaining causes are:
+
+- **Original objective:** Shape/SCC canonical owner routing is committed and its
+  five selected paths match HEAD. Further traversal rewrites have no demonstrated
+  need; remaining adapter/SDK/feature proof has its own tickets.
+- **API migration versus proof:** current JSON production/test calls are migrated
+  to external DATA. The old R14423-error report does not describe current source.
+  Compatible current owner compilation/publication is still pending.
+- **Producer birth gap:** genuine SDK FULL selector/provider/caller already exist,
+  but pair hydration refuses and preparation never returns success; production
+  Original receipt admission is absent. This blocks genuine D4 positive custody
+  before the receiver. An ordinary installed fixture cannot prove that producer.
+- **Consumer/output gap:** product arm/key and context copy require ordinary
+  values, Native finalization refuses and snapshot/packet/memo receiving is
+  ordinary-only. Completing event storage does not complete retained execution.
+- **Failure cleanup:** guard Drop now discards through all16 recorder implementors;
+  its ordinary and genuine Original regressions still need execution. Keep this
+  cleanup independent of intentional ordinary TraceFrame finalization.
+- **Platform prerequisite:** a newer Runtime request reaches three denied SQLite
+  unused imports. Linux-only spawn/environment/AsFd are imported outside the Linux
+  branch; unused OsStrExt also remains in current source. Repair their owner and
+  exercise affected platform branches; do not weaken unused-import denial.
+- **Evidence/integration gap:** lower and newer Java/Python GREEN receipts have
+  different source tuples. Shared WIP/index moves during the audit. Freeze a
+  compatible tuple before current acceptance and record complete committed paths.
+
+The numbered reconciliation below is historical unless an explicit successor
+source/result is given; current source facts above take precedence.
 
 - R87 reaches Core DFG's opaque nominal associated type and contract-types'
   comparator/callback signatures; their owning successor repairs pass those
@@ -372,9 +402,10 @@ validation walk, exceeding the512-byte contract. A263-byte common-prefix fixture
 preserves the128-comparison window,64-stop and both refund oracles. R146 accepts
 the whole relation owner19/19, with verified publication and stable archive9.
 This is a fixture repair, not a relaxed production limit.
-The latest read-only JSON refresh finds all3 old production calls migrated to
-external DATA;3 decoder test calls and7 scratch constructors are still stale.
-Claim83 remains active. Current compile is UNKNOWN; historical23 is not a live total.
+The R146 read-only JSON refresh found all3 old production calls migrated to
+external DATA, while3 decoder test calls and7 scratch constructors were stale.
+The current audit supersedes that caller inventory; compatible current compile
+remains unaccepted under the canonical owner. Historical23 is not a live total.
 
 The guard Drop seam is separate from deliberate RAII trace finalization:
 `TraceFinalizeGuard` only cleans failed/abandoned executions and must discard

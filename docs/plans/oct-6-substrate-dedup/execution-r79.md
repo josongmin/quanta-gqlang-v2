@@ -5,7 +5,98 @@ within the existing [18-ticket queue](tickets.md). All execution is local.
 Source integration, WIP implementation, compilation and product acceptance are
 separate states. The [R77 RCA](rca.md) retains its original inputs.
 
-Latest root closure: [R121–R146](#r79-root-r121r128-successor-closure).
+Latest source audit: [2026-10-09 current main](#current-main-audit--2026-10-09).
+The [R121–R146](#r79-root-r121r128-successor-closure) runs retain their exact inputs.
+
+## Current main audit — 2026-10-09
+
+Read-only source audit at 16:18 KST:
+
+- QGLang `main`: `09276c57d279976f86d02a92e4c8654aab2bc19f`, clean before
+  this documentation update. There is no non-document delta from the accepted
+  local CI HEAD `67377d561da8428b8abec7214ef5e3da46922d46`.
+- Semantica `main`: `a63f536b1b3fa6e6990acd3dff0b6ef8a8f1a740` plus shared WIP.
+  Python rewrite lifetime repair `21807603e47` and Java hierarchy loan lifetime
+  repair `a63f536b1b3` are now committed. The five original Shape/SCC paths match
+  HEAD, have no dirty diff and are unchanged from R146. A's 13 selected JSON/SDK
+  paths and C's 24 selected trace paths are stable before/after; root readback
+  finds no drift. This is selected-source evidence, not an atomic whole-WIP capture.
+- The foreign Semantica index changes during the audit: empty initially, then
+  4,828 staged paths at 16:18 KST. Root performs no Semantica edit/stage/commit.
+  Staging is not completed integration; refresh HEAD/index before the next run.
+- Evidence in the existing root: `current-audit-oct9-root-source.json`,
+  `current-audit-oct9-sdk-json-a.json`, `current-audit-oct9-trace-c.json` and
+  `current-audit-oct9-newer-owner-receipts.json`.
+
+### Implemented and remaining boundaries
+
+| Boundary | Current source | Remaining acceptance or implementation |
+| --- | --- | --- |
+| Original Shape/SCC dedup | Committed canonical Shape adapter and iterative SCC owner; PTA/worklist reuse it | Actual adapter/SDK/feature and remaining consumer proof; no new traversal owner |
+| SourceWire JSON | All three R144 old production calls and three R146 old decoder test calls are gone; inspected scratch constructors now receive external state | Claim83 owns the cut; fresh compatible owner/runtime/SDK compilation and test acceptance, not the old 23-error count |
+| Trace cleanup | All14 R145 postimages match; all16 known recorder implementations supply discard; guard Drop discards without finalization/publication | Two ordinary regressions and genuine Original B/A guard proof NOT_RUN; inherited TaskLocal formatting remains |
+| SDK Original generation | Genuine FULL hydration/selection primitives, paid binding provider and actual composition caller exist | Pair hydration refuses; preparation always ends in refusal, including hypothetical hydration success; production does not construct Original receipt admission. Complete paid pair/selection/evidence/context birth before D4 positive proof |
+| Original product trace | Paid B/A capture/event owner exists | Product pre-key arm/bind still ordinary; borrowed-context helper copies ordinary; Native finalizer returns UnsupportedAllocation; no concrete admitted trace read implementation; final snapshot/packet/memo still require ordinary DTOs |
+| Native identity receiving | R320–R324 external DATA/borrowed descriptor and terminal operation split are recorded in the existing owner document | Source-only; five genuine terminal regressions, SDK FULL/private join, D4 direct guards and broader payload/HIR receiving remain unqualified |
+
+### Original QGLang hardening request
+
+Current Tokei code lines / physical lines: `document.rs`611/672,
+`execution.rs`1200/1375, `types/check.rs`1157/1197,
+`types/solver.rs`1083/1136, `test_support.rs`1950/2348. Module cuts and mega-suite
+splits are present. The size policy has production1200/test2500 and no exceptions;
+execution is exactly at its code-line ceiling. `static` includes size lint,
+current Clippy and MSRV Clippy. Closed-authority conformance covers all18 shipped
+examples, and the frontend contract contains its public DTO field map.
+
+`ExecutionDocumentV3` is physically declared in Pipeline and publicly reexported
+by the curated frontend-contract facade. A literal DTO declaration move is not
+complete; it is a separate ownership/cycle/compatibility decision outside this
+substrate closeout. Local fuzz smoke exists outside CI/qualification; automatic
+fuzz scheduling is not implemented in this closeout. Hosted CI remains excluded
+by the user's local-only choice.
+
+### Recorded proof and current verification limits
+
+- QGLang local CI:1514/1514 at `67377d561da…`, external positive1/negative23 and
+  public roots156. Source continuity holds; this audit does not rerun CI or
+  issue an exact-current-HEAD qualification receipt.
+- Lower historical published scopes: SourceWire259 at R124, QCP387 at R132 and
+  relation19 at R146. They retain separate source tuples and custody readbacks.
+- Newer centrally stored receipts: Java binary symbol authority whole-lib,
+  all-features76/76 on `b26c1d3860c6…`, run
+  `20261008T212602.405917Z-a28b90eb362d`; Python type-facts module7/7 with268
+  filtered on `d8f9ed792941…`, run `20261008T212117.049590Z-53fd27940840`.
+  Attestation/result agree and publication markers match receipt SHA-256.
+  This audit does not independently bind their archived source/postflight to
+  current shared WIP; they are recorded scoped results, not whole-main acceptance.
+- A newer Runtime search-admission exact request on `65384d4e593f…`, run
+  `20261008T214257.867269Z-bf67dd33a463`, exits101 with zero tests: three denied
+  unused imports in SQLite reader/source-files. Current source still imports
+  Linux-only spawn/environment/AsFd outside its Linux branch, and imports unused
+  OsStrExt. Repair at that platform owner; this is a different request from
+  Native trace and does not establish a current whole-tree diagnostic count.
+- No new Cargo, QBC, installed Graph/CHECK or runtime product run in this audit.
+  Current affected Native owner acceptance remains pending.
+
+### Final action order within existing tickets
+
+1. **FCP-COMPILE / SUBSTRATE-POLICY:** accept the current JSON caller/test cut,
+   repair the reached SQLite platform imports and inherited owner formatting;
+   freeze a compatible input and run affected owner requests with publication
+   and source custody. Reuse existing passing scopes only with matching inputs.
+2. **CHECKED-RETAINED-CONTROL:** finish SDK Original durable pair hydration → FULL
+   selection → paid generation/evidence/build context → existing provider and
+   D4 receiver. Prove actual success, first refusal/cause, cancellation and refund.
+3. **CHECKED-RETAINED-CONTROL:** finish product pre-key arm/key and owned RuntimeCtx
+   receiving, admitted trace finalization/read, checked snapshot and packet/memo.
+   First accept discard-only ordinary and genuine Original guard regressions.
+4. **D1/D2/D3, CHECKED-DEFUSE, F2/F7:** accept remaining real Shape/SCC/PTA/DFG/taint,
+   language/feature and SDK registry/deadline consumers on the compatible bundle.
+   Source-ready fixtures and a compiled facade do not close these tickets.
+5. **FCP-PROCESS / SUBSTRATE-PRODUCT:** run separate installed Graph/CHECK oracles
+   with release trust prerequisites, then integrate the complete proven local
+   main bundle. Record actual committed paths; staging alone is not completion.
 
 ## Inputs and custody
 

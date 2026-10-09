@@ -40,6 +40,15 @@ assignment alone does not transfer another owner's files.
 
 ## Queue and state snapshot
 
+Current source/proof reconciliation:
+[2026-10-09 audit](execution-r79.md#current-main-audit--2026-10-09), QGLang
+`09276c57d279`, Semantica `a63f536b1b3` plus shared WIP. Original Shape/SCC's five
+paths are committed, clean and unchanged. Python/Java lifetime repairs are now
+committed. Current JSON production/test callers use external state; the obsolete
+R146 stale-call assignment is superseded. Current Native compilation is not
+accepted; the newer Runtime search request stops at SQLite platform imports.
+Foreign Semantica staging during the audit is not completed integration.
+
 The original Shape/SCC dedup source and owner routing are committed on main;
 no additional traversal implementation is assigned. Rows below retain their
 acceptance/publication obligations and the subsequently added Native/Original
@@ -62,7 +71,7 @@ scope. Implementation, frozen owner proof and product qualification are separate
 | D4/D5-CUSTODY | P1 | SCOPED_ACCEPTED | SCV2 34 + solver225/API2 accepted; active source closures match main f574 |
 | SUBSTRATE-POLICY | P1 | INCOMPLETE | Scoped Honesty/GOD/boundary checks pass; Python-search floor policy bundle integrated as3b8f86d; whole affected policy closure remains |
 | F2 | P1 | PROOF_PENDING | Native registry and real Preview path |
-| FCP-COMPILE | P0 | BLOCKED_COMPILE | Native packet remains WIP. R79-family R98 finite PTA error1, R99 PTA result37 and R103 whole Core447 are accepted on separate frozen sources. R106 Kernel557/11 is historical; R183 R107 frozen Kernel whole-lib569/569 and R192 separate driver11 have committed QBC publication on the same frozen source; R201 final postflight has four other owners RED before tests and three dependent selectors not run. Runtime trace reaches34 symbol checked-carrier errors; PTA/Taint share one now-repaired Java lifetime error. SCC feature-off Parse retention is repaired. R190's frozen PTA/DFG mount failure is fixed in live source and the R191 capture; R193 found no concrete static regression in the mounted 14-path PTA successor. R194 runs the R191 three-case SDK owner request but stops at one Kernel E0412 before tests; R205 finds the alias repair live, while R206 successor capture refuses moving untracked input after three attempts. Complete the whole external caller/authority cut and compatible integration; historical diagnostic counts are not current live defect totals. Separate R82 candidate: interproc1105 and actual fallback1 have committed owner receipts; R155 canonical-error capture is superseded, and R158 Taint CHECK stops at thirteen Kernel diagnostics with zero tests. Live caller closure and coupled integration remain open. |
+| FCP-COMPILE | P0 | ACCEPTANCE_PENDING | Compatible Native caller/authority bundle remains unaccepted. Current JSON old production/test APIs are migrated. Repair the reached SQLite platform imports and inherited owner formatting, then capture and prove affected runtime/SDK owners. Historical R98 PTA error1, R99 PTA result37, R103 Core447, R183 Kernel569 and R192 driver11 retain their recorded sources. The separate newer Java76/Python type-facts7 published scopes do not qualify current WIP. Older 34/33/23-error reports are not current defect totals. SDK pair/preparation/receipt and trace finalization remain real implementation seams; complete coupled integration requires their actual consumer proof. |
 | FCP-PTA | P1 | REVERIFY | Historical PTA bootstrap refusal; reproduce on current source |
 | FCP-PROCESS | P1 | NOT_RUN | Real Graph/CHECK daemon process results |
 | FCP-INSTALL | P1 | EXTERNAL_PREREQUISITE | Release-owned installed Linux CHECK trust |
@@ -401,7 +410,7 @@ semantics. Extend policy/owner inventory only where current coverage is absent.
   reaches R142 interproc whole lib/all-features **1,104/1,104 GREEN**, committed
   QBC publication, source `e33930b2c05cdc0825447ddf467a808b92631e8f731d6a001f46c38f6f81ff6b`.
   See the [current checkpoint](../../work/substrate-repair-checkpoints-2026-10-07.md#fixed-candidate-compile-and-ownership-checkpoints).
-  The broad ticket stays `BLOCKED_COMPILE`: live external callers, canonical
+  The broad ticket stays `ACCEPTANCE_PENDING`: live external callers, canonical
   Kernel/SourceText/RuntimeCtx feature closure and coordinated main integration
   remain required. The R79 execution family below retains its own inputs.
 - **Earlier R79-family reached cut:** R92 parser stops on two finite error projections
@@ -473,7 +482,7 @@ semantics. Extend policy/owner inventory only where current coverage is absent.
  0 tests on the fixed f574 sibling tuple. Its missing publication marker keeps
  it a pretest compile diagnostic. The [R72/R73 handoff](../../work/substrate-repair-checkpoints-2026-10-07.md#r72r73-d5-closeout-and-independent-main-diagnostics)
  separates that current block from independently published worklist and D4/D5
- acceptance. State: BLOCKED_COMPILE; existing module/supplier postimages remain
+ acceptance. State: ACCEPTANCE_PENDING; existing module/supplier postimages remain
  co-owned, and full SDK/runtime build is unqualified.
 - DoD: freeze committed Semantica/GQLang/Index and actual original-session/QMP
   closure, resolved toolchain/features/root; canonical SDK/runtime product build
@@ -583,7 +592,7 @@ product gates still need execution on one compatible source tuple. See the
 
 ## R107 final proof checkpoint
 
-Root successor: [R121–R146](execution-r79.md#r79-root-r121r128-successor-closure).
+Historical root successor: [R121–R146](execution-r79.md#r79-root-r121r128-successor-closure).
 R124 SourceWire259 and R132 QCP387 are published whole-target GREEN on their
 separately recorded sources. Symbol-owner and BuildContext compile diagnostics
 are passed by their successors. R134 trace stops at three relation-authority
@@ -607,9 +616,11 @@ R146 accepts its whole owner19/19 on `467abb121f9f…`, with verified publicatio
 and independent archive9 readback. R145 authors the14-path discard-only guard cut and
 two ordinary regressions; all16 recorder implementations supply the port.
 Rust is NOT_RUN and aggregate format is not accepted (13/14, inherited findings).
-Current JSON production3 calls are migrated; three old decoder test calls and
-seven scratch constructors remain under the active canonical owner. Current
-compilation is UNKNOWN; R144's23 errors retain their historical source.
+At R146, production3 calls were migrated while three decoder test calls and seven
+scratch constructors were stale. The current audit above supersedes that source
+observation: inspected production/test/constructor calls use external state.
+Current compatible compilation remains unaccepted; R144's23 errors retain their
+historical source.
 Genuine D4 receiving/cause-precedence
 regression requires the paid SDK producer cut; installed Scenario02 remains
 ordinary and does not issue the genuine Original binding birth.
