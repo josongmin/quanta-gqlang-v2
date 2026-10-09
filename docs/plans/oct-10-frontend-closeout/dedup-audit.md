@@ -356,6 +356,10 @@ Nextest1524)다. 이는 아래 변경 후 source의 qualification이 아니며 �
 - 최초 compile 단계의 이동된 lib name/unused exports/dev dependencies, 새 opaque carrier의 accessor와
   test Debug, Python workspace count assertion을 수정했다. 초기 로그는 ignored audit 디렉터리에
   보존한다. 현재 owner proof는 `dto-owner-tests.log`; full 성공은 현재 HEAD receipt로만 판정한다.
+- 최초 full qualification `f7b79e9d82485411c0ffc3535bd01008eff52678`는 새 contract `lib.rs`의
+  1202 code lines에서 size gate exit1로 중단했다. 해당 SHA의 receipt/log를 보존한다.
+  Rename Command DTO와 owner projection을 private `command.rs`로 분리하고 root에서 기존
+  public 이름을 재공개한다. field visibility는 contract crate 내부이며1200 상한/예외는 바꾸지 않았다.
 - normative frontend contract, ADR-0003, language owner stack, test ledger와 QFC-03를 함께 갱신했다.
   초기 F01 subtree match는 과거 입력 증거다. D07은 facade/pipeline subtree와 dependency closure를
   바꾸므로 QFC-02/E13에서 paired source pins·consumer proof를 갱신해야 한다. Semantica 파일은 수정하지 않았다.

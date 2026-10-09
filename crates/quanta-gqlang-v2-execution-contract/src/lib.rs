@@ -35,17 +35,16 @@ use quanta_gqlang_v2_sema::{
     EmitModeV1, EvidenceModeV1, ExportFormatV1, ExpressionTypeStateV2, GraphDirectionV2,
     GraphQueryKindV1, GraphReferenceKindV2, GraphReferenceRoleV2, JoinModeV2,
     LogicalQuantifierKindV2, NullOrderV2, RelationAuthorityV2, RelationExistsPolarityV2,
-    RelationOutputContractV2, RenamePhaseV3, ResolvedCallTargetV2, ResolvedCompositionBodyV2,
+    RelationOutputContractV2, ResolvedCallTargetV2, ResolvedCompositionBodyV2,
     ResolvedCompositionProducerV2, ResolvedCompositionV2, ResolvedExplainTargetV2,
     ResolvedGraphTargetV2, ResolvedGraphUseV2, ResolvedPresentationKindV2,
-    ResolvedRelationSourceKindV2, ResolvedRenameCommandV3, SampleModeV1, ScalarTyV1,
-    SemanticDocumentV2, SemanticItemIdV2, ShowCategoryV1, SortDirectionV2, SourceIdV2,
-    SourceQualifiedNodeIdV2, TruthModeV1, TypedCallArgumentV2, TypedExprShapeV2, TypedExprV2,
-    TypedLiteralFactV2, TypedLiteralValueV2, ValueTypeV1,
+    ResolvedRelationSourceKindV2, SampleModeV1, ScalarTyV1, SemanticDocumentV2, SemanticItemIdV2,
+    ShowCategoryV1, SortDirectionV2, SourceIdV2, SourceQualifiedNodeIdV2, TruthModeV1,
+    TypedCallArgumentV2, TypedExprShapeV2, TypedExprV2, TypedLiteralFactV2, TypedLiteralValueV2,
+    ValueTypeV1,
 };
 #[cfg(test)]
 use sha2::{Digest as _, Sha256};
-use std::sync::Arc;
 
 pub use quanta_gqlang_v2_sema::OperatorSemanticKindV2 as ExecutionOperatorKindV3;
 pub use vocabulary::{
@@ -197,96 +196,9 @@ pub enum ExecutionFamilyV3 {
     RuleProgram,
 }
 
-/// Exact host-issued code symbol carried by a compiled rename intent.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ExecutionSymbolTargetV3 {
-    selector: Arc<str>,
-    repo_path: Arc<str>,
-    symbol_id: Arc<str>,
-    start_byte: u64,
-    end_byte: u64,
-}
-impl ExecutionSymbolTargetV3 {
-    #[must_use]
-    pub fn selector(&self) -> &str {
-        &self.selector
-    }
-    #[must_use]
-    pub fn repo_path(&self) -> &str {
-        &self.repo_path
-    }
-    #[must_use]
-    pub fn symbol_id(&self) -> &str {
-        &self.symbol_id
-    }
-    #[must_use]
-    pub const fn start_byte(&self) -> u64 {
-        self.start_byte
-    }
-    #[must_use]
-    pub const fn end_byte(&self) -> u64 {
-        self.end_byte
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ExecutionCommandPhaseV3 {
-    Preview,
-    Apply,
-}
-
-/// Source-bound rename intent. `expected_snapshot` and `preview_token` are
-/// untrusted preconditions; this DTO never conveys a mutation grant.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ExecutionRenameCommandV3 {
-    target: ExecutionSymbolTargetV3,
-    new_name: String,
-    phase: ExecutionCommandPhaseV3,
-    expected_snapshot: String,
-    preview_token: Option<String>,
-}
-impl ExecutionRenameCommandV3 {
-    #[must_use]
-    pub const fn target(&self) -> &ExecutionSymbolTargetV3 {
-        &self.target
-    }
-    #[must_use]
-    pub fn new_name(&self) -> &str {
-        &self.new_name
-    }
-    #[must_use]
-    pub const fn phase(&self) -> ExecutionCommandPhaseV3 {
-        self.phase
-    }
-    #[must_use]
-    pub fn expected_snapshot(&self) -> &str {
-        &self.expected_snapshot
-    }
-    #[must_use]
-    pub fn preview_token(&self) -> Option<&str> {
-        self.preview_token.as_deref()
-    }
-}
-
-fn project_command(command: &ResolvedRenameCommandV3) -> ExecutionRenameCommandV3 {
-    let target = command.target();
-    ExecutionRenameCommandV3 {
-        target: ExecutionSymbolTargetV3 {
-            selector: target.clone_selector_storage_v3(),
-            repo_path: target.clone_repo_path_storage_v3(),
-            symbol_id: target.clone_symbol_id_storage_v3(),
-            start_byte: target.start_byte(),
-            end_byte: target.end_byte(),
-        },
-        new_name: command.new_name().to_owned(),
-        phase: match command.phase() {
-            RenamePhaseV3::Preview => ExecutionCommandPhaseV3::Preview,
-            RenamePhaseV3::Apply => ExecutionCommandPhaseV3::Apply,
-        },
-        expected_snapshot: command.expected_snapshot().to_owned(),
-        preview_token: command.preview_token().map(str::to_owned),
-    }
-}
+mod command;
+use command::project_command;
+pub use command::{ExecutionCommandPhaseV3, ExecutionRenameCommandV3, ExecutionSymbolTargetV3};
 
 /// A checked catalog identity. The variant supplies the namespace; a host
 /// must still resolve this identity against its admitted catalog generation.
