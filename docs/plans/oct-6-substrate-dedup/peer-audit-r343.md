@@ -10,11 +10,77 @@ compiler, runtime, product or installation results.
 | ID | Classification | Required completion |
 | --- | --- | --- |
 | W1 | R348 repair plus R352 regression source and unused-wrapper removal applied; not compiled or qualified | Execute helper and full Java/Python Source custody/refund proof, then integrate the coupled source |
-| A2 | R353 genuine fixture context and Source failure forwarding repaired; exact-key final consumer still ordinary-only | One supplier-owned key contract, reachable consumers connected, genuine positive and negative execution proof |
+| A2 | R353 fixture/context repair retained; R354 adds strict alias/nonzero final regressions; exact-key final consumer still ordinary-only | One supplier-owned key contract, reachable consumers connected, genuine positive and negative execution proof |
 | T2 | Confirmed R346 defect; existing owner's R347 source correction independently reviewed | Execute genuine Source-zero positive and rejection/finisher regression; runtime not run |
 | T1 | Initial static false-pass possibility; successor pre-final regression authored by the existing topology lane | Execute the positive and strict negative tests through the actual pre-final owner; current execution remains unproved |
 
-### Current checkpoint — R353
+### Current checkpoint — R354
+
+Observed: 2026-10-10 KST. QGLang parent
+`ad3ae75dd0c7c589b14d101b2479a10e82d8db1a`; Semantica
+`e234efb0c1b15cd5001c5f129a9f019315a1acc5` plus shared staged work.
+Before this cut, all fifteen R352 and four R353 postimages still matched their
+saved hashes. None of those nineteen worktree files matched Semantica HEAD;
+none contained the old reviewed postimage at HEAD. Whole-file differences do
+not classify the integration of every individual hunk. Direct anchor readback
+confirms HEAD still has the removed return wrapper, lacks the
+allocator-error-bank helper/caller successor and new
+custody test module, and lacks the R353 checked-unit fixture successor and child
+tests. The Java caller also lacks the external workspace partial/error banks.
+The complete reviewed bundle remains unintegrated despite foreign staging.
+This chat performs no Semantica index/ref mutation or Rust execution.
+
+R354 extends only the existing test module under its own reconciled claim.
+One test-only helper reuses the genuine inventory, session, FD capture, pin,
+external issue banks and production final issuer. Existing no-op default and
+alternate-context cases retain their literal final FunctionRef count 0. New
+alias and returning-lambda positives require final counts 0 and 1 respectively;
+the lambda also requires pre-final `ExactFunctionReferences(1)`. There are now
+six child tests, three final-generation tests gated by the existing feature.
+No new fixture provider, public interface, engine or Source authority is added.
+AST, exact-file rustfmt, scoped LLM guardrails and diff checks pass; both peer
+reviews find no new actionable defect. **All six Rust tests remain NOT_RUN.**
+
+The remaining implementation is a coupled supplier/consumer cut, not another
+dedup engine:
+
+1. The actual Source DFG producer must publish an authenticated exact lookup key
+   or checked key-to-declaration/ordinal mapping. It currently publishes semantic
+   identity, evidence and stable declaration, without the DFG lookup tuple.
+2. PTA occurrence creation must consume that contract through its existing
+   external index birth; the actual caller still unconditionally visits ordinary
+   DFG rows. Merely connecting that currently ordinary-only birth is insufficient.
+3. Selected-key lookup and selected-row validation must read the same Source
+   contract. Preserve duplicate/missing/foreign/stale rejection, original
+   operation checks, full error/partial custody and first-cause selection.
+4. Convert the existing full native fixture and its owned-Arc consumer together
+   using the actual Original supplier. The new final tests do not migrate that
+   public fixture. Source lambda additionally needs its genuine final SSA/binding
+   producer; unresolved `BindingRequired` must remain a typed refusal.
+5. Execute the helper and full Java/Python custody/refund proofs, pre-final
+   positive/negative tests, all final-generation cases and affected consumer
+   owners on one compatible source tuple; integrate the coupled bundle only
+   after its required gates. Current owner/product acceptance remains open.
+
+Two independent current-source audits trace the real PTA -> DFG -> final PTA
+path and confirm that Source is rejected by the ordinary DFG payload reader.
+No successful result corruption was reproduced. The final lambda count 1
+regression would reject a zero/drop finalizer when run; it does not directly
+assert the private Source member variant or replace producer authenticity proof.
+The active supplier chat is still implementing its source bundle and holding
+compiler/tests/bench execution. It was inspected read-only; this chat sent no
+messages or duplicate implementation request.
+
+Detailed evidence: `r354-state-preflight.json`, `r354-a2-current-audit.json`,
+`r354-fixture-current-audit.json`, `r354-final-fixture-tests-preflight.json`,
+`r354-final-fixture-postimage-type-review.json`,
+`r354-final-fixture-postimage-oracle-review.json` and
+`r354-final-fixture-static-results.json`, plus
+`r354-semantic-integration-anchors.json`, in the evidence directory below.
+The existing CHECKED-RETAINED-CONTROL and FCP-COMPILE tickets retain these
+implementation/proof exits; this audit adds no ticket or qualification claim.
+
+### Previous checkpoint — R353
 
 Observed: 2026-10-10 KST. QGLang parent
 `9a5e8e5e4be6f0dce34202a1b4dea7937d1142d4`; Semantica

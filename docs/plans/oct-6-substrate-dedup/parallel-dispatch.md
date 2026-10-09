@@ -5,6 +5,16 @@ All execution is local. [R77 RCA](rca.md) owns cause analysis;
 [tickets](tickets.md) own scope/DoD and [remaining work](../../work/remaining.md)
 owns current states.
 
+Peer repair lane: [R354](peer-audit-r343.md#current-checkpoint--r354) confirms
+the complete R352/R353 source custody/fixture bundle is not integrated at
+Semantica `e234efb0c1b`, confirmed by missing API/test anchors.
+Final alias/nonzero-lambda regression source is added without a
+second issuer. Keep Source DFG exact-key publication, PTA occurrence index and
+selected validation in the existing W2/W3 supplier/consumer bundle; connect the
+full fixture/owned-Arc consumer together. Execute and integrate that compatible
+bundle through the existing serial owner queue. This peer source-only lane does
+not accept Rust/product results or reopen D1–D7.
+
 Latest local frontend CI:1514/1514 at `2d5b1852f077` plus document WIP.
 Later frontend changes through observed main `5ec537f48e92` are documentation only.
 Cut9 downstream DFG facts passes157/157 on its own exact source with verified

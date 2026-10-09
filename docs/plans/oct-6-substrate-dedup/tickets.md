@@ -40,6 +40,17 @@ assignment alone does not transfer another owner's files.
 
 ## Queue and state snapshot
 
+Independent peer successor: [R354](peer-audit-r343.md#current-checkpoint--r354).
+CHECKED-RETAINED-CONTROL includes the authored namespace/fixture Source repairs
+and now strict final alias/FunctionRef=1 regression source. Exact Source DFG
+key/selected-row publication and consuming PTA index/validation are still code
+work; full ordinary-Arc fixture conversion remains coupled to the actual
+supplier. FCP-COMPILE still requires executed owner proof and complete committed
+integration. None of the nineteen reviewed file postimages matches observed
+Semantica `e234efb0c1b` HEAD; direct missing-API/test anchors establish incomplete
+bundle integration. Whole-file differences do not classify every earlier hunk.
+Authored tests and foreign staging close neither ID.
+
 Current source/proof reconciliation:
 [2026-10-09 completion plan](parallel-dispatch.md#current-completion-plan--2026-10-09),
 QGLang observed `5ec537f48e92`, Semantica `8217a38bf04d` plus shared WIP. Original Shape/SCC's five

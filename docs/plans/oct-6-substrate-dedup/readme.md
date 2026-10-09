@@ -1,5 +1,13 @@
 # Substrate closeout execution plan
 
+Peer repair closeout: [R354 current source and exact remaining cut](peer-audit-r343.md#current-checkpoint--r354).
+The complete reviewed repair bundle is not integrated at Semantica HEAD
+`e234efb0c1b`, confirmed by missing API/test anchors. Strict final alias and
+nonzero-lambda regressions are now authored.
+Exact Source DFG key publication, PTA index/selected validation, full fixture
+conversion, execution proof and coupled integration remain open under existing
+CHECKED-RETAINED-CONTROL/FCP-COMPILE. No extra engine or ticket is proposed.
+
 Current execution order and final acceptance:
 [2026-10-09 W0–W7 completion plan](parallel-dispatch.md#current-completion-plan--2026-10-09).
 It maps all18 active tickets to owner paths, dependencies, three implementation

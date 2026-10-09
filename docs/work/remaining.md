@@ -10,6 +10,15 @@ QGLang `661f87d38dae` and latest Semantica `e234efb0c1b` plus separately invento
 The16:18/16:48 audits retain their own inputs. The later main commit imports
 source; current owner acceptance remains pending.
 The audit distinguishes committed source, authored source and accepted execution.
+Peer repair successor [R354](../plans/oct-6-substrate-dedup/peer-audit-r343.md#current-checkpoint--r354)
+rechecks all nineteen R352/R353 source files: the complete reviewed bundle is
+not integrated at Semantica HEAD, confirmed by missing API/test anchors.
+It adds final alias and nonzero-lambda regression source
+through the same Original fixture/production issuer (six child tests total,
+NOT_RUN). The concrete remaining code is authenticated Source DFG key/mapping
+publication, PTA index and selected-row consumption, and the coupled full
+fixture/owned-Arc caller conversion. Existing CHECKED-RETAINED-CONTROL and
+FCP-COMPILE retain their owner-proof and committed integration requirements.
 Native topology receiving is source-authored at [R337–R338](../plans/oct-6-substrate-dedup/native-identity-boundary.md#retained-topology-receiving--r337r338), against QGLang `c411d60c7627` and Semantica `a63f536b1b3` plus exact six-path WIP. The earlier [R333 source reconciliation](../plans/oct-6-substrate-dedup/native-identity-boundary.md#current-source-reconciliation-and-remaining-work--r333) retains its input. QGLang local CI R334 passes1,514 tests and facade1/23 before the receipt note. Downstream compiler/tests/QBC/publication are NOT_RUN for R338.
 
 - **Committed:** original Shape/SCC owner routing, QGLang hardening, Python search
