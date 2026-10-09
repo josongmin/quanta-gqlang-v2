@@ -10,11 +10,38 @@ compiler, runtime, product or installation results.
 | ID | Classification | Required completion |
 | --- | --- | --- |
 | W1 | R348 repair plus R352 regression source and unused-wrapper removal applied; not compiled or qualified | Execute helper and full Java/Python Source custody/refund proof, then integrate the coupled source |
-| A2 | Staged Source integration partly connected for ExactZero; final-generation consumer still ordinary-only | One supplier-owned contract, all reachable consumers connected, genuine positive and negative proof |
+| A2 | R353 genuine fixture context and Source failure forwarding repaired; exact-key final consumer still ordinary-only | One supplier-owned key contract, reachable consumers connected, genuine positive and negative execution proof |
 | T2 | Confirmed R346 defect; existing owner's R347 source correction independently reviewed | Execute genuine Source-zero positive and rejection/finisher regression; runtime not run |
 | T1 | Initial static false-pass possibility; successor pre-final regression authored by the existing topology lane | Execute the positive and strict negative tests through the actual pre-final owner; current execution remains unproved |
 
-### Current checkpoint — R352
+### Current checkpoint — R353
+
+Observed: 2026-10-10 KST. QGLang parent
+`9a5e8e5e4be6f0dce34202a1b4dea7937d1142d4`; Semantica
+`8217a38bf04d6c2fb2a535d43753408ac4621972` plus concurrent work.
+Four test-support source files changed under the reconciled
+`OCT10-GQLANG-ORIGINAL-FIXTURE-CONTEXT-R353` claim. Source is applied and
+statically checked; Rust compilation, tests, QBC, runtime and coupled main
+integration remain unproved. This chat did not stage, commit or push Semantica.
+Other writers staged three matching postimages and one differing postimage;
+index presence is not committed integration.
+The R353 claim was released after final source revalidation and both peer
+reviews. All fifteen R352 postimages were also rechecked without drift.
+
+The fixture now carries the supplied build context through the existing actual
+FD/binary/Parser path. Its two creation callbacks forward failure through the
+existing authenticated execution Source unit API. The new final-generation
+regression calls the production Original issuer with external DATA under the
+same execution and FD loan. It is an authored no-op regression, **NOT_RUN**;
+it does not close A2 or prove nonzero FunctionRef preservation.
+
+W1 retains its R352 source repair and still needs Java/Python owner execution.
+T1 and T2 retain their reviewed source repairs and unrun owner tests. A2's exact
+DFG key/selected-row bridge and genuine final lambda path remain existing-owner
+work. No additional engine, provider, Source authority or frontend contract was
+introduced by R353.
+
+### Previous checkpoint — R352
 
 Readback: QGLang parent `c3dbeb2900618c7623f4ebb96034cc5ac883b59f`;
 Semantica `8217a38bf04d6c2fb2a535d43753408ac4621972` plus concurrent changes.
@@ -258,10 +285,76 @@ still has no construction caller and uses the same ordinary reader internally.
 Selected-row lookup and validation also remain ordinary-only. These are
 fail-closed integration gaps, not evidence of fabricated successful results.
 
-All fourteen inspected full-fixture paths are unchanged from R350. The exact-key
+At R352, all fourteen inspected full-fixture paths were unchanged from R350. The exact-key
 and fixture co-cut above remains open. Current supplier and consumer traces are
 recorded separately in `r352-a2-producer-successor-review.json` and
 `r352-a2-consumer-successor-review.json`; no Rust execution was performed.
+
+### Genuine fixture context and Source failure forwarding — R353
+
+Paths below are relative to Semantica's
+`packages/analysis/quanta-v2/crates/quanta-runtime-test-support-pta/src/`.
+
+| Code | Before | Applied source |
+| --- | --- | --- |
+| `exact_native_generation_fixture_v1/original_inventory_fixture_v3.rs` | Private producer took source/path/module and hardcoded its build digest | Reuses existing `FixtureSourceSpecV3`; supplied digest reaches both Parser axes/request and actual binary provider |
+| Same file, `issue_original_inventory_v3` | Inner failure was parked but callback always returned success | Existing authenticated execution Source unit front receives the actual unit result; full causes and products stay external until Source returns |
+| Same file, `seal_inventory_after_retained_v3` | Parser Err became a boolean plus callback Ok; Parser cause was selected before Source error | Parser unit status passes unchanged; the canonical Source bank selects provider/protocol cause first, then the existing Parser births supply the consumer cause |
+| Same file, `transfer_inventory_failure_v3` | World failure-transfer result was discarded | Transfer failure returns existing typed `OriginalRetentionRefused`; successful transfer retains the original World error |
+| `exact_native_generation_fixture_v1.rs` and `exact_native_generation_fixture_v1/topology_v3/tests.rs` | Existing callers used three positional strings | All seven existing callers explicitly preserve the default digest |
+| `exact_native_generation_fixture_v1/original_inventory_fixture_v3/tests_v3.rs` | No original-context/final-generation regression in this module | Four tests are mounted; final-generation test is gated by existing `original-source-dfg-fixture` |
+
+The Source API is supplied by the existing QueryExecutor/Runtime owner:
+`with_original_execution_source_control_into_birth_v3`. It retains the existing
+`original_execution_authority_v3` precheck and canonical session finisher. R353
+consumes it and the existing `RuntimeOriginalSourceControlReadBirthV3`; it does
+not implement another Source front or edit the supplier. The two fixture
+creation callbacks now stop with Err when their consumer fails. Source runtime
+causes are transferred only after the highest execution Source returns, before
+selecting the already parked Parser/consumer cause.
+
+Registered regressions, all **AUTHORED_NOT_RUN**:
+
+- `original_inventory_preserves_explicit_build_context_v3`: reads genuine
+  retained axes and expects the literal 64-character hex encoding of `[0x62;32]`.
+- `inventory_preserves_source_refusal_ahead_of_consumer_failure_v3`: actual
+  execution session plus an injected sticky `Cancelled` must return the typed
+  Source cause ahead of a distinct parked consumer failure. This proves intended
+  cause selection when executed; it is not a lifecycle cancellation test.
+- `inventory_preserves_consumer_failure_without_source_refusal_v3`: consumer
+  unit Err must preserve its exact `RepositoryIo` marker and error kind when the
+  Source has no provider failure.
+- `original_noop_inventory_reaches_final_generation_under_same_source_v3`:
+  default and alternate build contexts use the same fixture execution, FD
+  capture, pin and inventory for native parts and final production issuance.
+  `OriginalNativeGenerationIssueBirthV3`, execution Source bank and capture-loan
+  bank exist outside the highest callback; only unit status crosses its loans.
+  The actual final census must be readable and contain zero FunctionRefs for
+  the authored no-op. The initial diagnostic-issuer test call was caught in
+  peer review and replaced before closeout.
+
+The final test is a required positive, not an executed success. Existing A2
+ordinary-only exact-key/selected-row consumers can still reject it before final
+generation; do not weaken that expectation or derive keys from semantic digests.
+The ordinary full fixture and its owned Arc workspace-handoff consumer remain
+unchanged; converting this genuine helper does not complete their integration.
+
+Final checks: four exact-file Rust AST parses and rustfmt checks PASS; scoped
+LLM guardrails PASS for three eligible files; God gate PASS for two production
+files; diff check PASS. God reports two existing stale entries, with zero
+allowances or baseline changes. Rustfmt uses `skip_children=true` for the four
+explicit paths; this does not validate all child modules. Initial recursive
+module resolution and a system-Python `tomllib` failure are retained in the
+check record. The LLM check was rerun with installed Python 3.12 and caught the
+discarded World transfer result, which was repaired before the final PASS.
+No Rust compiler or test process was started.
+
+Source snapshots, twelve required dependency hashes, preimage-based owned delta,
+foreign index comparison, peer reviews and static outputs are recorded in
+`r353-fixture-source-closeout.json`, `r353-fixture-owned-delta.patch`,
+`r353-fixture-feature-postimage-review.json`,
+`r353-fixture-oracle-postimage-review.json` and
+`r353-fixture-static-results.json` in the evidence directory below.
 
 ## T2: Source-zero completion state in the R346 patch
 
