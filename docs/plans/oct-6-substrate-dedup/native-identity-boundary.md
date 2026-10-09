@@ -634,6 +634,43 @@ Evidence: `r343-peer-dispatch.json`, `r344-current-chat-ownership-audit.json`,
 `topology_v3::tests` under the compatible Source feature closure; zero selection,
 upstream refusal and compile failure do not satisfy their acceptance conditions.
 
+### R346 producer-sealed zero Source receiving
+
+The W3 supplier added `try_exact_zero_source_function_refs_v3` after R345.
+Its private `ExactZero` witness is issued after the actual parser row accepts an
+empty-void or one identifier-copy body and Source CFG/facts are sealed. It is
+not inferred from Parser lambda anchors. The reader authenticates the real
+cohort and each Source member, checks operation leases and relevant fact rows,
+and refuses mixed cohorts. `None` identifies an all-ordinary cohort.
+
+The topology receiver now obtains the actual lowering output admission and
+reuses that controlled reader. `Some(0)` provides the independent producer
+witness; `None` retains the existing authored lambda-binding visitor. A failed
+Source read is parked in the existing external runtime-error slot and never
+falls back to ordinary data. Declaration census, predicates, error precedence
+and the four genuine topology regressions are unchanged. The existing
+`native-java-relation-output` feature already enables the DFG reader; this cut
+adds no feature, public contract, provider, issuer or binding algorithm.
+
+- Topology AST, rustfmt, changed-file LLM, God-surface and diff checks pass for
+  SHA-256 `3a3c787c13ee721c1c49b44a8f8477b0afbaad1a9195ff37772e58ec928f79a8`.
+- The supplier's inventory decomposition now passes its size rail. The new
+  DFG zero-read method still exceeds the function budget (62/50); its W3 owner
+  retains that repair. These are distinct source cuts from the R345119-line
+  finding, which stays recorded as the initial failure.
+- Java/Python callers now use the existing into helper and external partial
+  text slots. Full allocation-error preservation in that helper and actual
+  late-cancel/final-refund proof remain with the92/common primitive owners.
+- Nonzero Source lambda support and executed owner acceptance remain open.
+  The new zero subset does not satisfy the returning-lambda positive or its
+  strict negative oracle. All four tests must execute on one compatible
+  supplier/consumer source; no upstream refusal, skip or zero selection is
+  acceptance. The common downstream compiler queue has not reached their
+  test bodies. No Semantica staging or commit is performed by this lane.
+
+Evidence: `r346-source-zero-receiving-decision.md`, `r346-owned.patch`,
+`r346-topology-static.json` and the current supplier/source readback receipts.
+
 ## Current source reconciliation and remaining work — R333
 
 Historical input: the retained topology row below is superseded by
