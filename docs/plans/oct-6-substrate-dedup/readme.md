@@ -33,6 +33,20 @@ qualifies Parser/SDK/runtime product or installed Graph/CHECK.
 B is usage-limited and A/C are not confirmed running. Root has taken scoped
 Core/Fact repairs; a replacement spawn is rejected by the thread limit.
 
+Oct10 root also authors the actual incremental RuntimeCtx/session receiver in10
+Semantica paths, reusing the existing paired producer and QueryExecutor HIR copy
+owner. Full typed causes survive; six family witnesses are requested. Cut18 stops
+at one Core child-mount compile error/tests0; the exact mount is repaired.
+Cut19 then reaches TypesCore E0499/tests0; the existing sink borrow scope is
+repaired. Two new God findings are split; God8/AST12/LLM11 pass. Cut20 clears
+both reached diagnostics, then stops at SourceWire24/tests0 with postflight
+and independent archive8 readback. Current family acceptance remains open.
+D4's physical exterior Java HIR bank is
+now present in WIP, while Parser activation stays HOLD. V4 already supplies the
+real CFG/facts pair: SAME Braun SSA must produce final handles before adapter
+DFG rows/FunctionRef joins. HIR pre-key first refuses Original member admission
+before its later ordinary token path; complete exterior receiving remains open.
+
 Latest code checkpoint: [R337–R338 retained topology receiving](native-identity-boundary.md#retained-topology-receiving--r337r338).
 The raw DTO receiver is replaced by genuine checked lowering/evidence reads;
 two source-oracle rejection regressions are authored. AST6, rustfmt6, scoped

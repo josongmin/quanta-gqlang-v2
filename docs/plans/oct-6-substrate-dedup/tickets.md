@@ -77,6 +77,20 @@ limited and A/C are not confirmed running; root has taken the safe scoped work.
 
 ## Current completion package map — 2026-10-09
 
+Oct10 source successor within the existing IDs: root's10-path incremental family
+session seam is authored, including full typed errors and six requested owner
+witnesses. Cut18 is pretest Core child-mount RED/tests0; Cut19 reaches TypesCore
+E0499/tests0. Both source causes and two new God findings are repaired;
+God8/AST12/LLM11 pass. Cut20 reaches24 SourceWire lib diagnostics/tests0 with
+verified fixed-input postflight/archive8, no publication. Current acceptance
+remains open. Foreign staging is not
+complete main integration. D4's physical Java HIR exterior producer is WIP/HOLD.
+SSA consumes the already-issued V4 CFG/facts pair before publishing final
+definition handles, adapter DFG rows and FunctionRef joins; no circular wait on
+those downstream outputs is an implementation prerequisite. HIR OriginalPaid
+pre-key/token, full SourceWire migration and final consumer/publication remain
+open. All18 active ticket states are preserved.
+
 All18 active IDs map to the current W0–W7 packages. QG-DIAG remains RESOLVED and
 D4/D5-CUSTODY remains SCOPED_ACCEPTED; neither is reopened as new implementation.
 Package ownership is a scheduling responsibility; existing claims govern writes.

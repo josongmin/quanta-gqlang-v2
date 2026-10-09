@@ -1361,6 +1361,118 @@ migration, including SourceWire initial pin/issuer/capture and SDK enclosing
 custody. No compatibility owned-return wrapper is restored.
 Parser/SDK/Runtime product acceptance and complete Source integration remain open.
 
+### Incremental session and SSA dependency repair — 2026-10-10
+
+Input: QGLang `661f87d38dae`; Semantica main `8217a38bf04d` plus shared WIP.
+Root scopes10 actual Runtime/QueryExecutor paths, preserving31's four build
+receiving hunks/two explicit full-family hunks and D4's native Java/position
+work. The only production family caller already has RuntimeCtx. Its projection
+used to clone the admitted carrier and enter an owned convenience factory that
+refuses managed TARGET even with Current. The repaired caller passes the same
+RuntimeCtx, borrows the carrier, and extracts the existing paired receiver's
+session entry. RequestSpec's existing wrapper uses that same entry. The existing
+QueryExecutor typed-copy function is exposed with its actual RuntimeError
+surface; executor callers retain their existing From conversion. No second
+copy/analysis engine is introduced. One Parse/HIR pair and two HIR copies feed
+four argument assemblies only after Source completion. Missing actual managed
+session remains typed MissingContext; full ArgsFactory/Runtime causes move into
+the family error and its source chain instead of being discarded.
+
+Four existing file/context/Java-selection tests receive RuntimeCtx. Two new
+regressions require ordinary memo-session compatibility and the exact Original
+Source refusal from an ordinary session, with no owned pair returned. Scoped
+format/diff pass. Root independently matches15 source/manifest inputs in Cut18
+under the held lease. The registered no-default family owner request stops at
+one Core quarantine child-mount E0583, tests0, on source
+`20e83d84d1b8299408be15012d86c4f15ededa4dbcea7f65681065c17c4bfea0`.
+Request `6e6398c17da6ee3a4d7193936c655948`; run
+`20261009T153122.605839Z-9b45da39ab95`; receipt
+`4eac967be556b8de94093ceaa2c677012bc8c169e3e95a717bc777b7c1eaaa70`.
+Held-lease postflight
+`9c8d901c521c0acab87434a99a18c556fd805ebb82ee1bd2d9bc1e9385418c2a`;
+all8 archived files match independent readback; no publication. Root adds the
+explicit existing `quarantine_v1/retention_birth_v3.rs` path in one preserved
+Core file. This does not qualify the still-active HIR producer. Cut19 has17
+independently matched selected inputs and stops at TypesCore E0499 in
+`values/constraint/set/payload_handle_v3.rs`, tests0, on source
+`b21c5f2f0a594125e9f203e413ca0c05b3b29158af1b04acbcb56fea0ef1928b`.
+Run `20261009T153439.265224Z-d0c5d6210548`; receipt
+`00a2ba6eee16666dd5c3363c0ab5a1504bebeda667c2bc3f50aa98fd0f054650`;
+held-lease postflight
+`e18ca04b84070dccd70fc7ee12aa146ff802e153c72fadc69601cd252a875f6e`.
+All8 archived files independently match; no publication. The Core mount
+diagnostic is gone on this owner input.
+
+Root repairs only the existing Constraint sink borrow scope: construction,
+callback and sink finishing run inside one closure, then complete result/full
+cause is parked in the same exterior DATA after all sink loans end. This
+preserves first-cause ordering, partial storage and funding; no constructor or
+allocation engine changes. The two new function-length findings are repaired
+by separating ordinary-copy policy and atomic four-argument selection attachment.
+Scoped God passes8 production files, with one inherited ordered-family allowance
+and two improved/stale baseline rows; no allowance/baseline is added. AST12,
+LLM11 and scoped format/diff pass. Cut20 captures current Semantica `e234efb0c1b`
+plus WIP and independently matches19 selected inputs under the held lease;
+the no-default family request is RED before tests at24 SourceWire library
+diagnostics. The Core mount and TypesCore borrow diagnostics are absent. This
+does not establish the six family witnesses or any genuine TARGET execution.
+Source `53b1ad88d7987c483ad0a07580b535ea3d390b6ed4c0d689fdf22f7fd08e69af`;
+same request `6e6398c17da6ee3a4d7193936c655948`; run
+`20261009T154328.520002Z-b42c6cc23d27`; receipt
+`d0b711c966805a29366aeed5807bab6a27e9e0ee077ab2194e0dcd4d6bbf4209`;
+held-lease postflight
+`6d12dda77328f5e982df25155d424b5e76a3c302655fc94a8d35af99810c0cd8`.
+All8 archived files independently match; no publication. Its24 diagnostics are
+10 removed-copy imports, two retired retain trait methods, two removed copy
+calls, one missing current retain method, four retired text-retain calls and
+five denied unused imports. Cut17's28 includes a different all-features/test
+compile closure; the count difference is not a repair claim. The existing
+31/92 SourceWire/SDK migration must supply complete exterior caller custody.
+`w0-cut20-reached-diagnostics.json` records each path/line. Postflight37/37
+selected/reached live paths match the fixed capture, including18 diagnostic
+paths; this does not assert whole-WIP equivalence.
+
+Other current-source reconciliation: D4 has authored the physical
+`JavaHirBirthV3` / `JavaPlugin::hir_from_controlled_read_into_v3` producer. Actual
+output and temporary group custody must remain exterior through every bank
+backing drop. Parser conversion activation and positive/refusal proof stay HOLD.
+The earlier HIR pre-key obstruction is also traced: the graph loan first calls
+`require_source_execution_authority_for_member_path_v1`, whose path validator
+enters Original admission with `allow_original_scalar_v3=false`; that owner
+returns typed `UnsupportedAllocation`. The later `try_borrow_ordinary_v3` and
+owned token issuer are additional incomplete boundaries. Reuse complete exterior
+Source/admission/token receiving; changing the scalar flag or deleting a guard
+alone cannot qualify it. D4 separately owns the actual registered-tree unit
+lender, exterior Port projection and runtime position receiving. OriginalPaid
+pre-key/token and managed conversion remain an open coupled cut. The exact
+RuntimeCtx signature, actual ingress and12 current source hashes are preserved
+in `incremental-session-and-hir-bounded-handoff-oct10.json`.
+
+SSA dependency direction is corrected from actual source. V4
+`OriginalCfgDfgBatchReadV4::with_member_v4` already lends
+`AdmittedCfgV1 + OriginalDefUseFactsV3 + CanonicalSemanticOutputAdmissionV1 + NativeAllocationControlV1`.
+The actual Java implementation reopens the selected Source evidence member and
+its own output group, rejects an ordinary evidence row, and builds native control
+from the actual Source. This physical input pair is upstream of SSA. It does not
+provide a final definition ID or DFG result. Core's Original storage still has
+`ExportWork = ()`; SAME Braun typed replay/finalizer/export must produce those
+results before the adapter's exact semantic-event/FunctionRef join and worker DFG
+rows. Source-group authentication and actual destination funding are distinct.
+The scalar CFG readers expose function/entry/block count/block lookup/edge
+topology, but the complete controlled traversal/finalizer input seam remains to
+be paired at Core. The V4 callback still returns RuntimeError, so complete unit
+status/exterior full-cause custody also needs its coupled consumer handoff.
+Neither final DFG rows nor facts ordinals may substitute for that implementation.
+
+External writers stage all10 root seam postimages while the proof runs. Root
+index mutations and Semantica commit count remain0; staged presence does not
+establish complete accepted integration. Exact source/index hashes are preserved
+in `incremental-session-seam-foreign-index-custody.json` in task evidence.
+Later readback at Semantica `e234efb0c1b` finds734 foreign staged paths and all12
+selected seam/mount/borrow postimages equal their index blobs. Original Shape/SCC
+five remain unchanged, match HEAD and have no dirty diff. These observations are
+recorded in `incremental-session-final-index-and-original-routing.json`.
+
 B has stopped on a usage limit. A/C do not report a running worker and remain
 pending initialization; root interrupts A before taking its two Fact files.
 An additional worker request is rejected by the agent thread limit. Root-owned

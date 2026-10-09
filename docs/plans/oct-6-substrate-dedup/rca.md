@@ -59,6 +59,41 @@ no publication. Remaining removed owned copy/retain callers need
 exterior DATA through their enclosing Source; restoring the old return APIs would
 retain the same paid-partial cleanup defect.
 
+Oct10 incremental caller RCA: ingress already has the actual RuntimeCtx, but
+family argument projection omitted it, cloned the admitted carrier, and called
+an owned convenience factory that deliberately rejects managed TARGET. Passing
+Current alone cannot repair that boundary. Root extracts the existing receiver's
+session entry, borrows the carrier, and reuses QueryExecutor's canonical copy
+owner for the two additional HIR arguments. Full ArgsFactory/Runtime causes move
+through the family error instead of becoming a function-ID-only rejection.
+Cut18 runs the six-test family request but reaches one Core quarantine child
+mount error before tests; the explicit existing child path is repaired.
+Cut19 clears that mount and reaches TypesCore E0499 before tests: matching a
+fallible borrowed sink keeps its DATA loan alive while the Err arm reborrows
+DATA. Root confines the existing sink lifecycle to one closure, then parks the
+complete cause/result after that borrow ends. Ordinary-copy policy and atomic
+family selection attachment are separated to remove two new God findings.
+God8/AST12/LLM11 pass. Cut20 clears both reached diagnostics, then stops at24
+SourceWire library migration diagnostics before all six family tests. Its
+different compile closure does not reduce Cut17's all-features28 by four.
+Complete SourceWire caller custody remains a real prerequisite; owning family
+acceptance remains open.
+
+SSA dependency RCA: `OriginalCfgDfgBatchReadV4::with_member_v4` already supplies
+the genuine AdmittedCfg/facts pair with actual member admission/native control.
+The missing canonical Core Original replay/finalizer/export consumes that pair;
+final definition handles and DFG rows are its downstream outputs. Do not wait
+for those rows to implement SSA. Reuse the existing Braun engine and controlled
+facts readers; extend only missing controlled CFG access. The member's source
+group authenticates inputs; the actual destination group funds output and must
+not be silently substituted. Selection/semantic-event identity needs its exact
+producer binding, never a member ordinal. HIR OriginalPaid pre-key first enters
+member-path admission with `allow_original_scalar_v3=false`, which returns typed
+`UnsupportedAllocation`; its later ordinary borrow and owned token are further
+gaps. Replacing only that flag or borrow is insufficient. The complete checked
+unit/admission/token supplier remains open. D4 has authored the physical exterior
+HIR bank and owns the actual registered-tree/Port/position receiving follow-up.
+
 The remaining causes are:
 
 - **Original objective:** Shape/SCC canonical owner routing is committed and its

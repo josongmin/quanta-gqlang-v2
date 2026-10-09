@@ -9,6 +9,25 @@ in the [active handoff](../../work/substrate-repair-checkpoints-2026-10-07.md#fi
 
 Current execution order: [W0–W7 completion plan](parallel-dispatch.md#current-completion-plan--2026-10-09).
 Latest frozen owner requests/results are in [R79 onward execution](execution-r79.md).
+
+Oct10 incremental family owner: registered no-default class
+`quanta-runtime.no-default.b3741608ae8c`, lib module
+`orchestration::ingress_session::ingress_session_impl::analysis_execution_input_factory_owner_local_tests::committed_family_input_tests`.
+Require the existing exact file/context and Java selection four, plus the new
+ordinary memo-session compatibility and literal Source `AuthorityRejected`
+regressions. Cut18 stops at one Core child-mount compile error; Cut19 clears it
+and reaches TypesCore E0499. Both execute tests0, so none of the six witnesses
+is accepted. Both reached source causes are repaired; God8/AST12/LLM11 pass.
+Cut20 matches19 fixed inputs and reaches SourceWire24 before tests, with
+held-lease postflight/archive8 readback and no publication. The current
+SourceWire caller migration must complete before the family witnesses execute;
+do not weaken its feature class or restore retired owned-return APIs.
+Genuine managed TARGET additionally requires the
+actual source session, foreign/missing authority, late refusal, retained partial
+lifetime and final refund. Those oracles remain unexecuted and are not supplied
+by an ordinary diagnostic positive. Final SSA proof starts from the actual V4
+CFG/facts pair; definition handles are expected results, not test prerequisites.
+
 The [W014 first cut](execution-r79.md#w014-parallel-implementation-and-first-owner-cut--2026-10-09)
 executes zero tests because `--locked` rejects the root lockfile. After the
 version-preserving root/nested repair, run a successor locked capture. Include

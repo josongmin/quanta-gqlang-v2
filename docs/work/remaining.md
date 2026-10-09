@@ -6,7 +6,7 @@ The [R77 RCA](../plans/oct-6-substrate-dedup/rca.md) owns the cause/dependency
 analysis; this file owns the 18 active states.
 
 Latest plan/source: [W0–W7 completion plan](../plans/oct-6-substrate-dedup/parallel-dispatch.md#current-completion-plan--2026-10-09),
-QGLang `5ec537f48e92` and Semantica `8217a38bf04d` plus separately inventoried WIP.
+QGLang `661f87d38dae` and latest Semantica `e234efb0c1b` plus separately inventoried WIP.
 The16:18/16:48 audits retain their own inputs. The later main commit imports
 source; current owner acceptance remains pending.
 The audit distinguishes committed source, authored source and accepted execution.
@@ -79,6 +79,33 @@ The [exact producer cut table](../plans/oct-6-substrate-dedup/parallel-dispatch.
 records the Java HIR exterior producer, final SSA handle/DFG row publication,
 B/A selected typed-input consumer and installed prerequisites without closing
 their existing tickets.
+
+Oct10 successor: root authors the actual incremental family RuntimeCtx/session
+seam in10 Semantica paths. It borrows the admitted carrier, shares the existing
+Parse/HIR receiver, and reuses QueryExecutor's typed-copy owner for two HIR
+copies; full typed failures survive. Four existing tests gain actual context,
+and ordinary memo-session/Source-refusal regressions are authored. Cut18 reaches
+one Core quarantine child-mount compile error, tests0; that exact mount is repaired.
+Cut19 clears it and reaches TypesCore E0499/tests0. Root repairs that existing
+sink borrow scope and splits two new God findings; God8/AST12/LLM11 pass.
+Cut20 captures current main plus WIP with19 selected hash matches. Both reached
+diagnostics are absent;24 SourceWire lib migration diagnostics stop all six
+tests. Held-lease postflight and archive8 readback pass, with no publication.
+Its compile class differs from Cut17's all-features28. External staging is
+recorded separately; root does not stage or commit the Semantica product bundle.
+Java's physical exterior HIR producer is present in D4 WIP, with actual Parser
+activation/proof still HOLD. V4 already lends the genuine CFG/facts pair:
+Core Braun SSA consumes it and produces final handles before adapter DFG rows
+and FunctionRef joins. Waiting for those downstream rows to start SSA would be
+a circular dependency. HIR OriginalPaid pre-key/token and final output consumers
+remain implementation gaps. HIR's earliest pre-key obstruction is Original
+member-path admission with scalar disabled, before its later ordinary token
+path. D4 owns actual registered-tree/Port/position exterior receiving. This does
+not close the18 active tickets.
+Latest selected-source readback: original Shape/SCC5 remain clean and match
+HEAD; all12 root seam/mount/borrow paths equal their foreign index blobs among
+734 staged paths. Root Semantica stage/commit operations remain0. Complete
+accepted product integration and installed Linux qualification remain open.
 
 Historical root successor: [R121–R146](../plans/oct-6-substrate-dedup/execution-r79.md#r79-root-r121r128-successor-closure).
 Original Shape/SCC is committed; five selected canonical files are clean and
