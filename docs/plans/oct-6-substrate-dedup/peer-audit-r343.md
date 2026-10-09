@@ -10,11 +10,63 @@ compiler, runtime, product or installation results.
 | ID | Classification | Required completion |
 | --- | --- | --- |
 | W1 | R348 repair plus R352 regression source and unused-wrapper removal applied; not compiled or qualified | Execute helper and full Java/Python Source custody/refund proof, then integrate the coupled source |
-| A2 | R353 fixture/context repair retained; R354 adds strict alias/nonzero final regressions; exact-key final consumer still ordinary-only | One supplier-owned key contract, reachable consumers connected, genuine positive and negative execution proof |
+| A2 | R356 connects the existing external occurrence/index births and removes the duplicate key copier; Source exact-key/SSA and selected consumption remain incomplete | Complete the genuine supplier/consumer cut, public fixture migration and executed positive/negative proof |
 | T2 | Confirmed R346 defect; existing owner's R347 source correction independently reviewed | Execute genuine Source-zero positive and rejection/finisher regression; runtime not run |
 | T1 | Initial static false-pass possibility; successor pre-final regression authored by the existing topology lane | Execute the positive and strict negative tests through the actual pre-final owner; current execution remains unproved |
 
-### Current checkpoint — R354
+### Current checkpoint — R356
+
+Observed: 2026-10-10 KST. QGLang parent `66b6b64088983309bfe68a7d786747ade249cdd6`;
+Semantica `e234efb0c1b15cd5001c5f129a9f019315a1acc5` plus shared staged work.
+The [implementation map, before/after and acceptance plan](implementation-r356.md)
+owns this ten-path source cut. No Semantica stage/commit/push or Rust execution
+was performed. Earlier R352/R353/R354 source remains separate unqualified work.
+
+R356 reuses `OriginalIdentityIssueBirthV3`,
+`OriginalNativeOccurrenceAdmissionBirthV3` and
+`OriginalDfgDeclarationIndexBirthV3` in the actual final-generation caller.
+Owned occurrence inputs no longer borrow preflight or identity. Completed
+binding/topology state, exact-key map, pending copies, full causes and final
+handle stay in external DATA. The census and evidence use existing unit read
+births. Remove the old return-shaped index builder and its duplicate
+`copy_dfg_key_v3`; preserve the tuple, canonical ordered map and duplicate
+refusal. No library, engine, public DTO or authority is added.
+
+The FunctionRef inventory lender moves to its existing target-reader module.
+Its callback now takes the failure slot required by its sole actual consumer;
+the former one-argument declaration called and consumed two arguments. A stale
+uncompilable test is migrated to the genuine topology retain operation and
+last-consumer refund. Its foreign-group case now reaches the resolver's typed
+refusal instead of panicking in fixture output construction. This narrower
+test does not substitute for the existing genuine final-generation regressions.
+Two new key-copy tests cover tuple/UID coordinate distinctions, sorted literal
+ordinals, duplicate displacement, 1024-byte partial text on work refusal and
+last-drop refund. All five tests in these two modules remain **NOT_RUN**.
+
+Static results: Rust AST10, rustfmt9, scoped LLM guardrails and ten-path diff
+checks pass. Seven owning production modules pass God-surface with zero
+allowances or baseline changes. The edited giant parent still fails its own
+God rail on **14 pre-existing unbaselined findings**; direct preimage comparison
+finds no added/worsened raw finding (17 raw before and after; file budget
+3169 -> 3162). Whole-parent rustfmt and Rust type checking are not claimed.
+Independent type/custody and oracle reviews are static only.
+
+Remaining implementation under the same two existing tickets:
+
+1. Genuine Source DFG key/declaration publication, Source-aware selected lookup
+   and validation, and complete partial-state custody inside the canonical
+   binding-index producer. R356 retains completed index output; it does not
+   replace that producer's remaining return-shaped partial construction.
+2. Actual Source lambda SSA/definition/binding output. `BindingRequired` remains
+   refusal. No tuple may be inferred from a digest or callable name.
+3. Public full fixture plus selected-source PTA consumer co-cut using the
+   existing V4 retained Original builder. The public fixture's ordinary Arc and
+   diagnostic issuer remain; R356 does not manufacture diagnostic authority.
+4. Execute the owner/Java/Python/final-generation/custody regressions and integrate
+   the complete compatible bundle. Source edits, static passes and foreign
+   staging do not meet this exit. Parent structural debt remains recorded.
+
+### Previous checkpoint — R354
 
 Observed: 2026-10-10 KST. QGLang parent
 `ad3ae75dd0c7c589b14d101b2479a10e82d8db1a`; Semantica

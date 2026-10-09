@@ -40,15 +40,16 @@ assignment alone does not transfer another owner's files.
 
 ## Queue and state snapshot
 
-Independent peer successor: [R354](peer-audit-r343.md#current-checkpoint--r354).
-CHECKED-RETAINED-CONTROL includes the authored namespace/fixture Source repairs
-and now strict final alias/FunctionRef=1 regression source. Exact Source DFG
-key/selected-row publication and consuming PTA index/validation are still code
-work; full ordinary-Arc fixture conversion remains coupled to the actual
-supplier. FCP-COMPILE still requires executed owner proof and complete committed
-integration. None of the nineteen reviewed file postimages matches observed
-Semantica `e234efb0c1b` HEAD; direct missing-API/test anchors establish incomplete
-bundle integration. Whole-file differences do not classify every earlier hunk.
+Independent peer successor: [R356](peer-audit-r343.md#current-checkpoint--r356),
+with [exact code delta and DoD](implementation-r356.md).
+CHECKED-RETAINED-CONTROL now includes the source-authored external PTA
+occurrence/index birth wiring, duplicate key-copy removal and aligned
+FunctionRef lender/consumer. Source exact-key/selected publication, genuine
+nonzero SSA, public fixture/V4 selected consumer and canonical index partial
+custody remain code work. The new/migrated owner tests and R354 final-generation
+tests are NOT_RUN. FCP-COMPILE still requires one compatible executed owner
+bundle and committed integration. The giant parent retains God14 structural
+debt; seven owning modules pass. This chat makes no Semantica Git mutation.
 Authored tests and foreign staging close neither ID.
 
 Current source/proof reconciliation:
