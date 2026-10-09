@@ -9,9 +9,22 @@ compiler, runtime, product or installation results.
 
 | ID | Classification | Required completion |
 | --- | --- | --- |
-| W1 | Source lifetime violation in committed Java/Python workspace digest copying; runtime reproduction not run | External partial/completed text custody through the highest Source; preserve the first refusal and prove final refund |
-| A2 | Integration gap between a staged DFG Source producer and existing ordinary PTA/fixture consumers; not a committed-HEAD Source regression | One supplier-owned read/binding contract, all reachable consumers connected, genuine Original positive and negative proof |
+| W1 | Committed-baseline lifetime defect; R348 repair applied to dirty source, not qualified | External text and full allocator-cause custody, genuine late-refusal and exact refund proof |
+| A2 | Staged Source integration partly connected for ExactZero; final-generation consumer still ordinary-only | One supplier-owned contract, all reachable consumers connected, genuine positive and negative proof |
+| T2 | Confirmed source defect in the R346 topology receiving patch; runtime not run | Source-zero success must satisfy the outer completion state without bypassing controller failures |
 | T1 | Initial static false-pass possibility; successor pre-final regression authored by the existing topology lane | Execute the positive and strict negative tests through the actual pre-final owner; current execution remains unproved |
+
+### Current checkpoint — R348
+
+Readback: QGLang `30c0fad3a9d835dec07ecba60f3e663f33d7a47a`;
+Semantica `8217a38bf04d6c2fb2a535d43753408ac4621972` plus concurrent changes.
+The W1 successor changes are applied in fourteen Semantica files under reconciled
+claim `OCT9-GQLANG-WORKSPACE-CUSTODY-PEER-R345`. This chat did not stage, commit
+or push Semantica, or run its Rust compiler, tests, QBC or runtime.
+
+W1 has independent source review and static checks. A2/T2 remain source work;
+T1 and W1 still require executed owner proof. Existing Source ExactZero support
+does not support nonzero lambda references or establish final generation success.
 
 The R341 error-masking finding A1 is withdrawn. It confused
 `with_lowering_unit_into_birth_v3` with the separate typed-consumer API.
@@ -19,7 +32,7 @@ Do not change the current error selection to repair A1.
 
 ## W1: preserve partial workspace text
 
-Paths below are relative to Semantica's
+Baseline paths below are relative to Semantica's
 `packages/analysis/quanta-v2/crates/quanta-adapters-parser/src/`.
 
 - `semantic_scope_identity.rs:636-648` uses the return-shaped `copy_string_v1`.
@@ -30,12 +43,12 @@ Paths below are relative to Semantica's
   can refuse after backing allocation or after pushing the copied bytes. Its
   local String then drops before the enclosing Source finishes.
 
-Use the existing `workspace_owner_identity_namespace_digest_into_with_output_admission_v3`
+The repair reuses `workspace_owner_identity_namespace_digest_into_with_output_admission_v3`
 and initially empty external partial/completed slots in the existing materialization
-births. Keep DATA before funding fields in destruction order. If the applicable
-Source contract requires the full allocator error, use the already exported
-`copy_string_with_failure_into_v3` with an external failure bank; the current
-into helper retains text but uses an internal empty allocator-error slot.
+births. Keep DATA before funding fields in destruction order. R348 extends this
+same helper to accept an external `Option<TryReserveError>` and invokes the already
+exported Core `copy_string_with_failure_into_v3`. An occupied failure bank is
+rejected before axes/hash work, preserving the recorded first refusal.
 
 Acceptance requires real Original Java and Python inputs with multiroot axes,
 refusal at the backing-birth and post-push checkpoints, retained partial text
@@ -43,14 +56,46 @@ until Source completion, first-cause preservation, exact last-drop refund, and
 unchanged namespace bytes and successful output. No memory corruption, leak or
 wrong successful result was reproduced by this audit.
 
-R344 prepared a two-file caller patch using that existing helper. It adds
+R344 prepared a two-file caller patch using that existing helper. It added
 initially empty partial String fields to the existing Java/Python births and
 leaves the completed workspace Option and namespace algorithm unchanged.
 `git apply --check` passed against the recorded source. The patch is external
-evidence, **PREPARED_NOT_APPLIED_NOT_BUILT**, not a repair in Semantica main.
-Current live materialization claims overlap these files. Keep one implementation
-owner and reconcile the actual hunks before applying it. The patch does not
-resolve the helper's conditional full allocator-error custody requirement.
+evidence at that checkpoint, **PREPARED_NOT_APPLIED_NOT_BUILT**. R345 subsequently
+applied its two caller changes. R348 supersedes that prepared-only state with the
+full coupled source repair below; Semantica main integration remains unconfirmed.
+
+### Applied successor — R348
+
+- Four direct production helper callers now pass partial text, completed text and
+  a full allocator-error bank: Java materialization, Python materialization,
+  Python import bindings and Python import augmentation.
+- Five existing births retain those banks. Both manual owner-seal/provider-frame
+  constructors initialize them to None. The augmentation transaction, owner seal,
+  provider completion and existing integration-test caller are changed together.
+- One existing public augmentation method gains the external bank in its tuple.
+  All repository callers were traced and updated; this is a Rust source signature
+  change, with no frontend wire DTO, new provider, crate or engine.
+- The public `with_original_python_semantic_modules_v3` formerly created its
+  materialization birth inside an outer issued-tree read. It now creates the same
+  birth before that read; a private into-slots helper parks results/errors and
+  drains them only after the outer finisher. It adds no cohort move or validation.
+- The existing Original namespace test keeps its independent literal BLAKE3
+  preimage and adds an actual capacity-overflow `TryReserveError` bank with a
+  no-new-work rejection oracle. This does not force physical failure of the
+  fixed 64-byte namespace allocation.
+
+Static results: AST parse and rustfmt PASS for 14 paths; scoped LLM and God gates
+PASS for their 13 selected paths; diff check PASS. God reports five pre-existing
+stale entries, with no new allowances or baseline change. Initial transaction
+size failure was repaired by sharing its repeated tuple signature as one local
+transparent alias; the alias has the same visibility as its two parent-visible
+functions. All five static checks passed for that final one-file delta.
+
+Independent wrapper and full-cause reviews found no new confirmed defect in the
+applied scope. Runtime reproduction, Rust type checking, actual late-refusal
+custody and last-drop refund remain **NOT_RUN**. A result-only cancellation test
+would not detect the old early-drop bug: observe retained DATA/grants at the outer
+finisher and verify the refund after their final drop.
 
 ## A2: complete the existing supplier and consumer contract
 
@@ -64,13 +109,20 @@ original_java_workspace_v1
   -> original_java_evidence_v1
   -> original_binding_output_v3
   -> function_evidence_v1::collect_single_function_row_into_birth_v3
-  -> ordinary with_row_v3
+  -> with_identity_row_v3
 ```
 
-`function_evidence_v1.rs:166` precedes FunctionRef validation.
-`native_normalized_attribution_generation_artifact_v2/function_ref_evidence_v3.rs:93`
-and `dfg_declaration_index_v3.rs` also contain ordinary reads. Updating the
-fixture count or the FunctionRef validator alone does not complete this route.
+The initial `function_evidence_v1.rs:166` ordinary-read blocker has been changed
+in concurrent source to controlled identity reading. The declaration ordinal
+index and FunctionRef preflight also now accept the supplier's sealed ExactZero
+subset. Those changes supersede the initial blanket ordinary-read claim.
+
+The final generation still calls
+`native_occurrence_admission_v1.rs:73-75 -> declaration_by_dfg_key_v1` unconditionally.
+That function at `dfg_declaration_index_v3.rs:375-399` uses the ordinary-only
+`try_visit_rows_v3`, so a Source member still reaches a typed refusal. Its owner
+must define Source index semantics; fabricated legacy DFG rows or an unverified
+empty-index shortcut cannot close this contract.
 
 The external staged work briefly added and then removed a scalar lambda census
 API during review. Do not treat that temporary API as a stable available contract.
@@ -80,13 +132,32 @@ Do not cast the Source payload, construct empty legacy DTOs, or replace authored
 DFG evidence with the final PTA count. Parser nested-lambda counts were not
 proved equivalent to exact DFG bindings.
 
-The legacy exact fixture still feeds ordinary inventory to an Original issuer.
+The legacy full exact fixture still feeds ordinary inventory to an Original issuer
+(`owner_stages_v1.rs:434-441`); the new Source fixture tests cover DFG issuance and
+controlled zero reading, not the full topology/final-generation route.
 Connect the existing genuine inventory/provider; do not create a second supplier.
 Acceptance requires one compatible source/features tuple with real void, alias
 and lambda positives; declaration/function identity, duplicate/missing/foreign
 rejection, charged work and cancellation; independent authored/final function-ref
 census; and explicit final refs=0 for VoidReturnOnly. Unsupported nested/captured
 cases must remain typed refusals until their contract is supported and proved.
+
+## T2: Source-zero completion state in the R346 patch
+
+`exact_native_generation_fixture_v1/topology_v3.rs:193-201` returns Ok after the
+controlled Source reader returns Some(0). That branch never starts the ordinary
+`visit_birth_v3`. However the outer success condition at `:57-66` unconditionally
+requires `visit_birth_v3.completed_v3()`. Its empty birth remains incomplete, so
+a valid Source-zero result falls through to `CallableCensusMismatch`.
+
+This is a confirmed source-logic defect in the receiving patch, independently of
+the remaining upstream fixture and final-generation blockers. It was not run.
+The existing topology owner must retain explicit verified Source-zero state only
+after the controlled read returns success, then accept either that state or the
+completed ordinary visit, retaining every other completion/error check. Source
+Err, mixed-cohort refusal and ordinary None must not bypass their normal gates.
+Use a genuine Source success regression that fails on the current unstarted birth;
+the two authored negatives alone cannot establish this positive path.
 
 ## T1: distinguish pre-final rejection from later rejection
 
@@ -151,7 +222,11 @@ the peer postflight/delta readbacks. Moving foreign staged inputs and their
 temporary API removal are recorded separately from stable consumer evidence.
 The later `r344-t1-peer-review.json` records the direct pre-final test source;
 `r344-workspace-custody-prepared.patch` and its JSON record the unapplied caller
-patch and its remaining acceptance conditions.
+patch at that historical checkpoint. Current source is recorded by
+`r348-workspace-owned.patch`, `r348-workspace-source-closeout.json`, the two R348
+postimage peer reviews and final static-check logs. `r347-source-zero-peer-review.json`
+records T2 and the remaining A2 final-generation/fixture paths. Prepared, applied,
+executed and integrated states must remain distinct.
 
 See [the current execution plan](parallel-dispatch.md) for the existing
 integration and owner queue. This peer audit does not rewrite that queue or
