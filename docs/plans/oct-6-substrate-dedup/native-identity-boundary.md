@@ -496,14 +496,19 @@ not an execution receipt or proof that the whole fixture currently succeeds.
 The topology type mismatch is source-repaired. W2 still needs one coupled
 genuine producer/consumer cut:
 
-1. Actual fixture binary input tied to its immutable build source, pin/session
-   and Current through the existing binary/type owner. The SDK implementation is
-   private; its presence does not provide a PTA fixture supplier.
+1. Reuse and reconcile the concurrently authored fixture binary input tied to
+   its immutable build source, pin/session and Current. R339 finds
+   `original_binary_provider_v3.rs` and `original_inventory_fixture_v3.rs` in
+   foreign WIP; no second provider/inventory fixture is assigned here. Their
+   existence is not owner acceptance or proof of the legacy fixture caller.
 2. Original whole-cohort into-birth production through the existing world owner,
    then canonical retained generation-file/inventory sealing with all partial,
    failure and funding DATA outside highest Source. The owned world-return API
-   explicitly refuses `UnsupportedOperation`; the finalized fixture unit API
-   states that inventory sealing still needs its coupled receiver.
+   explicitly refuses `UnsupportedOperation`. A foreign retained-world/sealing
+   API successor and a no-op Original inventory fixture now exist; reconcile
+   their complete source/custody/error/feature cut before using them. The earlier
+   finalized fixture unit-API comment about missing inventory receiving retains
+   its earlier input and is not a current absence claim.
 3. Migrate retained V1 handoff fixture/DFG consumers together to genuine checked
    Original reads. Preserve alias/lambda/callable/foreign-source outcomes.
 4. Direct genuine SDK joined-target HIR regression plus compatible owner/feature/
@@ -522,6 +527,23 @@ Receipts in the existing local evidence directory: `r337-topology-claim.json`,
 The sole PTA root reexport beforeimage is reconstructed from its exact pre-edit
 readback because the coordination status call exceeded the initial tool wait;
 that fact is recorded, and its other source hunks are preserved.
+
+### R339 concurrent source reconciliation
+
+The fixture parent changed after the R338 gate tuple: foreign error variants,
+binary/inventory fixture mounting and a whole-world test successor are present.
+Its topology mount is preserved. The other five reviewed paths retain their
+exact hashes at R339. The current legacy native-fixture stages and mixed-source
+handoff still use V1; the separate no-op Original inventory fixture is not that
+complete producer/consumer migration. No supplier, inventory or test helper from
+the foreign successor is attributed to this lane or staged by it.
+
+`r339-topology-owned.patch` and `r339-owned-postimages/` contain only the six
+owned changes. `r339-owned-foreign-reconciliation.json` and
+`r339-foreign-successors/` separate preserved foreign content from those changes;
+`r338-reviewed-postimages/` preserve the actual scoped gate input. R338 gates
+remain scoped to that reviewed tuple, not the moving parent successor. Tests,
+compiler/QBC and Semantica publication are still NOT_RUN.
 
 ## Current source reconciliation and remaining work — R333
 

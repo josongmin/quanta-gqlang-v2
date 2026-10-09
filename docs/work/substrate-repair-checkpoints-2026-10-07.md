@@ -1911,14 +1911,21 @@ They are authored, NOT_RUN. AST6/rustfmt6, effective LLM5/God5 and diff pass;
 no new allowance or baseline reset. Compiler/tests/QBC/runtime/product and
 Semantica publication remain NOT_RUN. Source files are uncommitted shared-main WIP.
 
-The genuine binary supplier, Original whole-cohort/inventory sealing and retained
-handoff consumer cut remains implementation work. The existing owned world API
-refuses `UnsupportedOperation`; its unit fixture API documents missing coupled
-inventory receiving. These are not replaced by a V1 adapter, reverse SDK edge,
-empty success or weaker assertions. Broader W0–W7 and18-ticket acceptance remain.
+The complete Original producer/inventory/retained handoff consumer cut remains
+implementation work. R339 finds a concurrently authored binary provider,
+retained-world/sealing successor and separate no-op Original inventory fixture;
+reuse/reconcile that foreign source rather than add another provider. It does
+not migrate the existing legacy native fixture or mixed-source handoff. The
+owned world-return API still refuses `UnsupportedOperation`. Broader W0–W7 and
+18-ticket acceptance remain; no V1 adapter, reverse SDK edge or weaker oracle.
 
 See [source map, before/after, bounds and DoD](../plans/oct-6-substrate-dedup/native-identity-boundary.md#retained-topology-receiving--r337r338).
 Owned source evidence: `r337-topology-owner-decision.json`,
 `r337-topology-claim.json`, `r337-beforeimages.json`, `r338-topology-owned.patch`,
 `r338-topology-postimages.json`, `r338-topology-static.json`,
 `r338-topology-llm.log`, `r338-topology-god.log`.
+R339 separates owned postimages/patch from the parent's foreign successor; the
+other five paths retain their R338 hashes. R338 gates qualify only that static
+reviewed tuple. Evidence: `r339-topology-owned.patch`,
+`r339-owned-foreign-reconciliation.json`, `r338-reviewed-postimages/` and
+`r339-foreign-successors/`. No foreign source is staged or committed here.
