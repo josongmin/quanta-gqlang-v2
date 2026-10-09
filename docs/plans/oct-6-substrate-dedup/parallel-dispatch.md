@@ -5,6 +5,14 @@ All execution is local. [R77 RCA](rca.md) owns cause analysis;
 [tickets](tickets.md) own scope/DoD and [remaining work](../../work/remaining.md)
 owns current states.
 
+Current R356 implementation dispatch: [three workers plus one integrator,
+exact source packages, handoffs and checkpoint DoD](completion-dispatch-r356.md).
+This refines the existing W2/W3/W5/W6 assignments without new tickets or
+competing writers. Core SSA and canonical binding custody run beside DFG key
+preparation; successful DFG publication precedes the selected PTA/fixture
+switch. Parent/function God cleanup follows functional file release. The
+broader W0–W7 dependency plan below remains in force. This dispatch is PLANNED.
+
 Peer repair lane: [R356](peer-audit-r343.md#current-checkpoint--r356) applies
 one ten-path external occurrence/index custody cut at Semantica `e234efb0c1b`.
 The existing production caller now reaches both births; old duplicate copy is

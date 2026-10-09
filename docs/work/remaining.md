@@ -10,6 +10,12 @@ QGLang `661f87d38dae` and latest Semantica `e234efb0c1b` plus separately invento
 The16:18/16:48 audits retain their own inputs. The later main commit imports
 source; current owner acceptance remains pending.
 The audit distinguishes committed source, authored source and accepted execution.
+Next planned source dispatch: [R356 parallel completion](../plans/oct-6-substrate-dedup/completion-dispatch-r356.md)
+assigns DFG key/result, SAME Core SSA and canonical binding partial custody to
+three independent roles, then completes selected PTA/Runtime callers and the
+public fixture together. Parent/function God cleanup follows functional file
+release; owner execution and complete checkpoint commits are serial. This
+planning update changes no implementation or ticket acceptance state.
 Peer repair successor [R356](../plans/oct-6-substrate-dedup/peer-audit-r343.md#current-checkpoint--r356)
 connects the existing external occurrence/index births and removes the live
 copy duplicate. Its [ten-path code map and acceptance plan](../plans/oct-6-substrate-dedup/implementation-r356.md)

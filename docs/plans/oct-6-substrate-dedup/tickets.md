@@ -40,6 +40,13 @@ assignment alone does not transfer another owner's files.
 
 ## Queue and state snapshot
 
+Next source scheduling: [R356 completion dispatch](completion-dispatch-r356.md)
+splits the existing CHECKED-RETAINED-CONTROL/FCP-COMPILE work into six packages:
+genuine DFG result/key, same Original SSA export, canonical binding partial
+custody, actual selected PTA contract/adapter/Runtime co-cut, public fixture and
+parent/function God cleanup. Three source roles share one integrator. These
+packages are PLANNED, add no tickets and close no current acceptance state.
+
 Independent peer successor: [R356](peer-audit-r343.md#current-checkpoint--r356),
 with [exact code delta and DoD](implementation-r356.md).
 CHECKED-RETAINED-CONTROL now includes the source-authored external PTA

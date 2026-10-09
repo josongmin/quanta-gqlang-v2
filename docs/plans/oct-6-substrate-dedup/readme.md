@@ -1,5 +1,11 @@
 # Substrate closeout execution plan
 
+Current next implementation: [R356 completion dispatch](completion-dispatch-r356.md)
+defines three parallel source roles, actual DFG/SSA/binding/selected PTA/fixture
+code maps, function-level God cleanup, independent tests and serial complete
+checkpoint commits. It is a plan; no Semantica implementation or execution was
+performed by the planning pass.
+
 Peer repair closeout: [R356 source cut and remaining acceptance](peer-audit-r343.md#current-checkpoint--r356).
 [Code map, before/after, tests and DoD](implementation-r356.md): existing external
 PTA occurrence/index births are now reached; the duplicate key copier is

@@ -123,6 +123,12 @@ type/custody/oracle reviews found no remaining new actionable defect.
 
 ## Remaining acceptance and dependencies
 
+Execution scheduling is specified in the [R356 completion dispatch](completion-dispatch-r356.md):
+three disjoint source roles, SSA→DFG→selected PTA handoffs, the actual fixture/
+contract/adapter/Runtime caller closure, deferred parent/function refactor and
+complete checkpoint commit exits. This is planned work, not an additional R356
+source change or executed proof.
+
 - **Supplier/selection:** same-owner Source DFG result/key plus declaration;
   Source-aware selected lookup/validation; finish partial custody inside the
   canonical binding-index producer. Do not duplicate its algorithm behind a
