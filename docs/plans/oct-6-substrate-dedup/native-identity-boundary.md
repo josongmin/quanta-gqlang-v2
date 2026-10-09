@@ -592,6 +592,48 @@ Evidence: `r341-topology-static-readback.json`,
 `r341-qualification-99fc50d/`. The frontend qualification stays bound to
 `99fc50d98b13`; a later documentation checkpoint is not a new qualified SHA.
 
+### R345 regression boundary and current assignments
+
+Observed on 2026-10-09: Semantica `8217a38bf04d` plus shared staged
+supplier/consumer work; QGLang documentation input `af0ff1d6c8d0`.
+The R341 committed topology implementation remains present. The following
+regression changes are authored successor source, not executed acceptance.
+
+- Both topology negatives now reuse the existing genuine Original inventory
+  fixture and call `issue_and_validate_native_parts_v1` through a private
+  `cfg(test)` fixture method. They inspect the production owner's returned error
+  before final-generation construction or its separate final census checker.
+  The no-op literal tuple and returning-lambda witness oracle are retained.
+- Two positive companions use the same preparation and owner: no-op accepts
+  `VoidReturnOnly`; returning lambda accepts `ExactFunctionReferences(1)`.
+  A skipped topology call, ignored topology error or predicate returning success
+  cannot be hidden by a later checker in these tests. This is the intended
+  regression coverage; mutation execution and Rust tests remain NOT_RUN.
+- Scoped AST, rustfmt and changed-file LLM checks pass. God-surface is RED on
+  the existing inventory supplier's119-line generic producer (limit50), whose
+  body is byte-identical to the beforeimage. Its W2 owner has the decomposition
+  task. No allowance or baseline weakening is used.
+- The Source evidence integration still requires an independently authored
+  DFG binding contract. The temporary Parser-anchor lambda census API was
+  removed by its supplier owner. Reuse the actual supplier contract when ready;
+  neither Parser nested-lambda count nor final PTA count is a substitute.
+- This chat owns topology receiving and the pre-final regression boundary.
+  Existing W1/W2/W3/W4 workers retain SDK/Foundation, genuine suppliers,
+  nonempty CFG/DFG/facts and Runtime context/memo/persist. Existing downstream
+  owners retain actual compiler/QBC execution and complete main integration.
+- Java/Python workspace late-copy partial/error preservation remains open.
+  The two concrete materialization callers and the existing into/output-admission
+  helper were handed to the92 materialization owner and common primitive owner.
+  General active supplier work does not establish that this defect is fixed.
+
+The existing eight-chat task/DoD dispatch is recorded separately from source
+and acceptance. No second engine, provider or issuer is assigned here.
+Evidence: `r343-peer-dispatch.json`, `r344-current-chat-ownership-audit.json`,
+`r345-topology-test-decision.md`, `r345-owned.patch` and
+`r345-topology-static.json`. The actual fixture owner must execute all four
+`topology_v3::tests` under the compatible Source feature closure; zero selection,
+upstream refusal and compile failure do not satisfy their acceptance conditions.
+
 ## Current source reconciliation and remaining work — R333
 
 Historical input: the retained topology row below is superseded by
