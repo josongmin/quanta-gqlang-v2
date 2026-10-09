@@ -21,10 +21,10 @@ fn all_three_vertex_graphs_match_mutual_reachability_in_both_edge_orders() {
         let mut reachable = [[false; 3]; 3];
         for (source, bucket) in graph.iter_mut().enumerate() {
             reachable[source][source] = true;
-            for target in 0..3 {
+            for (target, slot) in reachable[source].iter_mut().enumerate() {
                 if mask & (1 << (source * 3 + target)) != 0 {
                     bucket.push(target);
-                    reachable[source][target] = true;
+                    *slot = true;
                 }
             }
         }

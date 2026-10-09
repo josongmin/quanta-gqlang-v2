@@ -161,3 +161,12 @@ SHA/tree, clean pre/post custody 및 같은 run의 raw Nextest evidence를 확�
 **현재 HEAD local qualified**로 판정한다. receipt가 없거나 실패하면 NOT_QUALIFIED다.
 이 packet의 체크박스와 이전 dirty-source CI1514는 receipt를 대체하지 않는다.
 paired bootstrap/consumer와 Semantica runtime/product는 별도 OPEN이다.
+
+### 최초 전체 gate 실패와 수정
+
+`43d99433264e8e197eb368e6649141de950f82bd`의 qualification은 size285 통과 후
+current Clippy의 새 kernel oracle `needless_range_loop`에서 exit101로 중단됐다.
+`target/qualification/43d99433264e8e197eb368e6649141de950f82bd/receipt.json`과
+`ci.log`를 보존했다. 해당 초기화 반복을 `iter_mut().enumerate()`로 수정했고
+standalone `just clippy-current`는 exit0이다 (`.audit/oct10-frontend-closeout/scc-clippy-repair.log`).
+이 focused policy 성공은 전체 gate 성공이 아니며 수정된 최종 HEAD의 receipt가 필요하다.
