@@ -284,6 +284,7 @@ fn scalar_authority(budget: &FrontendBudgetV2) -> ClosedFrontendAuthorityV2 {
             cardinality: CardinalityV1::Bag,
             provenance: "host".into(),
             location: location.clone(),
+            host_binding_identity: None,
         }],
         &host,
         profile.clone(),

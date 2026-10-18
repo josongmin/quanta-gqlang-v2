@@ -1476,6 +1476,7 @@ fn existence_cardinality_uses_the_left_subtree_after_both_children_fold() {
             cardinality: FrontendRelationCardinalityV2::Bag,
             provenance: "test".to_owned(),
             location,
+            host_binding_identity: None,
         });
     }
     let authority = builder.finish().expect("join authority");
@@ -1571,6 +1572,7 @@ fn public_optional_relation_field_reaches_the_execution_schema_as_optional() {
         cardinality: FrontendRelationCardinalityV2::Bag,
         provenance: "test".to_owned(),
         location,
+        host_binding_identity: None,
     });
     let authority = builder.finish().expect("optional relation authority seals");
     let compiled = compile_source_document_v3(

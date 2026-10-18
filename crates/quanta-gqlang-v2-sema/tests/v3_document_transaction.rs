@@ -190,6 +190,7 @@ fn host_with_budget(budget: FrontendBudgetV2) -> (SourceRegistryViewV2, ClosedFr
                 cardinality: CardinalityV1::Bag,
                 provenance: "host".into(),
                 location: relation_location.clone(),
+                host_binding_identity: None,
             },
             RelationSourceInputV2 {
                 authority: quanta_gqlang_v2_types::RelationAuthorityV2::Host,
@@ -214,6 +215,7 @@ fn host_with_budget(budget: FrontendBudgetV2) -> (SourceRegistryViewV2, ClosedFr
                 cardinality: CardinalityV1::Bag,
                 provenance: "host".into(),
                 location: relation_location,
+                host_binding_identity: None,
             },
         ],
         &host,

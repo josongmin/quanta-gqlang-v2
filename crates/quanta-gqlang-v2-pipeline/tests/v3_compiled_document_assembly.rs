@@ -126,6 +126,14 @@ fn authority_with_records_type_and_host_id(
     id_type: ValueTypeV1,
     host_id: &str,
 ) -> ClosedFrontendAuthorityV2 {
+    authority_with_records_binding_v3(id_type, host_id, None)
+}
+
+fn authority_with_records_binding_v3(
+    id_type: ValueTypeV1,
+    host_id: &str,
+    identity: Option<[u8; 32]>,
+) -> ClosedFrontendAuthorityV2 {
     let host = SourceRegistryViewV2::try_new(vec![SourceRegistrationV2 {
         source_id: HOST_SOURCE,
         source_len: 64,
@@ -174,6 +182,7 @@ fn authority_with_records_type_and_host_id(
             cardinality: CardinalityV1::Bag,
             provenance: "host".to_owned(),
             location: location.clone(),
+            host_binding_identity: identity,
         }],
         &host,
         profile.clone(),
@@ -411,3 +420,6 @@ mod execution_contract_tests;
 
 #[path = "v3_compiled_document_assembly/null_order_v3.rs"]
 mod null_order_v3;
+
+#[path = "v3_compiled_document_assembly/host_binding_identity_v3.rs"]
+mod host_binding_identity_v3;

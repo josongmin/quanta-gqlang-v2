@@ -89,12 +89,14 @@ pub struct RelationSourceIdV2 {
     authority: RelationAuthorityV2,
     namespace: ProvenanceNamespaceV2,
     qualified_name: String,
+    host_binding_identity: Option<[u8; 32]>,
 }
 impl RelationSourceIdV2 {
     fn derive(
         authority: RelationAuthorityV2,
         namespace: ProvenanceNamespaceV2,
         qualified_name: &str,
+        host_binding_identity: Option<[u8; 32]>,
     ) -> Result<Self, &'static str> {
         if qualified_name.len() > crate::MAX_TYPE_NAME_BYTES
             || qualified_name
@@ -107,6 +109,7 @@ impl RelationSourceIdV2 {
             authority,
             namespace,
             qualified_name: qualified_name.to_owned(),
+            host_binding_identity,
         })
     }
     #[must_use]
@@ -120,6 +123,11 @@ impl RelationSourceIdV2 {
     #[must_use]
     pub fn qualified_name(&self) -> &str {
         &self.qualified_name
+    }
+    /// Opaque identity supplied by the issued Host invocation owner.
+    #[must_use]
+    pub const fn host_binding_identity(&self) -> Option<[u8; 32]> {
+        self.host_binding_identity
     }
 }
 
@@ -137,6 +145,8 @@ pub const CANONICAL_WORKSPACE_FILES_FIELD_NAME_V2: &str = "path";
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RelationSourceInputV2 {
+    /// Exact issued Host instance; None denotes an unparameterized source.
+    pub host_binding_identity: Option<[u8; 32]>,
     pub authority: RelationAuthorityV2,
     pub provenance_namespace: ProvenanceNamespaceV2,
     pub qualified_name: String,
@@ -228,17 +238,13 @@ impl RelationCatalogV2 {
             }
             let raw_location = input.location.location();
             validate_relation_authority(&input)?;
-            let id = RelationSourceIdV2::derive(
+            let id = derive_source_id_v3(
                 input.authority,
                 input.provenance_namespace,
                 &input.qualified_name,
-            )
-            .map_err(|_name_error| {
-                TypeAuthorityDiagnosticV2::InvalidCanonicalName {
-                    name: diagnostic_name(&input.qualified_name),
-                    location: raw_location,
-                }
-            })?;
+                input.host_binding_identity,
+                raw_location,
+            )?;
             if !canonical_segment(&input.lookup_name) {
                 return Err(TypeAuthorityDiagnosticV2::InvalidCanonicalName {
                     name: input.lookup_name,
@@ -315,7 +321,7 @@ fn validate_relation_authority(
             [only] if only.name() == CANONICAL_WORKSPACE_FILES_FIELD_NAME_V2
                 && only.value_type() == &ValueTypeV1::scalar(ScalarTyV1::RepoPath)
         );
-    if exact_identity && exact_shape {
+    if exact_identity && exact_shape && input.host_binding_identity.is_none() {
         return Ok(());
     }
     Err(TypeAuthorityDiagnosticV2::InvalidRelationAuthority {
@@ -342,4 +348,19 @@ fn diagnostic_name(value: &str) -> String {
         end -= 1;
     }
     value[..end].to_owned()
+}
+
+fn derive_source_id_v3(
+    authority: RelationAuthorityV2,
+    namespace: ProvenanceNamespaceV2,
+    qualified_name: &str,
+    binding_identity: Option<[u8; 32]>,
+    location: quanta_gqlang_v2_hir::LocatedSpanV2,
+) -> Result<RelationSourceIdV2, TypeAuthorityDiagnosticV2> {
+    RelationSourceIdV2::derive(authority, namespace, qualified_name, binding_identity).map_err(
+        |_| TypeAuthorityDiagnosticV2::InvalidCanonicalName {
+            name: diagnostic_name(qualified_name),
+            location,
+        },
+    )
 }

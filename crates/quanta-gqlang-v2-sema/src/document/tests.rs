@@ -236,6 +236,7 @@ fn owner_authority(budget: &FrontendBudgetV2) -> Result<ClosedFrontendAuthorityV
             cardinality: CardinalityV1::Bag,
             provenance: "host".into(),
             location: location.clone(),
+            host_binding_identity: None,
         }],
         &host,
         profile.clone(),

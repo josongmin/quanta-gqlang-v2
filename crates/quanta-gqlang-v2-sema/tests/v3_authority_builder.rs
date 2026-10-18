@@ -82,6 +82,7 @@ fn facade_builder_seals_relation_and_graph_authority_in_one_registry() {
         cardinality: FrontendRelationCardinalityV2::Bag,
         provenance: "host".to_owned(),
         location: location(1, 4),
+        host_binding_identity: None,
     });
     builder.add_graph_reference(FrontendGraphReferenceInputV2 {
         spelling: "entry".to_owned(),
@@ -290,6 +291,7 @@ fn relation_sequence_field_is_independent_of_row_cardinality() {
             cardinality: FrontendRelationCardinalityV2::Bag,
             provenance: "test".into(),
             location: location(1, 16),
+            host_binding_identity: None,
         });
         let authority = input.finish().expect("sequence authority");
         let row = authority
@@ -352,6 +354,7 @@ fn facade_relation_and_rule_inputs_preserve_every_scalar_and_optional_type() {
             cardinality: FrontendRelationCardinalityV2::Bag,
             provenance: "test".to_owned(),
             location: location(1, 16),
+            host_binding_identity: None,
         });
         input.add_catalog_asset(FrontendCatalogAssetInputV2 {
             module_name: "app".to_owned(),

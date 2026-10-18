@@ -888,38 +888,8 @@ pub enum ExecutionRelationAuthorityV3 {
     CompositionBinding,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ExecutionSourceV3 {
-    authority: ExecutionRelationAuthorityV3,
-    kind: ExecutionSourceKindV3,
-    namespace: Option<String>,
-    name: String,
-    composition_binding: Option<ExecutionBindingV3>,
-}
-impl ExecutionSourceV3 {
-    #[must_use]
-    pub const fn authority(&self) -> ExecutionRelationAuthorityV3 {
-        self.authority
-    }
-    #[must_use]
-    pub const fn kind(&self) -> ExecutionSourceKindV3 {
-        self.kind
-    }
-    #[must_use]
-    pub fn namespace(&self) -> Option<&str> {
-        self.namespace.as_deref()
-    }
-    #[must_use]
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-    /// Sealed Binder slot for a Composition source. Its name is also encoded in
-    /// the scan and its exact slot is encoded by the enclosing composition.
-    #[must_use]
-    pub const fn composition_binding(&self) -> Option<&ExecutionBindingV3> {
-        self.composition_binding.as_ref()
-    }
-}
+mod source_v3;
+pub use source_v3::ExecutionSourceV3;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExecutionBindingV3 {

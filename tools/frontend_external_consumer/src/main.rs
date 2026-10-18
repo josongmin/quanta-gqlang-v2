@@ -1787,6 +1787,7 @@ fn main() {
         cardinality: FrontendRelationCardinalityV2::Set,
         provenance: "host".to_owned(),
         location: host_relation_location,
+        host_binding_identity: None,
     });
     for (spelling, kind, start) in [
         ("a", GraphReferenceKindV2::Entity, 5),

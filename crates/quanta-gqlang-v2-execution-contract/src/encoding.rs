@@ -21,6 +21,8 @@ use super::{
 };
 use sha2::{Digest as _, Sha256};
 
+mod source_v3;
+
 /// Canonical encoding rules (all three legs): domain-separated schema
 /// version first, big-endian integers, length-prefixed strings and sequences,
 /// one fixed tag byte per enum variant, every DTO field exactly once, and
@@ -653,21 +655,7 @@ pub(super) fn put_node(out: &mut impl CanonicalByteSink, node: &ExecutionRelatio
         None => put_u8(out, 0),
     }
     put_key(out, node.stage);
-    if let Some(source) = &node.source {
-        put_u8(out, 1);
-        put_u8(out, relation_authority_tag(source.authority));
-        put_u8(out, source_kind_tag(source.kind));
-        match &source.namespace {
-            Some(namespace) => {
-                put_u8(out, 1);
-                put_str(out, namespace);
-            }
-            None => put_u8(out, 0),
-        }
-        put_str(out, &source.name);
-    } else {
-        put_u8(out, 0);
-    }
+    source_v3::put_source_v3(out, node.source.as_ref());
     put_schema(out, &node.schema);
     put_usize(out, node.predicates.len());
     for predicate in &node.predicates {

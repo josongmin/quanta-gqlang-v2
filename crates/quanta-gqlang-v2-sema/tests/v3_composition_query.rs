@@ -97,6 +97,7 @@ fn authority() -> ClosedFrontendAuthorityV2 {
             cardinality: CardinalityV1::Bag,
             provenance: "host".into(),
             location: location.clone(),
+            host_binding_identity: None,
         })
         .collect();
     let relations = RelationCatalogV2::try_new(relation_inputs, &host, profile.clone()).unwrap();

@@ -164,6 +164,9 @@ impl FrontendRelationFieldInputV2 {
 /// One host relation supplied through the public authority boundary.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FrontendRelationInputV2 {
+    /// Opaque canonical binding of the admitted Host invocation.
+    /// Typed args/provider custody remains with its existing issued owner.
+    pub host_binding_identity: Option<[u8; 32]>,
     pub authority: FrontendRelationAuthorityV2,
     pub provenance_namespace: String,
     pub qualified_name: String,
@@ -184,6 +187,7 @@ impl FrontendRelationInputV2 {
     ) -> Self {
         Self {
             authority: FrontendRelationAuthorityV2::CanonicalWorkspaceFiles,
+            host_binding_identity: None,
             provenance_namespace: CANONICAL_WORKSPACE_FILES_PROVENANCE_NAMESPACE_V2.to_owned(),
             qualified_name: CANONICAL_WORKSPACE_FILES_QUALIFIED_NAME_V2.to_owned(),
             lookup_name: CANONICAL_WORKSPACE_FILES_LOOKUP_NAME_V2.to_owned(),

@@ -815,6 +815,7 @@ pub(super) fn project_schema(output: &RelationOutputContractV2) -> ExecutionSche
 pub(super) fn project_source(source: &ResolvedRelationSourceKindV2) -> ExecutionSourceV3 {
     match source {
         ResolvedRelationSourceKindV2::Relation(id) => ExecutionSourceV3 {
+            host_binding_identity: id.host_binding_identity(),
             authority: match id.authority() {
                 RelationAuthorityV2::Host => ExecutionRelationAuthorityV3::Host,
                 RelationAuthorityV2::CanonicalWorkspaceFiles => {
@@ -827,6 +828,7 @@ pub(super) fn project_source(source: &ResolvedRelationSourceKindV2) -> Execution
             composition_binding: None,
         },
         ResolvedRelationSourceKindV2::View(id) => ExecutionSourceV3 {
+            host_binding_identity: None,
             authority: ExecutionRelationAuthorityV3::CatalogView,
             kind: ExecutionSourceKindV3::View,
             namespace: Some(id.module_id().as_str().to_owned()),
@@ -834,6 +836,7 @@ pub(super) fn project_source(source: &ResolvedRelationSourceKindV2) -> Execution
             composition_binding: None,
         },
         ResolvedRelationSourceKindV2::Composition(id) => ExecutionSourceV3 {
+            host_binding_identity: None,
             authority: ExecutionRelationAuthorityV3::CompositionBinding,
             kind: ExecutionSourceKindV3::Composition,
             namespace: None,

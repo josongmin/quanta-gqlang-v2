@@ -100,6 +100,7 @@ fn closed_authority_with_lock_digest(
             cardinality: FrontendRelationCardinalityV2::Bag,
             provenance: "host".to_owned(),
             location: location(base, base + 8),
+            host_binding_identity: None,
         });
     }
 

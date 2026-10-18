@@ -1062,6 +1062,7 @@ fn relation_exists_requires_resolved_authority_and_types_nested_expressions() {
                     span: SpanV1::new(10, 15),
                 })
                 .unwrap(),
+            host_binding_identity: None,
         }],
         &registry,
         AuthorityBudgetProfileV2::try_new(128, 256, 1024, 64 * 1024, 1024).unwrap(),

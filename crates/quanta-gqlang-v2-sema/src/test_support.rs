@@ -2299,6 +2299,7 @@ fn host_relation(
         cardinality: CardinalityV1::Bag,
         provenance: "host".to_owned(),
         location: location.clone(),
+        host_binding_identity: None,
     })
 }
 

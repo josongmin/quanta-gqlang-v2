@@ -38,6 +38,7 @@ fn host_sources() -> [quanta_gqlang_v2_types::RelationSourceIdV2; 2] {
                 cardinality: CardinalityV1::Bag,
                 provenance: "host".into(),
                 location: location.clone(),
+                host_binding_identity: None,
             })
             .collect(),
         &registry,

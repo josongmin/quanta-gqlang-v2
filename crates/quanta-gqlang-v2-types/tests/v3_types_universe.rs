@@ -115,6 +115,7 @@ fn relation_catalog_rejects_duplicate_name_and_structured_id() {
         cardinality: CardinalityV1::Set,
         provenance: "catalog".into(),
         location: checked(&registry, 1, 0),
+        host_binding_identity: None,
     };
     let duplicate = RelationSourceInputV2 {
         authority: quanta_gqlang_v2_types::RelationAuthorityV2::Host,
@@ -125,6 +126,7 @@ fn relation_catalog_rejects_duplicate_name_and_structured_id() {
         cardinality: CardinalityV1::Set,
         provenance: "catalog".into(),
         location: checked(&registry, 1, 2),
+        host_binding_identity: None,
     };
     let structured_duplicate = RelationSourceInputV2 {
         lookup_name: "people".into(),
@@ -172,6 +174,7 @@ fn workspace_files_input(
         cardinality: CardinalityV1::Set,
         provenance: CANONICAL_WORKSPACE_FILES_PROVENANCE_V2.into(),
         location,
+        host_binding_identity: None,
     }
 }
 
@@ -258,6 +261,7 @@ fn relation_identity_and_diagnostic_rendering_are_globally_bounded() {
             cardinality: CardinalityV1::Set,
             provenance: "host".into(),
             location,
+            host_binding_identity: None,
         }],
         &registry,
         authority_budget(),
@@ -314,6 +318,7 @@ fn relation_catalog_retains_exact_source_registry_identity_and_rejects_oob() {
         cardinality: CardinalityV1::Set,
         provenance: "host".into(),
         location: checked(&registry, 1, 0),
+        host_binding_identity: None,
     };
     let profile = authority_budget();
     let catalog = RelationCatalogV2::try_new(vec![input], &registry, profile.clone()).unwrap();
@@ -335,6 +340,7 @@ fn relation_catalog_retains_exact_source_registry_identity_and_rejects_oob() {
         cardinality: CardinalityV1::Set,
         provenance: "host".into(),
         location: checked(&substitute, 1, 5),
+        host_binding_identity: None,
     };
     assert_eq!(
         RelationCatalogV2::try_new(vec![invalid], &registry, authority_budget())
@@ -357,6 +363,7 @@ fn relation_catalog_enforces_profile_string_and_aggregate_byte_limits() {
         cardinality: CardinalityV1::Set,
         provenance: "host".into(),
         location: checked(&registry, 1, 0),
+        host_binding_identity: None,
     };
     let exact = AuthorityBudgetProfileV2::try_new(1, 1, 1, 23, 10).unwrap();
     let retained = RelationCatalogV2::try_new(vec![make_input()], &registry, exact).unwrap();
@@ -558,6 +565,7 @@ fn relation_catalog_distinguishes_duplicate_id_from_duplicate_lookup_name() {
         cardinality: CardinalityV1::Set,
         provenance: "one".into(),
         location: checked(&registry, 1, 0),
+        host_binding_identity: None,
     };
     let same_id = RelationSourceInputV2 {
         authority: quanta_gqlang_v2_types::RelationAuthorityV2::Host,
@@ -568,6 +576,7 @@ fn relation_catalog_distinguishes_duplicate_id_from_duplicate_lookup_name() {
         cardinality: CardinalityV1::Set,
         provenance: "two".into(),
         location: checked(&registry, 1, 2),
+        host_binding_identity: None,
     };
     assert_eq!(
         RelationCatalogV2::try_new(vec![first, same_id], &registry, authority_budget())

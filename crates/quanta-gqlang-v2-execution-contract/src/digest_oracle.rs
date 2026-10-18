@@ -380,6 +380,7 @@ fn relation() -> (ExecutionRelationV3, Vec<u8>) {
             kind: ExecutionSourceKindV3::View,
             namespace: Some("库".to_owned()),
             name: "rows".to_owned(),
+            host_binding_identity: None,
         }),
         schema,
         predicates: Box::new([key(42), key(41)]),

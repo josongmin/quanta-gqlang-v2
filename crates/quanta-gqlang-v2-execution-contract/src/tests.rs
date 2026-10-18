@@ -1496,6 +1496,7 @@ fn join_source_composition_body_and_sample_mode_arms_are_digest_bound() {
             namespace: Some("ns".to_owned()),
             name: "items".to_owned(),
             composition_binding: None,
+            host_binding_identity: None,
         });
         source_digests.push(contract_of(vec![candidate]));
     }
@@ -1582,6 +1583,7 @@ fn authored_projector_facts(source: &str) -> SemanticDocumentV2 {
         cardinality: FrontendRelationCardinalityV2::Bag,
         provenance: "projector test".to_owned(),
         location,
+        host_binding_identity: None,
     });
     builder.add_catalog_asset(FrontendCatalogAssetInputV2 {
         module_name: "app".to_owned(),
