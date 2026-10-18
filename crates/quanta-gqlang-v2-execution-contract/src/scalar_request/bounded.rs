@@ -156,6 +156,7 @@ pub(super) fn source(
         kind: ExecutionSourceKindV3::Relation,
         namespace: Some(string(id.namespace().as_str())?),
         name: string(id.qualified_name())?,
+        host_binding_identity: id.host_binding_identity(),
         composition_binding: None,
     })
 }
