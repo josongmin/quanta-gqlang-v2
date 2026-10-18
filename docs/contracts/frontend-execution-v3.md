@@ -507,3 +507,11 @@ existing Source/Project-only producers continue to refuse a Limit root until the
 same request owner admits its actual semantic, plan and execution births. Runtime
 selection, typed Host producer/generation/provider custody, V1 caller retirement,
 and compiler/test/runtime qualification are separate coupled gates.
+
+The existing relational order key retains source `nulls first` or `nulls last`
+independently of `asc`/`desc`. An omitted policy remains `Last`. The canonical
+formatter emits `nulls first` and omits the default `nulls last`, preserving old
+canonical source and execution bytes for the default. HIR, semantic order keys,
+algebra, and the existing execution Schema order all carry the same policy;
+no downstream runtime reinterpretation supplies a missing policy. This is a
+source contract extension, not a runtime/provider qualification receipt.

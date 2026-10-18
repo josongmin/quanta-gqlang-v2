@@ -85,8 +85,9 @@ pub use expr::{
 
 pub use relation::{
     AliasV1, GroupByHirV1, JoinHirV1, LimitHirV1, NonEmptyProjectionItemsV1,
-    NonEmptyRelationKeysV1, OrderByHirV1, OrderKeyHirV1, ProjectionItemV1, ProjectionV1,
-    RelationExprHirV1, RelationExprKindV1, RelationFilterV1, RelationSourceV1, SortDirectionHirV1,
+    NonEmptyRelationKeysV1, NullOrderHirV1, OrderByHirV1, OrderKeyHirV1, ProjectionItemV1,
+    ProjectionV1, RelationExprHirV1, RelationExprKindV1, RelationFilterV1, RelationSourceV1,
+    SortDirectionHirV1,
 };
 
 pub use shape::{ResultShapeHirV1, ResultShapeKindV1, ShapeFieldV1, ShapeListV1, ShapeRecordV1};

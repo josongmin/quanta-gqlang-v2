@@ -51,10 +51,10 @@ fn group_output_exposes_only_ordered_key_bindings_and_retains_private_partition_
     let order = b
         .order_by(
             group,
-            vec![OrderKeyHirV1 {
-                value: order_ref,
-                direction: SortDirectionHirV1::Asc,
-            }],
+            vec![OrderKeyHirV1::nulls_last(
+                order_ref,
+                SortDirectionHirV1::Asc,
+            )],
             SpanV1::new(0, 41),
         )
         .unwrap();
@@ -572,10 +572,10 @@ fn projection_replaces_row_frame_and_exposes_only_named_outputs() {
     let after_projection = b
         .order_by(
             projected,
-            vec![OrderKeyHirV1 {
-                value: output_ref.clone(),
-                direction: SortDirectionHirV1::Asc,
-            }],
+            vec![OrderKeyHirV1::nulls_last(
+                output_ref.clone(),
+                SortDirectionHirV1::Asc,
+            )],
             SpanV1::new(0, 44),
         )
         .unwrap();
@@ -659,10 +659,10 @@ fn aliasless_path_projection_exposes_final_segment_to_order_by() {
     let ordered = b
         .order_by(
             projected,
-            vec![OrderKeyHirV1 {
-                value: order_ref.clone(),
-                direction: SortDirectionHirV1::Asc,
-            }],
+            vec![OrderKeyHirV1::nulls_last(
+                order_ref.clone(),
+                SortDirectionHirV1::Asc,
+            )],
             SpanV1::new(0, 37),
         )
         .unwrap();

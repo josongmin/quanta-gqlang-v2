@@ -40,8 +40,8 @@ use crate::expr::{parse_bool, parse_optional_alias, parse_projection_item, parse
 use crate::lexer::TokenKindV1;
 use crate::shape::parse_result_shape;
 use quanta_gqlang_v2_hir::{
-    AliasV1, OrderKeyHirV1, ProjectionItemV1, QueryHirV1, RelationExprHirV1, SortDirectionHirV1,
-    SpanV1,
+    AliasV1, NullOrderHirV1, OrderKeyHirV1, ProjectionItemV1, QueryHirV1, RelationExprHirV1,
+    SortDirectionHirV1, SpanV1,
 };
 
 /// Parse a full query unit starting at `from`.
@@ -258,7 +258,7 @@ fn parse_group(
 ) -> Result<RelationExprHirV1, ParseDiagnosticV1> {
     cur.expect_keyword("by", "'by' after 'group'")?;
     let input_span = input.span;
-    let items = parse_value_key_items(cur, false)?;
+    let items = parse_value_key_items(cur)?;
     let span = project_span(input_span, &items);
     let mut keys =
         cur.preallocate_exact_items_v3::<quanta_gqlang_v2_hir::ValueExprHirV1>(items.len(), span)?;
@@ -279,16 +279,18 @@ fn parse_order(
 ) -> Result<RelationExprHirV1, ParseDiagnosticV1> {
     cur.expect_keyword("by", "'by' after 'order'")?;
     let input_span = input.span;
-    let items = parse_value_key_items(cur, true)?;
-    let span = project_span(input_span, &items);
-    let mut keys = cur.preallocate_exact_items_v3::<OrderKeyHirV1>(items.len(), span)?;
-    keys.extend(items.into_iter().map(|item| OrderKeyHirV1 {
-        value: item.value,
-        direction: match item.alias.as_ref().map(|alias| alias.name.as_str()) {
-            Some("desc") => SortDirectionHirV1::Desc,
-            _ => SortDirectionHirV1::Asc,
-        },
-    }));
+    let mut span = input_span;
+    let mut keys = cur.preallocate_stage_items_v3::<OrderKeyHirV1>()?;
+    loop {
+        cur.budget
+            .charge_projection_element(keys.len() + 1, cur.here_span())?;
+        let (key, key_span) = parse_order_key_v3(cur)?;
+        span = span.merge(&key_span);
+        keys.push(key);
+        if cur.eat(&TokenKindV1::Comma).is_none() {
+            break;
+        }
+    }
     cur.reserve_nested_bytes_v3(std::mem::size_of::<RelationExprHirV1>(), span)?;
     cur.builder.order_by(input, keys, span).map_err(|message| {
         ParseDiagnosticV1::new(
@@ -315,38 +317,62 @@ fn parse_projection_items(
     Ok(items)
 }
 
-/// Parse comma-separated value keys. When `allow_direction` is set, an optional
-/// trailing `asc`/`desc` becomes the item alias (an open sort-direction tag).
+/// Group keys use the existing projection-item span and budget owner.
 fn parse_value_key_items(
     cur: &mut CursorV1<'_>,
-    allow_direction: bool,
 ) -> Result<Vec<ProjectionItemV1>, ParseDiagnosticV1> {
     let mut items = cur.preallocate_stage_items_v3::<ProjectionItemV1>()?;
     loop {
         cur.budget
             .charge_projection_element(items.len() + 1, cur.here_span())?;
-        let value = parse_value(cur)?;
-        let mut alias = None;
-        if allow_direction {
-            if let TokenKindV1::Ident(s) = &cur.peek().kind {
-                if s == "asc" || s == "desc" {
-                    let token = cur.bump();
-                    if let TokenKindV1::Ident(name) = token.kind {
-                        alias = Some(AliasV1 {
-                            name,
-                            span: token.span,
-                        });
-                    }
-                }
-            }
+        items.push(ProjectionItemV1 {
+            value: parse_value(cur)?,
+            alias: None,
+        });
+        if cur.eat(&TokenKindV1::Comma).is_none() {
+            break;
         }
-        items.push(ProjectionItemV1 { value, alias });
-        if cur.eat(&TokenKindV1::Comma).is_some() {
-            continue;
-        }
-        break;
     }
     Ok(items)
+}
+
+fn parse_order_key_v3(
+    cur: &mut CursorV1<'_>,
+) -> Result<(OrderKeyHirV1, SpanV1), ParseDiagnosticV1> {
+    let value = parse_value(cur)?;
+    let mut span = value.span;
+    let direction = if cur.is_keyword("asc") || cur.is_keyword("desc") {
+        let descending = cur.is_keyword("desc");
+        span = span.merge(&cur.bump().span);
+        if descending {
+            SortDirectionHirV1::Desc
+        } else {
+            SortDirectionHirV1::Asc
+        }
+    } else {
+        SortDirectionHirV1::Asc
+    };
+    let null_order = if cur.is_keyword("nulls") {
+        let _keyword = cur.bump();
+        if cur.is_keyword("first") {
+            span = span.merge(&cur.bump().span);
+            NullOrderHirV1::First
+        } else {
+            let token = cur.expect_keyword("last", "'first' or 'last' after 'nulls'")?;
+            span = span.merge(&token.span);
+            NullOrderHirV1::Last
+        }
+    } else {
+        NullOrderHirV1::Last
+    };
+    Ok((
+        OrderKeyHirV1 {
+            value,
+            direction,
+            null_order,
+        },
+        span,
+    ))
 }
 
 fn project_span(input_span: SpanV1, items: &[ProjectionItemV1]) -> SpanV1 {

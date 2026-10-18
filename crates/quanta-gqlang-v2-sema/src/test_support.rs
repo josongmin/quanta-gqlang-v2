@@ -1159,7 +1159,7 @@ fn reference_relation_hir(
                 .order_by(
                     scan,
                     keys.into_iter()
-                        .map(|(value, direction)| OrderKeyHirV1 { value, direction })
+                        .map(|(value, direction)| OrderKeyHirV1::nulls_last(value, direction))
                         .collect(),
                     SpanV1::new(5, end),
                 )
@@ -1191,10 +1191,7 @@ fn reference_relation_hir(
             let order = builder
                 .order_by(
                     project,
-                    vec![OrderKeyHirV1 {
-                        value: key,
-                        direction: SortDirectionHirV1::Desc,
-                    }],
+                    vec![OrderKeyHirV1::nulls_last(key, SortDirectionHirV1::Desc)],
                     SpanV1::new(5, 47),
                 )
                 .map_err(|error| error.to_owned())?;
@@ -1439,10 +1436,10 @@ fn asymmetric_join_hir(builder: &HirBuilderV1) -> Result<(RelationExprHirV1, usi
     let right = builder
         .order_by(
             right_scan,
-            vec![OrderKeyHirV1 {
-                value: right_key,
-                direction: SortDirectionHirV1::Asc,
-            }],
+            vec![OrderKeyHirV1::nulls_last(
+                right_key,
+                SortDirectionHirV1::Asc,
+            )],
             SpanV1::new(50, 72),
         )
         .map_err(|error| error.to_owned())?;

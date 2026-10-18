@@ -207,13 +207,36 @@ pub enum SortDirectionHirV1 {
     Desc,
 }
 
-/// One order key and its direction.
+/// Explicit null placement, independent of sort direction.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum NullOrderHirV1 {
+    /// Nulls before non-null values.
+    First,
+    /// Nulls after non-null values, including omitted source policy.
+    Last,
+}
+
+/// One order key with direction and null placement.
 #[derive(Clone, Debug, PartialEq)]
 pub struct OrderKeyHirV1 {
     /// Key expression.
     pub value: ValueExprHirV1,
     /// Canonical direction.
     pub direction: SortDirectionHirV1,
+    /// Canonical null placement.
+    pub null_order: NullOrderHirV1,
+}
+
+impl OrderKeyHirV1 {
+    /// Author a key with the canonical omitted-source null policy.
+    #[must_use]
+    pub fn nulls_last(value: ValueExprHirV1, direction: SortDirectionHirV1) -> Self {
+        Self {
+            value,
+            direction,
+            null_order: NullOrderHirV1::Last,
+        }
+    }
 }
 
 /// Ordered keys over one relation input.

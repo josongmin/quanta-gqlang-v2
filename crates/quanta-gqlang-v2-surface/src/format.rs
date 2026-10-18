@@ -33,6 +33,8 @@
 
 use std::fmt;
 
+mod order_v3;
+
 use crate::diag::ParseDiagnosticV1;
 use crate::equivalence::semantically_equivalent_items;
 use crate::parser::parse_program;
@@ -43,8 +45,8 @@ use quanta_gqlang_v2_hir::{
     GraphEndpointsV1, GraphQueryHirV1, GraphQueryKindV1, GraphRefV1, HirBuilderV1, JoinHirV1,
     LegalityHirV1, LiteralV1, MetaKindV1, PresentationHirV1, PresentationKindV1, ProgramItemHirV1,
     QueryHirV1, RelationExprHirV1, RelationExprKindV1, ResultShapeHirV1, ResultShapeKindV1,
-    SampleModeV1, ShowCategoryV1, SortDirectionHirV1, SpanV1, TruthModeV1, UsePackActivationV1,
-    ValueExprHirV1, ValueExprKindV1, ViewBodyV1,
+    SampleModeV1, ShowCategoryV1, SpanV1, TruthModeV1, UsePackActivationV1, ValueExprHirV1,
+    ValueExprKindV1, ViewBodyV1,
 };
 
 /// Stable reason a caller-built HIR item cannot be serialized through the
@@ -441,20 +443,7 @@ fn render_relation_bool(initial: RenderFrame<'_>, out: &mut String) {
                         out.push_str(&format_value(key));
                     }
                 }
-                RelationExprKindV1::OrderBy(order) => {
-                    out.push_str(" | order by ");
-                    for (index, key) in order.keys().iter().enumerate() {
-                        if index > 0 {
-                            out.push_str(", ");
-                        }
-                        out.push_str(&format_value(&key.value));
-                        out.push(' ');
-                        out.push_str(match key.direction {
-                            SortDirectionHirV1::Asc => "asc",
-                            SortDirectionHirV1::Desc => "desc",
-                        });
-                    }
-                }
+                RelationExprKindV1::OrderBy(order) => order_v3::render_order_v3(order, out),
             },
             RenderFrame::Bool(node, parent, right_child) => {
                 let precedence = bool_precedence(node);

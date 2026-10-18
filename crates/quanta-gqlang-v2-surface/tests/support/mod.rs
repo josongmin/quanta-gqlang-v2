@@ -179,7 +179,7 @@ impl HirVisitorV1 for Witness {
                 order
                     .keys()
                     .iter()
-                    .map(|key| key.direction)
+                    .map(|key| (key.direction, key.null_order))
                     .collect::<Vec<_>>()
             ),
         });

@@ -589,7 +589,7 @@ fn same_relation<'a>(
             }
             stack.push(Frame::Relation(&a.input, &b.input));
             for (a, b) in a.keys().iter().zip(b.keys()) {
-                if a.direction != b.direction {
+                if a.direction != b.direction || a.null_order != b.null_order {
                     return false;
                 }
                 stack.push(Frame::Value(&a.value, &b.value));

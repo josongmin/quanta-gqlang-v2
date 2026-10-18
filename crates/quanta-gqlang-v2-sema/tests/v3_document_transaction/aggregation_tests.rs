@@ -145,10 +145,10 @@ fn partition_candidate_cannot_cross_an_intervening_sort_stage() {
     let sorted = builder
         .order_by(
             group,
-            vec![OrderKeyHirV1 {
-                value: builder.symbol("id", SpanV1::new(35, 37)),
-                direction: SortDirectionHirV1::Asc,
-            }],
+            vec![OrderKeyHirV1::nulls_last(
+                builder.symbol("id", SpanV1::new(35, 37)),
+                SortDirectionHirV1::Asc,
+            )],
             SpanV1::new(5, 37),
         )
         .unwrap();
@@ -576,10 +576,7 @@ fn order_key_cannot_introduce_an_aggregate_inside_a_nested_expression() {
     let sorted = builder
         .order_by(
             source,
-            vec![OrderKeyHirV1 {
-                value: wrapped,
-                direction: SortDirectionHirV1::Asc,
-            }],
+            vec![OrderKeyHirV1::nulls_last(wrapped, SortDirectionHirV1::Asc)],
             SpanV1::new(5, 31),
         )
         .unwrap();

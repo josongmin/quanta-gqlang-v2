@@ -5,8 +5,8 @@ use super::{
     take_materialized_relation, AggregatePositionV2, AggregationClassV1, BTreeMap,
     BinderEvidenceReaderV3, BinderKindV1, ClosedFrontendAuthorityV2, ExpressionEffectsV2,
     ExpressionTypeStateV2, ExtendedSourceRegistryViewV2, FrontendFailureV2, HirNodeIdV1,
-    NullOrderV2, OrderKeyContractV2, OutputColumnContractV2, OutputColumnOriginV2,
-    OutputProvenanceV2, PartitionInputBindingV2, RelationOutputContractV2, ResolvedBindingKindV2,
+    OrderKeyContractV2, OutputColumnContractV2, OutputColumnOriginV2, OutputProvenanceV2,
+    PartitionInputBindingV2, RelationOutputContractV2, ResolvedBindingKindV2,
     ResolvedCompositionSourceIdV2, ResolvedScanSourceV2, ResolvedTargetV1, ResolvedValueBindingV2,
     SemanticStepCounterV2, SourceIdV2, SourceQualifiedNodeIdV2, TypeFactsReaderV3, TypedExprV2,
     TypedRelationExprV2, ViewMaterializationInputsV2, ViewSourceTargetV2,
@@ -955,7 +955,7 @@ impl RelationMaterializer<'_, '_> {
             ordering.push(OrderKeyContractV2::new(
                 value.key(),
                 item.direction.into(),
-                NullOrderV2::Last,
+                item.null_order.into(),
                 ty.clone(),
             ));
             effects.push(value.effects());

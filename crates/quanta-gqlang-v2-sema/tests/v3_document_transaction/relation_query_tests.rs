@@ -1041,14 +1041,8 @@ fn ordered_projection_alias_and_null_key_retain_direction_null_policy_and_sequen
         .order_by(
             project,
             vec![
-                OrderKeyHirV1 {
-                    value: asc,
-                    direction: SortDirectionHirV1::Asc,
-                },
-                OrderKeyHirV1 {
-                    value: desc,
-                    direction: SortDirectionHirV1::Desc,
-                },
+                OrderKeyHirV1::nulls_last(asc, SortDirectionHirV1::Asc),
+                OrderKeyHirV1::nulls_last(desc, SortDirectionHirV1::Desc),
             ],
             SpanV1::new(5, 55),
         )
@@ -1142,10 +1136,10 @@ fn grouped_key_only_row_is_visible_to_sort_by_binder_owned_ordinal() {
     let order = builder
         .order_by(
             group,
-            vec![OrderKeyHirV1 {
-                value: order_ref,
-                direction: SortDirectionHirV1::Asc,
-            }],
+            vec![OrderKeyHirV1::nulls_last(
+                order_ref,
+                SortDirectionHirV1::Asc,
+            )],
             SpanV1::new(5, 41),
         )
         .unwrap();
@@ -1239,10 +1233,10 @@ fn source_alias_disappears_from_public_group_output_frame() {
     let order = builder
         .order_by(
             group,
-            vec![OrderKeyHirV1 {
-                value: unavailable,
-                direction: SortDirectionHirV1::Asc,
-            }],
+            vec![OrderKeyHirV1::nulls_last(
+                unavailable,
+                SortDirectionHirV1::Asc,
+            )],
             SpanV1::new(5, 40),
         )
         .unwrap();

@@ -358,3 +358,57 @@ fn relational_limit_rejects_negative_fractional_missing_and_overflow_counts() {
         assert!(parse_program(text, &builder).is_err(), "{text}");
     }
 }
+
+#[test]
+fn order_keys_retain_explicit_null_policy_with_full_relation_span() {
+    use quanta_gqlang_v2_hir::NullOrderHirV1::{First, Last};
+    for (source, direction, policy) in [
+        (
+            "from records r | order by r.id nulls first",
+            SortDirectionHirV1::Asc,
+            First,
+        ),
+        (
+            "from records r | order by r.id desc nulls first",
+            SortDirectionHirV1::Desc,
+            First,
+        ),
+        (
+            "from records r | order by r.id asc nulls last",
+            SortDirectionHirV1::Asc,
+            Last,
+        ),
+        (
+            "from records r | order by r.id desc",
+            SortDirectionHirV1::Desc,
+            Last,
+        ),
+    ] {
+        let parsed = parse_program(source, &HirBuilderV1::new()).unwrap();
+        let SurfaceItemV1::Query(query) = parsed.item else {
+            panic!("query");
+        };
+        let RelationExprKindV1::OrderBy(order) = &query.body.kind else {
+            panic!("order");
+        };
+        assert_eq!(order.keys()[0].direction, direction);
+        assert_eq!(order.keys()[0].null_order, policy);
+        assert_eq!(query.body.span.end, source.len());
+        check_tree(HirRootRefV1::Query(&query), source.len()).unwrap();
+    }
+}
+
+#[test]
+fn order_null_policy_rejects_missing_invalid_and_duplicate_clauses() {
+    for source in [
+        "from r | order by k nulls",
+        "from r | order by k nulls middle",
+        "from r | order by k nulls first nulls last",
+        "from r | order by k nulls last desc",
+    ] {
+        assert!(
+            parse_program(source, &HirBuilderV1::new()).is_err(),
+            "{source}"
+        );
+    }
+}

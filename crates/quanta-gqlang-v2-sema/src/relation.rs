@@ -3,7 +3,9 @@
 use crate::{
     ResolvedRelationSourceKindV2, ResolvedValueBindingV2, SemanticItemIdV2, TypedBoolExprV2,
 };
-use quanta_gqlang_v2_hir::{CheckedLocatedSpanV2, SortDirectionHirV1};
+use quanta_gqlang_v2_hir::CheckedLocatedSpanV2;
+
+mod order_hir_v3;
 use quanta_gqlang_v2_types::{
     AggregationClassV1, CardinalityV1, ExpressionEffectsV2, RecordTypeV1, SourceQualifiedNodeIdV2,
     ValueTypeV1,
@@ -34,15 +36,6 @@ pub enum SortDirectionV2 {
     Asc,
     /// Descending order.
     Desc,
-}
-
-impl From<SortDirectionHirV1> for SortDirectionV2 {
-    fn from(direction: SortDirectionHirV1) -> Self {
-        match direction {
-            SortDirectionHirV1::Asc => Self::Asc,
-            SortDirectionHirV1::Desc => Self::Desc,
-        }
-    }
 }
 
 /// One checked order key with its source-qualified expression identity.

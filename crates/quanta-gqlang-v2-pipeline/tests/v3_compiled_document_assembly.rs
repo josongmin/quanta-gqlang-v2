@@ -408,3 +408,6 @@ mod scalar_request_tests;
 
 #[path = "v3_compiled_document_assembly/execution_contract_tests.rs"]
 mod execution_contract_tests;
+
+#[path = "v3_compiled_document_assembly/null_order_v3.rs"]
+mod null_order_v3;
