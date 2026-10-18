@@ -1469,6 +1469,7 @@ fn existence_cardinality_uses_the_left_subtree_after_both_children_fold() {
             fields: vec![FrontendRelationFieldInputV2 {
                 name: field.to_owned(),
                 scalar_type: FrontendScalarTypeV2::Int,
+                sequence: false,
                 optional: false,
                 location,
             }],
@@ -1563,6 +1564,7 @@ fn public_optional_relation_field_reaches_the_execution_schema_as_optional() {
         fields: vec![FrontendRelationFieldInputV2 {
             name: "id".to_owned(),
             scalar_type: FrontendScalarTypeV2::Int,
+            sequence: false,
             optional: true,
             location,
         }],

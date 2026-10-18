@@ -75,6 +75,7 @@ fn facade_builder_seals_relation_and_graph_authority_in_one_registry() {
         fields: vec![FrontendRelationFieldInputV2 {
             name: "id".to_owned(),
             scalar_type: FrontendScalarTypeV2::Int,
+            sequence: false,
             optional: false,
             location: location(2, 3),
         }],
@@ -270,6 +271,45 @@ fn facade_builder_seals_pack_and_canonical_lockfile_without_owner_proofs() {
 }
 
 #[test]
+fn relation_sequence_field_is_independent_of_row_cardinality() {
+    use quanta_gqlang_v2_types::{ScalarTyV1, ValueTypeV1};
+    for optional in [false, true] {
+        let mut input = builder();
+        input.add_relation(FrontendRelationInputV2 {
+            authority: quanta_gqlang_v2_sema::FrontendRelationAuthorityV2::Host,
+            provenance_namespace: "host".into(),
+            qualified_name: "app::sequences".into(),
+            lookup_name: "sequences".into(),
+            fields: vec![FrontendRelationFieldInputV2 {
+                name: "values".into(),
+                scalar_type: FrontendScalarTypeV2::String,
+                sequence: true,
+                optional,
+                location: location(2, 3),
+            }],
+            cardinality: FrontendRelationCardinalityV2::Bag,
+            provenance: "test".into(),
+            location: location(1, 16),
+        });
+        let authority = input.finish().expect("sequence authority");
+        let row = authority
+            .relations()
+            .get("sequences")
+            .expect("host relation")
+            .relation_type()
+            .row();
+        let sequence =
+            ValueTypeV1::try_list(ValueTypeV1::scalar(ScalarTyV1::String)).expect("sequence");
+        let expected = if optional {
+            ValueTypeV1::try_optional(sequence).expect("optional sequence")
+        } else {
+            sequence
+        };
+        assert_eq!(row.fields()[0].value_type(), &expected);
+    }
+}
+
+#[test]
 fn facade_relation_and_rule_inputs_preserve_every_scalar_and_optional_type() {
     use quanta_gqlang_v2_modules::ExternalCatalogPayloadV2;
     use quanta_gqlang_v2_sema::{
@@ -304,6 +344,7 @@ fn facade_relation_and_rule_inputs_preserve_every_scalar_and_optional_type() {
                 .map(|(index, (scalar_type, _))| FrontendRelationFieldInputV2 {
                     name: format!("field_{index}"),
                     scalar_type: *scalar_type,
+                    sequence: false,
                     optional,
                     location: location(2 + index, 3 + index),
                 })

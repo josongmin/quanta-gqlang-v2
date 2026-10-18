@@ -139,8 +139,26 @@ impl FrontendRelationCardinalityV2 {
 pub struct FrontendRelationFieldInputV2 {
     pub name: String,
     pub scalar_type: FrontendScalarTypeV2,
+    /// A sequence-valued field. This is independent of the relation's row
+    /// cardinality and retains the element order supplied by its producer.
+    pub sequence: bool,
     pub optional: bool,
     pub location: FrontendAuthorityLocationV2,
+}
+
+impl FrontendRelationFieldInputV2 {
+    pub(super) fn owner_value_type_v2(&self) -> Result<ValueTypeV1, FrontendAuthorityErrorV2> {
+        let mut value_type = ValueTypeV1::scalar(self.scalar_type.owner());
+        if self.sequence {
+            value_type = ValueTypeV1::try_list(value_type)
+                .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
+        }
+        if self.optional {
+            value_type = ValueTypeV1::try_optional(value_type)
+                .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
+        }
+        Ok(value_type)
+    }
 }
 
 /// One host relation supplied through the public authority boundary.
@@ -172,6 +190,7 @@ impl FrontendRelationInputV2 {
             fields: vec![FrontendRelationFieldInputV2 {
                 name: CANONICAL_WORKSPACE_FILES_FIELD_NAME_V2.to_owned(),
                 scalar_type: FrontendScalarTypeV2::RepoPath,
+                sequence: false,
                 optional: false,
                 location: field_location,
             }],

@@ -29,7 +29,7 @@ use quanta_gqlang_v2_modules::{
 };
 use quanta_gqlang_v2_types::{
     AuthorityBudgetProfileV2, ProvenanceNamespaceV2, RecordFieldTypeV1, RecordTypeV1,
-    RelationCatalogV2, RelationSourceInputV2, ValueTypeV1,
+    RelationCatalogV2, RelationSourceInputV2,
 };
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -670,11 +670,7 @@ fn seal_relations(
         let mut fields = Vec::with_capacity(relation.fields.len());
         for field in relation.fields {
             let field_location = field.location.check(host_sources)?;
-            let mut value_type = ValueTypeV1::scalar(field.scalar_type.owner());
-            if field.optional {
-                value_type = ValueTypeV1::try_optional(value_type)
-                    .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
-            }
+            let value_type = field.owner_value_type_v2()?;
             fields.push(
                 RecordFieldTypeV1::try_new(&field.name, value_type, field_location)
                     .map_err(|error| configuration_failure(error.code(), error.to_string()))?,

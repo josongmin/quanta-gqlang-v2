@@ -91,6 +91,7 @@ fn closed_authority_with_lock_digest(
                 |(field_index, (field, scalar_type))| FrontendRelationFieldInputV2 {
                     name: field.to_owned(),
                     scalar_type,
+                    sequence: false,
                     optional: false,
                     location: location(base + field_index, base + field_index + 1),
                 },

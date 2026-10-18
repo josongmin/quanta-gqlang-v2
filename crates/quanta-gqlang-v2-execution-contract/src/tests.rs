@@ -1573,6 +1573,7 @@ fn authored_projector_facts(source: &str) -> SemanticDocumentV2 {
         fields: vec![FrontendRelationFieldInputV2 {
             name: "id".to_owned(),
             scalar_type: FrontendScalarTypeV2::Int,
+            sequence: false,
             optional: false,
             location,
         }],
