@@ -644,6 +644,7 @@ fn project_node(node: &CheckedAlgebraNodeV2) -> ExecutionRelationalOperatorV3 {
     ExecutionRelationalOperatorV3 {
         family: node.family(),
         join_mode: node.join_mode().map(project_join_mode),
+        limit: node.limit_count(),
         stage: node.stage_key(),
         source,
         schema: project_schema(node.output()),

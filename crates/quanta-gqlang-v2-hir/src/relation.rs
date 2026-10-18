@@ -47,6 +47,15 @@ pub enum RelationExprKindV1 {
     GroupBy(GroupByHirV1),
     /// Ordered sort keys over an input relation.
     OrderBy(OrderByHirV1),
+    /// Keep the first count rows of the input, including an empty result for zero.
+    Limit(LimitHirV1),
+}
+
+/// Source-authored relational truncation. The count is distinct from SAMPLE.
+#[derive(Clone, Debug, PartialEq)]
+pub struct LimitHirV1 {
+    pub input: Box<RelationExprHirV1>,
+    pub count: u64,
 }
 
 /// A reference to a named relation source.

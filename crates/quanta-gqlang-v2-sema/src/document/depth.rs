@@ -115,6 +115,9 @@ pub(super) fn check_relation_depth_impl(
                         }
                         push_checked!((&group.input, depth.saturating_add(1)));
                     }
+                    RelationExprKindV1::Limit(limit) => {
+                        push_checked!((&limit.input, depth.saturating_add(1)));
+                    }
                     RelationExprKindV1::OrderBy(order) => {
                         for key in order.keys() {
                             self.visit_value(&key.value);

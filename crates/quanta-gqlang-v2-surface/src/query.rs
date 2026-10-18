@@ -15,6 +15,7 @@
 //!   | cross join <source> [<alias>]
 //!   | group by <value>, ...
 //!   | order by <value> [desc|asc], ...
+//!   | limit <non-negative-u64>
 //!   => <result-shape>          # optional nested result shape
 //! ```
 //!
@@ -121,6 +122,7 @@ pub(crate) fn is_reserved(word: &str) -> bool {
             | "on"
             | "group"
             | "order"
+            | "limit"
             | "by"
             | "as"
             | "and"
@@ -145,13 +147,14 @@ type StageParserV1 =
     fn(&mut CursorV1<'_>, RelationExprHirV1) -> Result<RelationExprHirV1, ParseDiagnosticV1>;
 
 /// Ordered closed stage table: every accepted keyword appears exactly once.
-const RELATION_STAGE_TABLE_V1: [(&str, StageParserV1); 6] = [
+const RELATION_STAGE_TABLE_V1: [(&str, StageParserV1); 7] = [
     ("where", parse_where),
     ("project", parse_project),
     ("join", parse_join),
     ("cross", parse_cross_join),
     ("group", parse_group),
     ("order", parse_order),
+    ("limit", parse_limit),
 ];
 
 /// Render the complete expected-token message from the closed table, so the
@@ -179,6 +182,16 @@ fn parse_stage(
         }
     }
     Err(cur.unexpected(&expected_stage_message_v1()))
+}
+
+fn parse_limit(
+    cur: &mut CursorV1<'_>,
+    input: RelationExprHirV1,
+) -> Result<RelationExprHirV1, ParseDiagnosticV1> {
+    let (count, count_span) = cur.parse_unsigned_v3::<u64>("a non-negative relational limit")?;
+    let span = input.span.merge(&count_span);
+    cur.reserve_nested_bytes_v3(std::mem::size_of::<RelationExprHirV1>(), span)?;
+    Ok(cur.builder.limit(input, count, span))
 }
 
 fn parse_where(

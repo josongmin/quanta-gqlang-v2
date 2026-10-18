@@ -25,8 +25,8 @@ use crate::item::{
     LegalityHirV1, MetaHirV1, MetaKindV1, PresentationHirV1, PresentationKindV1,
 };
 use crate::relation::{
-    AliasV1, GroupByHirV1, JoinHirV1, OrderByHirV1, OrderKeyHirV1, ProjectionItemV1, ProjectionV1,
-    RelationExprHirV1, RelationExprKindV1, RelationFilterV1, RelationSourceV1,
+    AliasV1, GroupByHirV1, JoinHirV1, LimitHirV1, OrderByHirV1, OrderKeyHirV1, ProjectionItemV1,
+    ProjectionV1, RelationExprHirV1, RelationExprKindV1, RelationFilterV1, RelationSourceV1,
 };
 use crate::shape::{ResultShapeHirV1, ResultShapeKindV1, ShapeFieldV1, ShapeListV1, ShapeRecordV1};
 use crate::span::SpanV1;
@@ -399,6 +399,17 @@ impl HirBuilderV1 {
     ) -> Result<RelationExprHirV1, &'static str> {
         let order = OrderByHirV1::try_new(input, keys)?;
         Ok(self.relation(span, RelationExprKindV1::OrderBy(order)))
+    }
+
+    /// Relational truncation preserves the source count, including zero.
+    pub fn limit(&self, input: RelationExprHirV1, count: u64, span: SpanV1) -> RelationExprHirV1 {
+        self.relation(
+            span,
+            RelationExprKindV1::Limit(LimitHirV1 {
+                input: Box::new(input),
+                count,
+            }),
+        )
     }
 
     fn relation(&self, span: SpanV1, kind: RelationExprKindV1) -> RelationExprHirV1 {

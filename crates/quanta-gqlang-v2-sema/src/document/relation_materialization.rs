@@ -198,6 +198,20 @@ impl RelationMaterializer<'_, '_> {
             quanta_gqlang_v2_hir::RelationExprKindV1::Join(join) => {
                 self.materialize_join(relation, checked, key, join)
             }
+            quanta_gqlang_v2_hir::RelationExprKindV1::Limit(limit) => {
+                let input =
+                    take_materialized_relation(self.completed, &limit.input, self.source_id)?;
+                TypedRelationExprV2::try_limit(key, checked, input, limit.count).map_err(
+                    |message| {
+                        document_failure(
+                            "sema.document_validation_failed",
+                            self.source_id,
+                            relation.span,
+                            message,
+                        )
+                    },
+                )
+            }
             quanta_gqlang_v2_hir::RelationExprKindV1::OrderBy(order) => {
                 self.materialize_orderby(relation, checked, key, order)
             }

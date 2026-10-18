@@ -639,6 +639,12 @@ fn put_relation(out: &mut impl CanonicalByteSink, relation: &ExecutionRelationV3
 }
 pub(super) fn put_node(out: &mut impl CanonicalByteSink, node: &ExecutionRelationalOperatorV3) {
     put_u8(out, algebra_family_tag(node.family));
+    if let Some(count) = node.limit {
+        // The extension marker is disjoint from the following join-mode tag.
+        // Nodes without a Limit retain their existing canonical bytes.
+        put_u8(out, 255);
+        out.write_bytes(&count.to_be_bytes());
+    }
     match node.join_mode {
         Some(mode) => {
             put_u8(out, 1);
@@ -963,6 +969,7 @@ pub(super) const fn algebra_family_tag(value: AlgebraFamilyV2) -> u8 {
         AlgebraFamilyV2::SemiJoin => 7,
         AlgebraFamilyV2::AntiJoin => 8,
         AlgebraFamilyV2::ExistsFilter => 9,
+        AlgebraFamilyV2::Limit => 10,
     }
 }
 

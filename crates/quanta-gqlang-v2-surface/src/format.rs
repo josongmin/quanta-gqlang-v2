@@ -265,6 +265,7 @@ fn validate_raw_representability(item: &ProgramItemHirV1) -> Result<(), FormatDi
                 }
                 RelationExprKindV1::GroupBy(group) => stack.push(Frame::Relation(&group.input)),
                 RelationExprKindV1::OrderBy(order) => stack.push(Frame::Relation(&order.input)),
+                RelationExprKindV1::Limit(limit) => stack.push(Frame::Relation(&limit.input)),
             },
             Frame::Bool(boolean) => match &boolean.kind {
                 BoolExprKindV1::Literal(_) => {
@@ -392,12 +393,21 @@ fn render_relation_bool(initial: RenderFrame<'_>, out: &mut String) {
                     stack.push(RenderFrame::Stage(node));
                     stack.push(RenderFrame::Relation(&group.input));
                 }
+                RelationExprKindV1::Limit(limit) => {
+                    stack.push(RenderFrame::Stage(node));
+                    stack.push(RenderFrame::Relation(&limit.input));
+                }
                 RelationExprKindV1::OrderBy(order) => {
                     stack.push(RenderFrame::Stage(node));
                     stack.push(RenderFrame::Relation(&order.input));
                 }
             },
             RenderFrame::Stage(node) => match &node.kind {
+                RelationExprKindV1::Limit(limit) => {
+                    out.push_str(" | limit ");
+                    out.push_str(&limit.count.to_string());
+                }
+
                 RelationExprKindV1::Source(_) => {}
                 RelationExprKindV1::Project(project) => {
                     out.push_str(" | project ");

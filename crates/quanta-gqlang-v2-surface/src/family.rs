@@ -1168,18 +1168,7 @@ fn parse_explain(
 
 /// Parse a non-negative integer literal into a `u32` plus its span.
 fn parse_u32(cur: &mut CursorV1<'_>, what: &str) -> Result<(u32, SpanV1), ParseDiagnosticV1> {
-    if matches!(&cur.peek().kind, TokenKindV1::Int(_)) {
-        let token = cur.bump();
-        let TokenKindV1::Int(raw) = token.kind else {
-            return Err(cur.unexpected(what));
-        };
-        let span = token.span;
-        let n = raw
-            .parse::<u32>()
-            .map_err(|_err| cur.unsupported(span, format!("'{raw}' is not a valid {what}")))?;
-        return Ok((n, span));
-    }
-    Err(cur.unexpected(what))
+    cur.parse_unsigned_v3(what)
 }
 
 /// Parse a quoted string literal into its content plus span.

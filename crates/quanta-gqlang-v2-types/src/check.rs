@@ -357,6 +357,15 @@ impl DocumentChecker<'_, '_> {
                     target: filter.input.id,
                     location,
                 })?,
+            RelationExprKindV1::Limit(limit) => self
+                .relation_rows
+                .get(&self.key_id(limit.input.id))
+                .cloned()
+                .ok_or(TypeDiagnosticV2::UnavailableRelationRowDependency {
+                    root: node.id,
+                    target: limit.input.id,
+                    location,
+                })?,
             RelationExprKindV1::OrderBy(order) => self
                 .relation_rows
                 .get(&self.key_id(order.input.id))

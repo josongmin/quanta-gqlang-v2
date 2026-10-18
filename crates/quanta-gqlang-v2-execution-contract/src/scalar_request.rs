@@ -197,6 +197,7 @@ pub(crate) fn project_scalar_relation_v3(
     let scan = ExecutionRelationalOperatorV3 {
         family: quanta_gqlang_v2_algebra::AlgebraFamilyV2::Scan,
         join_mode: None,
+        limit: None,
         stage: read.scan_key_v3(),
         source: Some(bounded::source(source)?),
         schema: bounded::schema(read.scan_output_v3())?,
@@ -212,6 +213,7 @@ pub(crate) fn project_scalar_relation_v3(
     let project = ExecutionRelationalOperatorV3 {
         family: quanta_gqlang_v2_algebra::AlgebraFamilyV2::Project,
         join_mode: None,
+        limit: None,
         stage: read.project_key_v3(),
         source: None,
         schema: bounded::schema(read.project_output_v3())?,

@@ -230,6 +230,7 @@ pub fn walk_relation<V: HirVisitorV1 + ?Sized>(visitor: &mut V, node: &RelationE
                 visitor.visit_value(key);
             }
         }
+        RelationExprKindV1::Limit(limit) => visitor.visit_relation(&limit.input),
         RelationExprKindV1::OrderBy(order) => {
             visitor.visit_relation(&order.input);
             for key in order.keys() {

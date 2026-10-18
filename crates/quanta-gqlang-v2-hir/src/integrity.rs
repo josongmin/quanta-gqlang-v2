@@ -658,6 +658,7 @@ fn drain_hir(mut stack: Vec<OwnedHirDropPart>) {
                     stack.extend(keys.into_iter().map(Owned::Value));
                     stack.push(Owned::Relation(input));
                 }
+                RelationExprKindV1::Limit(limit) => stack.push(Owned::Relation(*limit.input)),
                 RelationExprKindV1::OrderBy(order) => {
                     let (input, keys) = order.into_parts();
                     stack.extend(keys.into_iter().map(|key| Owned::Value(key.value)));

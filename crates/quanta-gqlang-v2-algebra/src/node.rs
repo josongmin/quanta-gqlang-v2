@@ -33,6 +33,8 @@ pub enum AlgebraFamilyV2 {
     AntiJoin,
     /// Several relational existence conjuncts over one input frame.
     ExistsFilter,
+    /// Source-authored relational truncation.
+    Limit,
 }
 
 impl AlgebraFamilyV2 {
@@ -50,6 +52,7 @@ impl AlgebraFamilyV2 {
             Self::SemiJoin => "semi_join",
             Self::AntiJoin => "anti_join",
             Self::ExistsFilter => "exists_filter",
+            Self::Limit => "limit",
         }
     }
 }
@@ -205,6 +208,10 @@ pub(crate) enum AlgebraOpV2 {
         input: Box<CheckedAlgebraNodeV2>,
         keys: Vec<OrderKeyContractV2>,
     },
+    Limit {
+        input: Box<CheckedAlgebraNodeV2>,
+        count: u64,
+    },
     SemiJoin {
         left: Box<CheckedAlgebraNodeV2>,
         right: Box<CheckedAlgebraNodeV2>,
@@ -289,6 +296,7 @@ impl CheckedAlgebraNodeV2 {
             AlgebraOpV2::Group { .. } => AlgebraFamilyV2::Group,
             AlgebraOpV2::Aggregate { .. } => AlgebraFamilyV2::Aggregate,
             AlgebraOpV2::Sort { .. } => AlgebraFamilyV2::Sort,
+            AlgebraOpV2::Limit { .. } => AlgebraFamilyV2::Limit,
             AlgebraOpV2::SemiJoin { .. } => AlgebraFamilyV2::SemiJoin,
             AlgebraOpV2::AntiJoin { .. } => AlgebraFamilyV2::AntiJoin,
             AlgebraOpV2::ExistsFilter { .. } => AlgebraFamilyV2::ExistsFilter,
@@ -328,7 +336,8 @@ impl CheckedAlgebraNodeV2 {
             | AlgebraOpV2::Project { input, .. }
             | AlgebraOpV2::Group { input, .. }
             | AlgebraOpV2::Aggregate { input, .. }
-            | AlgebraOpV2::Sort { input, .. } => vec![input],
+            | AlgebraOpV2::Sort { input, .. }
+            | AlgebraOpV2::Limit { input, .. } => vec![input],
             AlgebraOpV2::Join { left, right, .. }
             | AlgebraOpV2::SemiJoin { left, right, .. }
             | AlgebraOpV2::AntiJoin { left, right, .. } => vec![left, right],
@@ -352,6 +361,7 @@ impl CheckedAlgebraNodeV2 {
             | AlgebraOpV2::Group { .. }
             | AlgebraOpV2::Aggregate { .. }
             | AlgebraOpV2::Sort { .. }
+            | AlgebraOpV2::Limit { .. }
             | AlgebraOpV2::SemiJoin { .. }
             | AlgebraOpV2::AntiJoin { .. }
             | AlgebraOpV2::ExistsFilter { .. } => None,
@@ -371,6 +381,7 @@ impl CheckedAlgebraNodeV2 {
             | AlgebraOpV2::Group { .. }
             | AlgebraOpV2::Aggregate { .. }
             | AlgebraOpV2::Sort { .. }
+            | AlgebraOpV2::Limit { .. }
             | AlgebraOpV2::SemiJoin { .. }
             | AlgebraOpV2::AntiJoin { .. }
             | AlgebraOpV2::ExistsFilter { .. } => None,
@@ -389,6 +400,7 @@ impl CheckedAlgebraNodeV2 {
             | AlgebraOpV2::Group { .. }
             | AlgebraOpV2::Aggregate { .. }
             | AlgebraOpV2::Sort { .. }
+            | AlgebraOpV2::Limit { .. }
             | AlgebraOpV2::SemiJoin { .. }
             | AlgebraOpV2::AntiJoin { .. }
             | AlgebraOpV2::ExistsFilter { .. } => &[],
@@ -406,6 +418,7 @@ impl CheckedAlgebraNodeV2 {
             | AlgebraOpV2::Group { .. }
             | AlgebraOpV2::Aggregate { .. }
             | AlgebraOpV2::Sort { .. }
+            | AlgebraOpV2::Limit { .. }
             | AlgebraOpV2::SemiJoin { .. }
             | AlgebraOpV2::AntiJoin { .. }
             | AlgebraOpV2::ExistsFilter { .. } => None,
@@ -422,6 +435,7 @@ impl CheckedAlgebraNodeV2 {
             | AlgebraOpV2::Filter { .. }
             | AlgebraOpV2::Join { .. }
             | AlgebraOpV2::Sort { .. }
+            | AlgebraOpV2::Limit { .. }
             | AlgebraOpV2::SemiJoin { .. }
             | AlgebraOpV2::AntiJoin { .. }
             | AlgebraOpV2::ExistsFilter { .. } => &[],
@@ -440,7 +454,8 @@ impl CheckedAlgebraNodeV2 {
             | AlgebraOpV2::Aggregate { .. }
             | AlgebraOpV2::SemiJoin { .. }
             | AlgebraOpV2::AntiJoin { .. }
-            | AlgebraOpV2::ExistsFilter { .. } => &[],
+            | AlgebraOpV2::ExistsFilter { .. }
+            | AlgebraOpV2::Limit { .. } => &[],
         }
     }
 
@@ -456,6 +471,7 @@ impl CheckedAlgebraNodeV2 {
             | AlgebraOpV2::Join { .. }
             | AlgebraOpV2::Aggregate { .. }
             | AlgebraOpV2::Sort { .. }
+            | AlgebraOpV2::Limit { .. }
             | AlgebraOpV2::SemiJoin { .. }
             | AlgebraOpV2::AntiJoin { .. }
             | AlgebraOpV2::ExistsFilter { .. } => &[],
@@ -475,6 +491,7 @@ impl CheckedAlgebraNodeV2 {
             | AlgebraOpV2::Group { .. }
             | AlgebraOpV2::Aggregate { .. }
             | AlgebraOpV2::Sort { .. }
+            | AlgebraOpV2::Limit { .. }
             | AlgebraOpV2::ExistsFilter { .. } => None,
         }
     }
@@ -491,6 +508,7 @@ impl CheckedAlgebraNodeV2 {
             | AlgebraOpV2::Group { .. }
             | AlgebraOpV2::Aggregate { .. }
             | AlgebraOpV2::Sort { .. }
+            | AlgebraOpV2::Limit { .. }
             | AlgebraOpV2::SemiJoin { .. }
             | AlgebraOpV2::AntiJoin { .. } => &[],
         }
@@ -560,6 +578,21 @@ impl CheckedAlgebraNodeV2 {
         AlgebraOpV2::Sort {
             input: Box::new(input),
             keys,
+        }
+    }
+
+    pub(crate) fn limit(input: CheckedAlgebraNodeV2, count: u64) -> AlgebraOpV2 {
+        AlgebraOpV2::Limit {
+            input: Box::new(input),
+            count,
+        }
+    }
+
+    #[must_use]
+    pub fn limit_count(&self) -> Option<u64> {
+        match &self.op {
+            AlgebraOpV2::Limit { count, .. } => Some(*count),
+            _ => None,
         }
     }
 
@@ -684,6 +717,7 @@ fn op_agrees_with_output(
                 && output.effects().aggregation == AggregationClassV1::Aggregate
                 && projection_agrees_with_output(expressions.iter().map(Some), output)
         }
+        AlgebraOpV2::Limit { input, .. } => output == input.output(),
         AlgebraOpV2::Sort { input, keys } => {
             output.ordering() == keys.as_slice()
                 && output.cardinality() == CardinalityV1::Sequence

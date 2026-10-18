@@ -555,8 +555,26 @@ impl<'b> CursorV1<'b> {
         }
     }
 
-    /// Build an `UnexpectedToken`/`UnexpectedEof` diagnostic at the cursor with
-    /// the exact current-token span.
+    /// Parse the same non-negative decimal literal grammar for each owning width.
+    pub(crate) fn parse_unsigned_v3<T: std::str::FromStr>(
+        &mut self,
+        what: &str,
+    ) -> Result<(T, SpanV1), ParseDiagnosticV1> {
+        if matches!(&self.peek().kind, TokenKindV1::Int(_)) {
+            let token = self.bump();
+            let TokenKindV1::Int(raw) = token.kind else {
+                return Err(self.unexpected(what));
+            };
+            let span = token.span;
+            let n = raw
+                .parse::<T>()
+                .map_err(|_err| self.unsupported(span, format!("'{raw}' is not a valid {what}")))?;
+            return Ok((n, span));
+        }
+        Err(self.unexpected(what))
+    }
+
+    /// Build an unexpected-token diagnostic at the exact current-token span.
     pub(crate) fn unexpected(&self, what: &str) -> ParseDiagnosticV1 {
         let span = self.peek().span;
         if self.at_eof() {

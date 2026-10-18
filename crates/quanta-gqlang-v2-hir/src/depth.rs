@@ -291,6 +291,12 @@ impl DepthGuard {
                     Frame::Relation(&group.input, relation_child, expression_depth),
                 )?;
             }
+            RelationExprKindV1::Limit(limit) => {
+                self.push_frame(
+                    stack,
+                    Frame::Relation(&limit.input, relation_child, expression_depth),
+                )?;
+            }
             RelationExprKindV1::OrderBy(order) => {
                 for key in order.keys().iter().rev() {
                     self.push_frame(

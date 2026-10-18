@@ -84,7 +84,7 @@ pub(crate) const fn capability_for_family(family: AlgebraFamilyV2) -> Option<Cap
         AlgebraFamilyV2::Sort => Some(CapabilityV2::Ordering),
         AlgebraFamilyV2::SemiJoin => Some(CapabilityV2::ExistenceCheck),
         AlgebraFamilyV2::AntiJoin => Some(CapabilityV2::NegationCheck),
-        AlgebraFamilyV2::Project | AlgebraFamilyV2::ExistsFilter => None,
+        AlgebraFamilyV2::Project | AlgebraFamilyV2::ExistsFilter | AlgebraFamilyV2::Limit => None,
     }
 }
 
@@ -92,7 +92,7 @@ pub(crate) const fn capability_for_family(family: AlgebraFamilyV2) -> Option<Cap
 mod tests {
     use super::*;
 
-    const ALL_FAMILIES: [AlgebraFamilyV2; 10] = [
+    const ALL_FAMILIES: [AlgebraFamilyV2; 11] = [
         AlgebraFamilyV2::Scan,
         AlgebraFamilyV2::Filter,
         AlgebraFamilyV2::Project,
@@ -103,6 +103,7 @@ mod tests {
         AlgebraFamilyV2::SemiJoin,
         AlgebraFamilyV2::AntiJoin,
         AlgebraFamilyV2::ExistsFilter,
+        AlgebraFamilyV2::Limit,
     ];
 
     #[test]
@@ -111,7 +112,7 @@ mod tests {
             let capability = capability_for_family(family);
             if matches!(
                 family,
-                AlgebraFamilyV2::Project | AlgebraFamilyV2::ExistsFilter
+                AlgebraFamilyV2::Project | AlgebraFamilyV2::ExistsFilter | AlgebraFamilyV2::Limit
             ) {
                 assert_eq!(
                     capability, None,

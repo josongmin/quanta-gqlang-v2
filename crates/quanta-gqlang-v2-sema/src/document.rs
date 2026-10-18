@@ -610,6 +610,7 @@ fn materialize_relation(
                     RelationExprKindV1::GroupBy(group) => {
                         stack.push(Frame::Visit(&group.input));
                     }
+                    RelationExprKindV1::Limit(limit) => stack.push(Frame::Visit(&limit.input)),
                     RelationExprKindV1::OrderBy(order) => {
                         stack.push(Frame::Visit(&order.input));
                     }

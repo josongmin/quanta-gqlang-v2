@@ -894,7 +894,8 @@ fn validate_relation_rows(
                     RelationRequirementKindV2::Source => None,
                     RelationRequirementKindV2::Filter
                     | RelationRequirementKindV2::Join
-                    | RelationRequirementKindV2::Sort => unreachable!("kind checked above"),
+                    | RelationRequirementKindV2::Sort
+                    | RelationRequirementKindV2::Limit => unreachable!("kind checked above"),
                 };
                 if fields.len() != *expected_field_count
                     || expected_expressions.is_some_and(|expected| expected.len() != fields.len())
@@ -1038,6 +1039,7 @@ enum RelationRequirementKindV2 {
     Join,
     Group(Vec<HirNodeIdV1>),
     Sort,
+    Limit,
 }
 
 #[derive(Clone)]
@@ -1113,6 +1115,7 @@ impl HirVisitorV1 for RequiredInputs {
                 RelationRequirementKindV2::Group(group.keys().iter().map(|key| key.id).collect())
             }
             RelationExprKindV1::OrderBy(_) => RelationRequirementKindV2::Sort,
+            RelationExprKindV1::Limit(_) => RelationRequirementKindV2::Limit,
         };
         let _ = self.relations.insert(
             node.id,

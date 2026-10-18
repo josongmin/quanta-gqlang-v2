@@ -479,6 +479,8 @@ pub enum TypedRelationExprV2 {
     Group(RelationStageV2),
     /// Ordered stage.
     Sort(RelationStageV2),
+    /// Relational truncation retaining its exact source count.
+    Limit(RelationStageV2, u64),
 }
 
 /// Producer-only input to the checked stage constructor. The stage checks its
@@ -507,6 +509,7 @@ pub enum TypedRelationStageKindV2 {
     Join,
     Group,
     Sort,
+    Limit(u64),
 }
 
 impl TypedRelationExprV2 {
@@ -541,7 +544,8 @@ impl TypedRelationExprV2 {
             | TypedRelationStageKindV2::Filter
             | TypedRelationStageKindV2::Project
             | TypedRelationStageKindV2::Join
-            | TypedRelationStageKindV2::Sort => !implicit_partition,
+            | TypedRelationStageKindV2::Sort
+            | TypedRelationStageKindV2::Limit(_) => !implicit_partition,
         };
         let valid = match kind {
             TypedRelationStageKindV2::Scan => {
@@ -592,6 +596,16 @@ impl TypedRelationExprV2 {
                     && output.cardinality() == CardinalityV1::Set
                     && output.ordering().is_empty()
             }
+            TypedRelationStageKindV2::Limit(_) => {
+                inputs.len() == 1
+                    && expressions.is_empty()
+                    && predicate.is_none()
+                    && source.is_none()
+                    && join_mode.is_none()
+                    && inputs
+                        .first()
+                        .is_some_and(|child| child.output() == &output)
+            }
             TypedRelationStageKindV2::Group | TypedRelationStageKindV2::Sort => {
                 inputs.len() == 1
                     && !expressions.is_empty()
@@ -635,6 +649,7 @@ impl TypedRelationExprV2 {
             TypedRelationStageKindV2::Join => Self::Join(stage),
             TypedRelationStageKindV2::Group => Self::Group(stage),
             TypedRelationStageKindV2::Sort => Self::Sort(stage),
+            TypedRelationStageKindV2::Limit(count) => Self::Limit(stage, count),
         })
     }
 
@@ -869,6 +884,37 @@ impl TypedRelationExprV2 {
             output,
         })
     }
+    /// Seal truncation without changing row, provenance, ordering or effects.
+    pub(crate) fn try_limit(
+        key: SourceQualifiedNodeIdV2,
+        location: CheckedLocatedSpanV2,
+        input: Self,
+        count: u64,
+    ) -> Result<Self, &'static str> {
+        let output = input.output().clone();
+        Self::try_from_stage(TypedRelationStageInputV2 {
+            key,
+            location,
+            kind: TypedRelationStageKindV2::Limit(count),
+            inputs: vec![input],
+            expressions: Vec::new(),
+            predicate: None,
+            source: None,
+            join_mode: None,
+            implicit_partition: false,
+            partition_input: Vec::new(),
+            output,
+        })
+    }
+
+    #[must_use]
+    pub const fn limit_count(&self) -> Option<u64> {
+        match self {
+            Self::Limit(_, count) => Some(*count),
+            _ => None,
+        }
+    }
+
     /// Retained exact output.
     #[must_use]
     pub const fn output(&self) -> &RelationOutputContractV2 {
@@ -878,7 +924,8 @@ impl TypedRelationExprV2 {
             | Self::Project(node)
             | Self::Join(node)
             | Self::Group(node)
-            | Self::Sort(node) => &node.output,
+            | Self::Sort(node)
+            | Self::Limit(node, _) => &node.output,
         }
     }
     /// Exact checked HIR stage identity retained for downstream provenance.
@@ -928,7 +975,8 @@ impl TypedRelationExprV2 {
             | Self::Project(node)
             | Self::Join(node)
             | Self::Group(node)
-            | Self::Sort(node) => node,
+            | Self::Sort(node)
+            | Self::Limit(node, _) => node,
         }
     }
 }

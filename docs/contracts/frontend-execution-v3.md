@@ -481,3 +481,29 @@ computed SHA-256 values.
 The TSV authority profiles use `FrontendBudgetV2::standard_v2()`, host source registration `SourceIdV2(1)` with length 64, selected module `app` version `1.0.0`, and checked host location `(1, 0..1)`. `minimal` has no relation or graph sources. `records_host` adds `app::records` (lookup `records`, Host authority, `host` provenance namespace, one `id:Int` field, Bag cardinality) and the checked graph selectors `a`, `b` (Entity), `scope` (Scope). `records_host_string_id` changes only that field to `id:String`; graph selectors remain the same. `workspace_files_canonical` uses the facade builder's `canonical_workspace_files` relation; `workspace_files_host` uses that same schema with Host authority. Composition rows use `minimal`. The TSV records exact one-line source UTF-8 text, source ID, profile, and digests, so a sibling can compile through the facade rather than reimplement this encoder.
 
 The V3 producer may be called qualified only after owner tests, facade-only consumer/privacy proof, conformance, and a clean committed-source local qualification receipt pass on one exact qglang SHA. Consumer build and end-to-end service execution require a separately recorded exact Semantica SHA and dependency pin; producer-local GREEN does not imply either.
+
+
+## Relational Limit source contract
+
+The existing relation pipeline admits `| limit <u64>` as a relational stage. Zero
+retains no rows; it is not the positive `u32` SAMPLE presentation limit. Parser,
+HIR depth/integrity/formatting, Binder, Types, Sema, normalized Algebra and Planning
+carry the same authored stage position. The checked Limit has one child, no
+expression/predicate/source payload, and exactly preserves its child's row,
+columns, provenance, cardinality, ordering and effects. Planning classifies a
+count at most one as scalar-or-singleton and other counts as bounded.
+
+`ExecutionRelationalOperatorV3::limit_count()` exposes only the sealed count.
+`AlgebraFamilyV2::Limit` appends tag 10 to the existing vocabulary. A present count
+uses a disjoint `255` extension marker and eight big-endian bytes immediately
+after the family tag, before the existing `0/1` join-mode tag. An absent count has
+no extension bytes, retaining every existing non-Limit node's canonical encoding
+and the schema-8 golden domain. This is one unambiguous extension of the same
+canonical encoder; no alternate digest, parser, provider grant or runtime authority
+is introduced. Runtime admission must require a count exactly on Limit nodes.
+
+This source contract does not expand a bounded request subset by itself. Its
+existing Source/Project-only producers continue to refuse a Limit root until the
+same request owner admits its actual semantic, plan and execution births. Runtime
+selection, typed Host producer/generation/provider custody, V1 caller retirement,
+and compiler/test/runtime qualification are separate coupled gates.

@@ -341,6 +341,7 @@ fn relation() -> (ExecutionRelationV3, Vec<u8>) {
     let children = [61, 62].map(|node| ExecutionRelationalOperatorV3 {
         family: AlgebraFamilyV2::Scan,
         join_mode: None,
+        limit: None,
         stage: key(node),
         source: None,
         schema: empty_schema.clone(),
@@ -371,6 +372,7 @@ fn relation() -> (ExecutionRelationV3, Vec<u8>) {
     let root = ExecutionRelationalOperatorV3 {
         family: AlgebraFamilyV2::Join,
         join_mode: Some(ExecutionJoinModeV3::Cross),
+        limit: None,
         stage: key(60),
         source: Some(ExecutionSourceV3 {
             composition_binding: None,
@@ -727,6 +729,7 @@ fn flat_exists_node_encodes_each_condition_before_its_ordered_children() {
     let scans = [60, 61, 62].map(|stage| ExecutionRelationalOperatorV3 {
         family: AlgebraFamilyV2::Scan,
         join_mode: None,
+        limit: None,
         stage: key(stage),
         source: None,
         schema: empty_schema.clone(),
@@ -740,6 +743,7 @@ fn flat_exists_node_encodes_each_condition_before_its_ordered_children() {
     let node = ExecutionRelationalOperatorV3 {
         family: AlgebraFamilyV2::ExistsFilter,
         join_mode: None,
+        limit: None,
         stage: key(70),
         source: None,
         schema: empty_schema,
@@ -1183,4 +1187,74 @@ fn standalone_graph_check_and_all_presentation_verbs_have_independent_bytes() {
         expected.push([wire_key(node), vec![3, 0, 1, 2, 1, 6, 0, 0, 0, 0, 1], bytes].concat());
     }
     assert_document(items, &expected);
+}
+
+#[test]
+fn relational_limit_encodes_full_u64_with_a_disjoint_extension_prefix() {
+    let schema_bytes = [count(0), vec![0], count(0), count(0)].concat();
+    let scan_bytes = [
+        vec![0, 0],
+        wire_key(80),
+        vec![0],
+        schema_bytes.clone(),
+        count(0),
+        count(0),
+        count(0),
+        count(0),
+        count(0),
+    ]
+    .concat();
+    for count_v3 in [0_u64, 1, u64::MAX] {
+        let schema = ExecutionSchemaV3 {
+            fields: Box::new([]),
+            cardinality: ExecutionCardinalityV3::Set,
+            partition_keys: Box::new([]),
+            order: Box::new([]),
+        };
+        let scan = ExecutionRelationalOperatorV3 {
+            family: AlgebraFamilyV2::Scan,
+            join_mode: None,
+            limit: None,
+            stage: key(80),
+            source: None,
+            schema: schema.clone(),
+            predicates: Box::new([]),
+            expressions: Box::new([]),
+            correlations: Box::new([]),
+            existential_terms: Box::new([]),
+            partition_input: Box::new([]),
+            children: Box::new([]),
+        };
+        let limit = ExecutionRelationalOperatorV3 {
+            family: AlgebraFamilyV2::Limit,
+            join_mode: None,
+            limit: Some(count_v3),
+            stage: key(81),
+            source: None,
+            schema,
+            predicates: Box::new([]),
+            expressions: Box::new([]),
+            correlations: Box::new([]),
+            existential_terms: Box::new([]),
+            partition_input: Box::new([]),
+            children: Box::new([scan]),
+        };
+        let expected = [
+            vec![10, 255],
+            count(count_v3),
+            vec![0],
+            wire_key(81),
+            vec![0],
+            schema_bytes.clone(),
+            count(0),
+            count(0),
+            count(0),
+            count(0),
+            seq(&[scan_bytes.clone()]),
+        ]
+        .concat();
+        let mut actual = Vec::new();
+        put_node(&mut actual, &limit);
+        assert_eq!(actual, expected);
+    }
 }

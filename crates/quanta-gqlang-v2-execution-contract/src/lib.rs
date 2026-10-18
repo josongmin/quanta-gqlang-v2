@@ -590,6 +590,7 @@ impl ExecutionRelationV3 {
 pub struct ExecutionRelationalOperatorV3 {
     family: AlgebraFamilyV2,
     join_mode: Option<ExecutionJoinModeV3>,
+    limit: Option<u64>,
     stage: SourceQualifiedNodeIdV2,
     source: Option<ExecutionSourceV3>,
     schema: ExecutionSchemaV3,
@@ -610,6 +611,10 @@ impl ExecutionRelationalOperatorV3 {
     #[must_use]
     pub const fn join_mode(&self) -> Option<ExecutionJoinModeV3> {
         self.join_mode
+    }
+    #[must_use]
+    pub const fn limit_count(&self) -> Option<u64> {
+        self.limit
     }
     #[must_use]
     pub const fn stage(&self) -> SourceQualifiedNodeIdV2 {

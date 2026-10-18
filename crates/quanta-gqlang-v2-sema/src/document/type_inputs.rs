@@ -554,7 +554,8 @@ impl HirVisitorV1 for QueryTypeInputsV2<'_> {
             }
             quanta_gqlang_v2_hir::RelationExprKindV1::Filter(_)
             | quanta_gqlang_v2_hir::RelationExprKindV1::Join(_)
-            | quanta_gqlang_v2_hir::RelationExprKindV1::OrderBy(_) => {}
+            | quanta_gqlang_v2_hir::RelationExprKindV1::OrderBy(_)
+            | quanta_gqlang_v2_hir::RelationExprKindV1::Limit(_) => {}
         }
         quanta_gqlang_v2_hir::walk_relation(self, relation);
     }

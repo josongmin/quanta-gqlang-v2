@@ -340,14 +340,16 @@ impl<G: ModuleGraphViewV1> Binder<G> {
                         | RelationExprKindV1::Filter(_)
                         | RelationExprKindV1::Join(_)
                         | RelationExprKindV1::GroupBy(_)
-                        | RelationExprKindV1::OrderBy(_) => {
+                        | RelationExprKindV1::OrderBy(_)
+                        | RelationExprKindV1::Limit(_) => {
                             return Err(BinderDeclarationRequestErrorV3::Phase)
                         }
                     },
                     RelationExprKindV1::Filter(_)
                     | RelationExprKindV1::Join(_)
                     | RelationExprKindV1::GroupBy(_)
-                    | RelationExprKindV1::OrderBy(_) => {
+                    | RelationExprKindV1::OrderBy(_)
+                    | RelationExprKindV1::Limit(_) => {
                         return Err(BinderDeclarationRequestErrorV3::Phase)
                     }
                 };
@@ -436,14 +438,16 @@ impl<G: ModuleGraphViewV1> Binder<G> {
                         | RelationExprKindV1::Filter(_)
                         | RelationExprKindV1::Join(_)
                         | RelationExprKindV1::GroupBy(_)
-                        | RelationExprKindV1::OrderBy(_) => {
+                        | RelationExprKindV1::OrderBy(_)
+                        | RelationExprKindV1::Limit(_) => {
                             return Err(BinderDeclarationRequestErrorV3::UnsupportedShape)
                         }
                     },
                     RelationExprKindV1::Filter(_)
                     | RelationExprKindV1::Join(_)
                     | RelationExprKindV1::GroupBy(_)
-                    | RelationExprKindV1::OrderBy(_) => {
+                    | RelationExprKindV1::OrderBy(_)
+                    | RelationExprKindV1::Limit(_) => {
                         return Err(BinderDeclarationRequestErrorV3::UnsupportedShape)
                     }
                 };

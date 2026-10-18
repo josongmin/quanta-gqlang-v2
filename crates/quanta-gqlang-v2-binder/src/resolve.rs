@@ -984,6 +984,13 @@ impl<G: ModuleGraphViewV1> Binder<G> {
                 });
                 self.checked_new_relation_frame(outputs)
             }
+            RelationExprKindV1::Limit(limit) => {
+                let input = self.resolve_relation(&limit.input);
+                if let Some(group) = self.relation_partition.get(&limit.input.id).copied() {
+                    self.relation_partition.insert(relation.id, group);
+                }
+                input
+            }
             RelationExprKindV1::OrderBy(order) => {
                 let input = self.resolve_relation(&order.input);
                 self.scope.replace_current_bindings(input.clone());

@@ -577,6 +577,12 @@ fn same_relation<'a>(
                 stack.push(Frame::Value(a, b));
             }
         }
+        (RelationExprKindV1::Limit(a), RelationExprKindV1::Limit(b)) => {
+            if a.count != b.count {
+                return false;
+            }
+            stack.push(Frame::Relation(&a.input, &b.input));
+        }
         (RelationExprKindV1::OrderBy(a), RelationExprKindV1::OrderBy(b)) => {
             if a.keys().len() != b.keys().len() {
                 return false;

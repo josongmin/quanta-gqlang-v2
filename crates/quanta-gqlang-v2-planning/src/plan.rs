@@ -970,6 +970,13 @@ fn exit_class(
 ) -> CardinalityClassV2 {
     match node.family() {
         AlgebraFamilyV2::Scan => CardinalityClassV2::LinearInInput,
+        AlgebraFamilyV2::Limit => {
+            if node.limit_count().is_some_and(|count| count <= 1) {
+                CardinalityClassV2::ScalarOrSingleton
+            } else {
+                CardinalityClassV2::Bounded
+            }
+        }
         AlgebraFamilyV2::Join => CardinalityClassV2::Multiplicative,
         AlgebraFamilyV2::Aggregate => {
             // An aggregate's output cardinality is governed by its GROUPING

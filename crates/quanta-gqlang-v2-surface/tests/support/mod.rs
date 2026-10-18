@@ -155,6 +155,7 @@ impl HirVisitorV1 for Witness {
                 source.alias.as_ref().map(|alias| alias.name.as_str())
             ),
             RelationExprKindV1::Filter(_) => "relation:filter".to_string(),
+            RelationExprKindV1::Limit(limit) => format!("relation:limit:{}", limit.count),
             RelationExprKindV1::Project(project) => {
                 format!(
                     "relation:project:{:?}",

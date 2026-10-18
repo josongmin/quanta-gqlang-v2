@@ -341,6 +341,7 @@ enum StagePlan<'a> {
     Join,
     Group,
     Sort,
+    Limit,
 }
 
 /// One validated relational EXISTS conjunct awaiting its Semi/Anti assembly.
@@ -448,6 +449,14 @@ fn lower_root_with_budget(
                         stack.push(Frame::Finish(Finish {
                             stage,
                             plan: StagePlan::Group,
+                        }));
+                        stack.push(Frame::Visit(Visit(input)));
+                    }
+                    TypedRelationExprV2::Limit(_, _) => {
+                        let input = one_input(stage)?;
+                        stack.push(Frame::Finish(Finish {
+                            stage,
+                            plan: StagePlan::Limit,
                         }));
                         stack.push(Frame::Visit(Visit(input)));
                     }
@@ -617,6 +626,30 @@ fn assemble(
                     AlgebraFailureKindV2::InvalidStageContract,
                     location,
                     "group stage cannot form a checked algebra node",
+                )
+            })
+        }
+        StagePlan::Limit => {
+            let input = take_one(results, location)?;
+            let count = stage.limit_count().ok_or_else(|| {
+                failure(
+                    AlgebraFailureKindV2::InvalidStageContract,
+                    location,
+                    "Limit stage omitted its sealed count",
+                )
+            })?;
+            CheckedAlgebraNodeV2::new(
+                item_id,
+                stage.key(),
+                location.clone(),
+                output,
+                CheckedAlgebraNodeV2::limit(input, count),
+            )
+            .map_err(|()| {
+                failure(
+                    AlgebraFailureKindV2::InvalidStageContract,
+                    location,
+                    "Limit stage cannot preserve its checked input frame",
                 )
             })
         }

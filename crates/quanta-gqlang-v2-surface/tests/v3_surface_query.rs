@@ -244,7 +244,7 @@ fn relation_pipeline_stage_set_is_closed() {
     // STAGE-01: the closed six-token vocabulary owns both parsing and the
     // diagnostic. Every retired stage asserts the COMPLETE expected message.
     const CLOSED_STAGE_MESSAGE_V1: &str =
-        "expected a pipeline stage keyword (where, project, join, cross, group, order)";
+        "expected a pipeline stage keyword (where, project, join, cross, group, order, limit)";
     for removed in ["union", "limit", "sort", "apply"] {
         let src = format!("from users | {removed} 1");
         let err =
@@ -324,4 +324,37 @@ fn reserved_word_after_source_is_not_an_alias() {
     let diag = parse_program("from t exists", &HirBuilderV1::new())
         .expect_err("a reserved word must not become an alias");
     assert_eq!(diag.code, ParseErrorCodeV1::UnexpectedToken);
+}
+
+#[test]
+fn relational_limit_preserves_zero_and_full_u64_counts_and_stage_order() {
+    for count in [0_u64, 1, u64::MAX] {
+        let text = format!("from users u | project u.id as id | limit {count}");
+        let builder = HirBuilderV1::new();
+        let parsed = parse_program(&text, &builder).expect("relational Limit parses");
+        let SurfaceItemV1::Query(query) = parsed.item else {
+            panic!("query")
+        };
+        let RelationExprKindV1::Limit(limit) = &query.body.kind else {
+            panic!("Limit root")
+        };
+        assert_eq!(limit.count, count);
+        assert!(matches!(limit.input.kind, RelationExprKindV1::Project(_)));
+        assert_eq!(query.body.span.end as usize, text.len());
+        check_tree(HirRootRefV1::Query(&query), text.len())
+            .expect("Limit ownership walk is complete");
+    }
+}
+
+#[test]
+fn relational_limit_rejects_negative_fractional_missing_and_overflow_counts() {
+    for text in [
+        "from users | limit -1",
+        "from users | limit 1.5",
+        "from users | limit",
+        "from users | limit 18446744073709551616",
+    ] {
+        let builder = HirBuilderV1::new();
+        assert!(parse_program(text, &builder).is_err(), "{text}");
+    }
 }

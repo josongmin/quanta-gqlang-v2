@@ -275,6 +275,7 @@ fn every_canonical_tag_set_is_duplicate_free() {
         algebra_family_tag(AlgebraFamilyV2::SemiJoin),
         algebra_family_tag(AlgebraFamilyV2::AntiJoin),
         algebra_family_tag(AlgebraFamilyV2::ExistsFilter),
+        algebra_family_tag(AlgebraFamilyV2::Limit),
     ]);
     assert_distinct_tags([
         join_mode_tag(ExecutionJoinModeV3::Inner),
@@ -413,6 +414,7 @@ fn root() -> ExecutionRelationalOperatorV3 {
     ExecutionRelationalOperatorV3 {
         family: AlgebraFamilyV2::Scan,
         join_mode: None,
+        limit: None,
         stage: key(0, 1),
         source: None,
         schema: schema(),
