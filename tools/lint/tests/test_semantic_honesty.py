@@ -133,6 +133,28 @@ class SemanticHonestyTest(unittest.TestCase):
         )
         self.assertIn("SH-05-error-to-ok", self.rules(mixed_empty_success))
 
+    def test_empty_match_scrutinee_macro_cannot_hide_caller_success(self) -> None:
+        definition = "macro_rules! injected_return { ($error:expr) => {{ return Ok(0); }}; } "
+        for scrutinee in (
+            "injected_return!(error)",
+            "std::hint::black_box(injected_return!(error))",
+        ):
+            with self.subTest(scrutinee=scrutinee):
+                source = (
+                    definition
+                    + "fn f(x: Result<u8, E>) -> Result<u8, E> { match x { "
+                    + f"Err(error) => match {scrutinee} {{}}, "
+                    + "Ok(value) => Ok(value) } }"
+                )
+                encoded = source.encode()
+                self.assertFalse(self.parser.parse(encoded).root_node.has_error)
+                findings = lint.scan_source(encoded, "crates/fixture/src/lib.rs", self.policy, self.parser)
+                self.assertTrue(any(
+                    finding.rule == "SH-11-unsupported-exit"
+                    and finding.detail == "empty match scrutinee contains an opaque macro"
+                    for finding in findings
+                ))
+
     def test_malformed_empty_match_body_is_not_a_diverging_proof(self) -> None:
         for source in ("fn f() { match never { bogus } }", "fn f() { match never { _ => } }"):
             with self.subTest(source=source):

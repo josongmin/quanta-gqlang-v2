@@ -408,6 +408,19 @@ def nested_returns(node):
         stack.extend(reversed(current.named_children))
 
 
+def has_opaque_macro_in_current_scope(node) -> bool:
+    """A macro in the scrutinee may return from this function before match dispatch."""
+    stack = [node]
+    while stack:
+        current = stack.pop()
+        if current.type in RETURN_SCOPE_BOUNDARIES:
+            continue
+        if current.type == "macro_invocation":
+            return True
+        stack.extend(reversed(current.named_children))
+    return False
+
+
 def enclosing_return_type_node(node):
     owner = node.parent
     while owner is not None and owner.type != "function_item":
@@ -509,7 +522,10 @@ def exit_expressions(source: bytes, node):
         if any(arm.type != "match_arm" for arm in arms):
             raise UnsupportedExit("match body has an unauditable member")
         # A complete empty match has no ordinary exit. Rust's type checker
-        # permits it only when the scrutinee is uninhabited.
+        # permits it only when the scrutinee is uninhabited. An opaque macro
+        # inside that scrutinee may instead return from the caller.
+        if not arms and has_opaque_macro_in_current_scope(scrutinee):
+            raise UnsupportedExit("empty match scrutinee contains an opaque macro")
         for arm in arms:
             value = arm.child_by_field_name("value")
             if value is None:
