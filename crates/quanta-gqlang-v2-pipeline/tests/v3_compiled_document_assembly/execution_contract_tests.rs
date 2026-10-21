@@ -1774,3 +1774,63 @@ fn source_registered_builtin_and_operator_retain_exact_execution_identity() {
         assert_eq!(symbols, [("length", None), ("+", Some(101))], "{source}");
     }
 }
+
+#[test]
+fn relational_limit_is_sealed_from_source_and_count_changes_contract_identity() {
+    let authority = authority_with_records();
+    let mut prior = None;
+    for count in [0_u64, 1, u64::MAX] {
+        let source = format!("from records r | project r.id as id | limit {count}");
+        let compiled =
+            compile_source_document_v3(DOC_SOURCE, &source, &authority).expect("Limit compiles");
+        let root = compiled.execution().items()[0]
+            .relation()
+            .expect("relation")
+            .root();
+        assert_eq!(root.family(), AlgebraFamilyV2::Limit);
+        assert_eq!(root.limit_count(), Some(count));
+        assert_eq!(root.children().len(), 1);
+        assert_eq!(root.schema(), root.children()[0].schema());
+        assert!(root.expressions().is_empty());
+        assert!(root.predicates().is_empty());
+        if let Some(previous) = prior {
+            assert_ne!(compiled.execution().contract_digest(), previous);
+        }
+        prior = Some(compiled.execution().contract_digest());
+        let formatted = format_source_document_v2(DOC_SOURCE, &source, authority.budget())
+            .expect("Limit formats");
+        let again =
+            compile_source_document_v3(DOC_SOURCE, &formatted, &authority).expect("Limit reparses");
+        assert_eq!(
+            compiled.execution().contract_digest(),
+            again.execution().contract_digest()
+        );
+    }
+}
+
+#[test]
+fn relational_limit_retains_authored_position_and_correlated_exists_child() {
+    let authority = authority_with_records();
+    let source = "from records r | limit 1 | project r.id as id";
+    let compiled =
+        compile_source_document_v3(DOC_SOURCE, source, &authority).expect("Limit before Project");
+    let root = compiled.execution().items()[0]
+        .relation()
+        .expect("relation")
+        .root();
+    assert_eq!(root.family(), AlgebraFamilyV2::Project);
+    assert_eq!(root.children()[0].family(), AlgebraFamilyV2::Limit);
+    assert_eq!(root.children()[0].limit_count(), Some(1));
+    let source = "from records r | where exists (from records s | where s.id = r.id | limit 0) | project r.id as id";
+    let compiled =
+        compile_source_document_v3(DOC_SOURCE, source, &authority).expect("correlated Limit");
+    let root = compiled.execution().items()[0]
+        .relation()
+        .expect("relation")
+        .root();
+    let exists = &root.children()[0];
+    assert_eq!(exists.family(), AlgebraFamilyV2::SemiJoin);
+    assert!(!exists.correlations().is_empty());
+    assert_eq!(exists.children()[1].family(), AlgebraFamilyV2::Limit);
+    assert_eq!(exists.children()[1].limit_count(), Some(0));
+}

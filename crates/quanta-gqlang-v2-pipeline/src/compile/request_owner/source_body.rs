@@ -5,22 +5,27 @@ pub use sealed::{
     lower_source_body_with_request_owner_v3, plan_source_body_with_request_owner_v3,
     project_source_body_with_request_owner_v3,
     seal_scalar_execution_document_with_request_owner_v3,
-    seal_source_catalog_with_request_owner_v3, AdmittedCanonicalFilesScalarReadV3,
-    AdmittedScalarExecutionDocumentV3, CatalogSealedSourceBodyRequestSourceV3,
-    LoweredSourceBodyRequestSourceV3, PlannedSourceBodyRequestSourceV3,
-    ProjectedSourceBodyRequestSourceV3, ScalarExecutionRequestErrorV3,
+    seal_source_catalog_with_request_owner_v3,
+    seal_source_execution_document_with_request_owner_v3, AdmittedBindingIdentityReadV3,
+    AdmittedCanonicalFilesScalarReadV3, AdmittedOneLetBindingReadV3,
+    AdmittedOneLetCompositionReadV3, AdmittedOneLetExecutionDocumentV3, AdmittedProjectScanReadV3,
+    AdmittedScalarExecutionDocumentV3, AdmittedSourceExecutionDocumentV3,
+    CatalogSealedSourceBodyRequestSourceV3, LoweredSourceBodyRequestSourceV3,
+    PlannedSourceBodyRequestSourceV3, ProjectedSourceBodyRequestSourceV3,
+    ScalarExecutionRequestErrorV3, SharedAdmittedOneLetExecutionDocumentV3,
     SharedAdmittedScalarExecutionDocumentV3, SourceCatalogSealErrorV3,
 };
 
 use super::ResolvedSourceBinderRequestSourceV3;
 use quanta_gqlang_v2_sema::{
     materialize_source_inline_view_with_request_owner_v3,
+    materialize_source_one_let_body_with_request_owner_v3,
     topologize_source_inline_view_with_request_owner_v3,
     type_one_let_composition_body_with_request_owner_v3,
-    type_source_inline_view_with_request_owner_v3, AdmittedSourceBodyTypesV3,
-    AdmittedSourceInlineViewBodyV3, AdmittedSourceViewTopologyV3, ClosedFrontendAuthorityV2,
-    ExtendedSourceRegistryViewV2, ResolvingDocumentSessionV3,
-    SourceBodyMaterializationRequestErrorV3, SourceBodyTypesRequestErrorV3, SourceCatalogAssetsV3,
+    type_source_inline_view_with_request_owner_v3, AdmittedSourceBodyTypesV3, AdmittedSourceBodyV3,
+    AdmittedSourceViewTopologyV3, ClosedFrontendAuthorityV2, ExtendedSourceRegistryViewV2,
+    ResolvingDocumentSessionV3, SourceBodyMaterializationRequestErrorV3,
+    SourceBodyTypesRequestErrorV3, SourceCatalogAssetsV3,
 };
 use quanta_gqlang_v2_surface::{FrontendRequestMaterializationRootV3, FrontendRequestOwnedValueV3};
 
@@ -79,7 +84,7 @@ pub struct MaterializedSourceBodyRequestSourceV3<'authority> {
         ResolvingDocumentSessionV3<'authority>,
         SourceCatalogAssetsV3,
         AdmittedSourceViewTopologyV3,
-        AdmittedSourceInlineViewBodyV3<'authority>,
+        AdmittedSourceBodyV3<'authority>,
     )>,
 }
 
@@ -177,9 +182,19 @@ pub fn materialize_source_body_with_request_owner_v3<'authority>(
         topologized
             .owner
             .try_map_v3(|(extended, session, assets, facts, topology), permit| {
-                let body = materialize_source_inline_view_with_request_owner_v3(
-                    facts, &assets, &topology, root, source, permit,
-                )?;
+                let body = if facts.is_one_let_composition_v3() {
+                    AdmittedSourceBodyV3::OneLet(
+                        materialize_source_one_let_body_with_request_owner_v3(
+                            facts, &assets, &topology, root, source, permit,
+                        )?,
+                    )
+                } else {
+                    AdmittedSourceBodyV3::Scalar(
+                        materialize_source_inline_view_with_request_owner_v3(
+                            facts, &assets, &topology, root, source, permit,
+                        )?,
+                    )
+                };
                 Ok((extended, session, assets, topology, body))
             })?;
     Ok(MaterializedSourceBodyRequestSourceV3 {

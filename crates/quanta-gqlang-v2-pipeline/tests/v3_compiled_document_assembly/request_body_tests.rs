@@ -561,10 +561,7 @@ fn assert_request_plan_matches_compiled_v3(
     assert!(expected
         .capabilities()
         .contains(&planned.scan_capability_v3()));
-    assert_eq!(
-        planned.explain_families_v3().as_slice(),
-        expected.explain().families()
-    );
+    assert_eq!(planned.explain_families_v3(), expected.explain().families());
     assert_eq!(
         planned.root_location_v3(),
         expected.explain().root_location()

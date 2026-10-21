@@ -65,9 +65,10 @@ pub use effect::{AuthorityLaneV2, EffectClassV2, EvaluationDeterminismV2, Eviden
 pub use explain::ExplainNoteV2;
 pub use item::{CatalogDeclarationKindV2, NoPlanReasonV2, SemanticPlanInputV2};
 pub use plan::{
-    plan, plan_outcome, plan_scalar_source_project_with_request_owner_v3, AdmittedScalarPlanV3,
-    PlanOutcomeV2, PlanningSessionV2, ScalarPlanningRequestErrorV3, SemanticPlanV2,
-    ShowPlanningErrorV2, ShowPlanningSessionV2,
+    plan, plan_outcome, plan_scalar_source_project_with_request_owner_v3,
+    plan_source_algebra_with_request_owner_v3, AdmittedOneLetPlanV3, AdmittedScalarPlanV3,
+    AdmittedSourcePlanV3, PlanOutcomeV2, PlanningSessionV2, ScalarPlanningRequestErrorV3,
+    SemanticPlanV2, ShowPlanningErrorV2, ShowPlanningSessionV2,
 };
 pub use policy::{EffectSummaryV2, GraphWitnessRetentionV2, PlanPolicyV2, RuleProgramPolicyV2};
 pub use presentation::PresentationContractV2;

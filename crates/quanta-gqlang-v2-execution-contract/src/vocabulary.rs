@@ -360,6 +360,25 @@ pub(super) fn project_scalar_plan(
     )
 }
 
+pub(super) fn project_source_plan(
+    plan: &quanta_gqlang_v2_planning::AdmittedSourcePlanV3<'_>,
+) -> ExecutionPlanV3 {
+    let mut projected = project_plan_parts(
+        plan.authority_lane_v3(),
+        plan.evaluation_determinism_v3(),
+        plan.evidence_v3(),
+        plan.effect_v3(),
+        plan.policy_v3(),
+    );
+    if matches!(
+        plan,
+        quanta_gqlang_v2_planning::AdmittedSourcePlanV3::OneLet(_)
+    ) {
+        projected.policy_family = ExecutionPolicyFamilyV3::Composition;
+    }
+    projected
+}
+
 fn project_plan_parts(
     authority_lane: AuthorityLaneV2,
     evaluation_determinism: EvaluationDeterminismV2,

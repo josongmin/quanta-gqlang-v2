@@ -23,18 +23,23 @@ mod scalar_compile;
 mod source_body;
 pub use scalar_compile::ScalarSourceCompileRequestErrorV3;
 pub use scalar_compile::{
-    compile_scalar_parsed_source_with_request_owner_v3, compile_scalar_source_with_request_owner_v3,
+    compile_scalar_parsed_source_with_request_owner_v3,
+    compile_scalar_source_with_request_owner_v3, compile_source_parsed_with_request_owner_v3,
 };
 pub use source_body::{
     lower_source_body_with_request_owner_v3, materialize_source_body_with_request_owner_v3,
     plan_source_body_with_request_owner_v3, project_source_body_with_request_owner_v3,
     seal_scalar_execution_document_with_request_owner_v3,
-    seal_source_catalog_with_request_owner_v3, topologize_source_body_with_request_owner_v3,
-    type_source_body_with_request_owner_v3, AdmittedCanonicalFilesScalarReadV3,
-    AdmittedScalarExecutionDocumentV3, CatalogSealedSourceBodyRequestSourceV3,
-    LoweredSourceBodyRequestSourceV3, MaterializedSourceBodyRequestSourceV3,
-    PlannedSourceBodyRequestSourceV3, ProjectedSourceBodyRequestSourceV3,
-    ScalarExecutionRequestErrorV3, SharedAdmittedScalarExecutionDocumentV3,
+    seal_source_catalog_with_request_owner_v3,
+    seal_source_execution_document_with_request_owner_v3,
+    topologize_source_body_with_request_owner_v3, type_source_body_with_request_owner_v3,
+    AdmittedBindingIdentityReadV3, AdmittedCanonicalFilesScalarReadV3, AdmittedOneLetBindingReadV3,
+    AdmittedOneLetCompositionReadV3, AdmittedOneLetExecutionDocumentV3, AdmittedProjectScanReadV3,
+    AdmittedScalarExecutionDocumentV3, AdmittedSourceExecutionDocumentV3,
+    CatalogSealedSourceBodyRequestSourceV3, LoweredSourceBodyRequestSourceV3,
+    MaterializedSourceBodyRequestSourceV3, PlannedSourceBodyRequestSourceV3,
+    ProjectedSourceBodyRequestSourceV3, ScalarExecutionRequestErrorV3,
+    SharedAdmittedOneLetExecutionDocumentV3, SharedAdmittedScalarExecutionDocumentV3,
     SourceBodyTopologyRequestErrorV3, SourceCatalogSealErrorV3,
     TopologizedSourceBodyRequestSourceV3, TypedSourceBodyRequestSourceV3,
 };

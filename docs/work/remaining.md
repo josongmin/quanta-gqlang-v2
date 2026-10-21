@@ -1,7 +1,7 @@
 # Remaining work
 
-Updated: 2026-10-10. QGLang source readback:
-`25fad76cf5b4510244157c2e009b4dc37aa958ff` (clean before this documentation pass).
+Updated: 2026-10-21. Historical Oct-10 source readback:
+`25fad76cf5b4510244157c2e009b4dc37aa958ff`.
 Current behavior belongs to source/contracts; decisions belong to ADRs. This
 index contains unfinished acceptance and a separate Proposed roadmap.
 
@@ -23,7 +23,18 @@ and is not an open repair.
   `25fad76…` has verified local qualification (1,529 Nextest, zero skips/leaks);
   this documentation overlay does not inherit that clean-HEAD result.
 
-No standalone frontend code defect was established by this reconciliation.
+The Oct-21 follow-up at `d655b752f7e28d007da9b8e40cce24814874c859`
+plus the inventoried one-LET working changes reproduced a test API mismatch,
+stale external consumer field/enum/API inventories, and raw DTO extraction through
+the shared scalar callback. The repair replaces raw lending with complete
+borrowed relation observations and migrates the existing downstream compiler;
+it must retain Host execution and canonical policy/digest/resource semantics.
+Focused execution also exposed a one-LET root policy mismatch with ordinary
+Composition planning; that policy must use the canonical retention owner and
+admit its storage before birth. These obligations belong to QFC-04/05 and the
+existing QFC-02 paired consumer acceptance, not a new V4 implementation queue.
+Final standalone status remains derived from the exact current HEAD receipt;
+paired status additionally requires the compatible consumer proof and pin.
 Paired/product proof and Proposed V4 are separate scopes.
 
 ## Downstream owner and source boundary

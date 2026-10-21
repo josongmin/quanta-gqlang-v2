@@ -22,7 +22,8 @@ still refuses before lexing. Pipeline staged SHOW syntax → declaration → pla
 → Execution DTO is live under the same retained root; only the syntax owner is
 exported by the frontend facade. Neither path grants downstream runtime authority.
 The facade also exports ordinary closed compilation with a lexical storage
-owner and two request-owned scalar Source→Project compilation entries.
+owner, two request-owned scalar Source→Project compilation entries, and a
+parser-owner continuation for scalar or exact one-LET Composition sources.
 Their storage coverage, typed refusals and finite shape are specified in the
 [V3 contract](../contracts/frontend-execution-v3.md#bounded-scalar-request-entry).
 

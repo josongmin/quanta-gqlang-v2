@@ -1224,6 +1224,20 @@ pub enum ExecutionClosureFailureV3 {
     UnregisteredSymbol,
 }
 
+mod read;
+pub use read::{
+    ExecutionBindingReadV3, ExecutionBindingSliceReadV3, ExecutionCallTargetReadV3,
+    ExecutionCorrelationReadV3, ExecutionCorrelationSliceReadV3, ExecutionExistentialTermReadV3,
+    ExecutionExistentialTermSliceReadV3, ExecutionExpressionReadV3, ExecutionExpressionShapeReadV3,
+    ExecutionExpressionSliceReadV3, ExecutionFieldReadV3, ExecutionFieldSliceReadV3,
+    ExecutionLiteralReadV3, ExecutionOperatorReadV3, ExecutionOrderKeyReadV3,
+    ExecutionOrderKeySliceReadV3, ExecutionRecordExpressionSliceReadV3, ExecutionRecordFieldReadV3,
+    ExecutionRecordFieldSliceReadV3, ExecutionRelationReadV3, ExecutionRelationalOperatorReadV3,
+    ExecutionRelationalOperatorSliceReadV3, ExecutionSchemaReadV3, ExecutionSourceReadV3,
+    ExecutionStringSliceReadV3, ExecutionUnionVariantReadV3, ExecutionUnionVariantSliceReadV3,
+    ExecutionValueTypeReadV3, ExecutionValueTypeShapeReadV3, ExecutionValueTypeSliceReadV3,
+};
+
 mod encoding;
 mod projection;
 mod scalar_request;

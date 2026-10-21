@@ -122,9 +122,9 @@ and adjacent shapes return typed preflight refusal. Its lexical identities and
 ordered outputs match ordinary Binder resolution. The admitted result retains
 the resolution reservation, uses two prepared scope frames and Vec-backed
 relation evidence, and exposes the exact LET identity through a borrowed
-reader. This is a producer-only Binder stage; the bounded scalar source entry
-continues to accept only a bare Query, and later body stages do not admit
-Composition through this route.
+reader. The scalar-specific source entries continue to accept only a bare Query.
+The source-family continuation described below also carries this exact one-LET
+shape through materialization, catalog, algebra, planning and execution seal.
 
 The producer-only Types continuation also accepts this exact one-LET shape.
 Sema checks the Binder LET identity, host scalar fields, and the producer/body
@@ -132,8 +132,9 @@ field join before reserving storage. Types retains four expression facts and
 four relation rows in bounded Vec tables. Its owner test compares each node
 with the ordinary Type kernel and observes logical Vec/string/record births
 against the reserved upper. This is not a whole-allocator heap bound. The
-following scalar materializer still refuses Composition, and the public
-bounded scalar compile entry remains Query-only.
+source-family materializer admits this exact Composition shape; richer
+Composition families remain typed refusals. The scalar-specific public compile
+entry remains Query-only.
 The facade exposes the partial parser and HIR-check stages. Later retained
 carriers feed the producer-owned continuation described below; their constructors
 and stage mapping hooks remain outside the facade.
@@ -154,8 +155,10 @@ The finite continuation consumes these owners through a borrowed normalized
 Project(Scan) algebra view and fixed-size relational plan. It reuses the ordinary
 Algebra contract checks and Planning result/cost/policy constructors, preserving
 expression order, effects, capability, and the authored item's checked location.
-These two stages create no new heap payload and retain all earlier reservations.
-They require no private BTree layout assumption or new normal crate dependency.
+The scalar algebra and plan observations create no new heap payload and retain
+all earlier reservations. Composition policy storage must be admitted separately
+before its canonical retention is constructed. Neither path requires a private
+BTree layout assumption or new normal crate dependency.
 The read views convey no detachable semantic authority. These intermediate
 stages remain outside the facade. The bounded scalar source entry composes them
 with execution projection and the document seal; this does not certify general
@@ -221,6 +224,45 @@ foreign-root and foreign-ledger refusal, no-spare shared-allocation refusal,
 adjacent root refusal, and clone/last-drop custody. Compile-fail probes reject
 backing access, deep cloning of the move-only owner, public construction fields,
 and detaching the borrowed read from its owner.
+
+### Bounded one-LET source continuation
+
+`compile_source_parsed_with_request_owner_v3(SourceIdV2, &str,
+&ClosedFrontendAuthorityV2, &FrontendRequestMaterializationRootV3,
+ParsedRequestSourceV3)` consumes the same parser-issued owner. It accepts either
+the scalar Query subset or one Composition LET whose producer and body are
+single-field Project(Scan) Queries over the same checked Binder binding. It
+returns `AdmittedSourceExecutionDocumentV3::{Scalar, OneLet}`; a Composition is
+never published as a scalar capability. Sample, additional LETs, a foreign WITH
+binding and adjacent shapes retain the owning stage's typed refusal. This entry
+does not introduce another parser, semantic engine or runtime grant.
+
+The one-LET owner seals both relation projections and the canonical Composition
+envelope after reserving their combined demand. Its source/contract/qualification
+digests match ordinary compilation of the same checked source. Sharing retains
+the original permits; foreign roots/sinks are rejected and the final shared
+drop releases custody. `SharedAdmittedOneLetExecutionDocumentV3` lends
+`AdmittedOneLetCompositionReadV3`, binding identities and the finite RepoPath
+Project(Scan) observations required by its current downstream consumer. These
+observations do not authorize a provider, generation or runtime request.
+
+### Borrowed relation observations
+
+`SharedAdmittedScalarExecutionDocumentV3::relation_read_v3()` returns
+`ExecutionRelationReadV3<'_>`. The complete operator, expression, source, schema
+and value-type closure is observed through private-field read wrappers and
+borrowed shape enums. `ExecutionRelationV3::read_v3()` lets the ordinary DTO path
+enter the same downstream compiler. No read accessor returns a cloneable DTO,
+mutable backing, `Deref` target or conversion back into an owned DTO.
+
+Copying a read wrapper copies its borrow; it does not copy payload or retain a
+new independent allocation. Nested reads cannot outlive their original owner.
+String and identity observations are inert data; a consumer remains responsible
+for admitting any owned physical-plan projection and work it performs. The old
+generic `with_sealed_relation_v3` callback is removed because a caller could
+return `relation.clone()` from it. This pre-release API cutover must ship with
+the downstream consumer conversion and source pin; it changes no wire encoding,
+digest domain or golden vector.
 
 All authored `query.result_shape` forms (leaf, record, and nested record/list)
 parse and format, but

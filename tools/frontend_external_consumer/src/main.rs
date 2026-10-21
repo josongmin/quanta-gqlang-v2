@@ -23,16 +23,22 @@ mod request_owner {
         classify_single_source_root_with_request_owner_v3,
         compile_scalar_parsed_source_with_request_owner_v3,
         compile_scalar_source_with_request_owner_v3, compile_source_document_v3,
-        parse_source_document_with_request_owner_v3, AdmittedCanonicalFilesScalarReadV3,
-        AdmittedScalarExecutionDocumentV3, ClosedFrontendAuthorityBuilderV2,
-        ClosedFrontendAuthorityV2, ExecutionCardinalityV3, ExecutionFamilyV3,
+        compile_source_parsed_with_request_owner_v3, parse_source_document_with_request_owner_v3,
+        AdmittedBindingIdentityReadV3, AdmittedCanonicalFilesScalarReadV3,
+        AdmittedOneLetBindingReadV3, AdmittedOneLetCompositionReadV3,
+        AdmittedOneLetExecutionDocumentV3, AdmittedProjectScanReadV3,
+        AdmittedScalarExecutionDocumentV3, AdmittedSourceExecutionDocumentV3,
+        ClosedFrontendAuthorityBuilderV2, ClosedFrontendAuthorityV2, ExecutionCardinalityV3,
+        ExecutionExpressionShapeReadV3, ExecutionFamilyV3, ExecutionRelationAuthorityV3,
+        ExecutionRelationReadV3, ExecutionScalarTypeV3, ExecutionValueTypeShapeReadV3,
         FrontendAuthorityLocationV2, FrontendAuthoritySourceV2, FrontendBudgetV2,
         FrontendLanguageVersionV2, FrontendRelationAuthorityV2, FrontendRelationInputV2,
         FrontendRequestMaterializationRootV3, FrontendRequestStoragePermitV3,
         FrontendRequestStorageSinkV3, FrontendSourceRootFamilyV3, FrontendStorageRefusalV3,
         ScalarExecutionRequestErrorV3, ScalarSourceCompileRequestErrorV3,
-        SharedAdmittedScalarExecutionDocumentV3, SourceIdV2,
-        CANONICAL_WORKSPACE_FILES_FIELD_NAME_V2, CANONICAL_WORKSPACE_FILES_PROVENANCE_NAMESPACE_V2,
+        SharedAdmittedOneLetExecutionDocumentV3, SharedAdmittedScalarExecutionDocumentV3,
+        SourceIdV2, CANONICAL_WORKSPACE_FILES_FIELD_NAME_V2,
+        CANONICAL_WORKSPACE_FILES_PROVENANCE_NAMESPACE_V2,
         CANONICAL_WORKSPACE_FILES_QUALIFIED_NAME_V2,
     };
 
@@ -281,6 +287,92 @@ mod request_owner {
         );
         assert!(shared.matches_source_bytes_v3(source.as_bytes()));
 
+        let relation: ExecutionRelationReadV3<'_> = shared
+            .relation_read_v3()
+            .expect("sealed scalar relation lends a safe read");
+        let raw = ordinary.execution().items()[0]
+            .relation()
+            .expect("ordinary relation oracle");
+        assert_eq!(relation.item_id(), raw.item_id());
+        let root_read = relation.root();
+        let root_raw = raw.root();
+        assert_eq!(root_read.family(), root_raw.family());
+        assert_eq!(root_read.stage(), root_raw.stage());
+        assert_eq!(
+            root_read.schema().cardinality(),
+            root_raw.schema().cardinality()
+        );
+        assert_eq!(root_read.children().len(), root_raw.children().len());
+        let scan = root_read.children().first().expect("one Scan child");
+        let raw_scan = &root_raw.children()[0];
+        assert_eq!(scan.family(), raw_scan.family());
+        assert_eq!(scan.stage(), raw_scan.stage());
+        let scan_source = scan.source().expect("sealed canonical files source");
+        assert_eq!(
+            scan_source.authority(),
+            ExecutionRelationAuthorityV3::CanonicalWorkspaceFiles
+        );
+        assert_eq!(scan_source.namespace(), Some("builtin"));
+        assert_eq!(scan_source.name(), "workspace_files");
+        assert_eq!(scan.schema().fields().len(), 1);
+        let scan_field = scan.schema().fields().first().expect("RepoPath scan field");
+        assert_eq!(scan_field.name(), "path");
+        assert!(matches!(
+            scan_field.value_type().shape(),
+            ExecutionValueTypeShapeReadV3::Scalar(ExecutionScalarTypeV3::RepoPath)
+        ));
+        let output_field = root_read.schema().fields().first().expect("project output");
+        assert_eq!(output_field.name(), "renamed");
+        assert!(matches!(
+            output_field.value_type().shape(),
+            ExecutionValueTypeShapeReadV3::Scalar(ExecutionScalarTypeV3::RepoPath)
+        ));
+        assert_eq!(relation.expressions().len(), raw.expressions().len());
+        let mut binding_count = 0;
+        let mut path_count = 0;
+        for expression in relation.expressions() {
+            assert!(matches!(
+                expression.value_type().shape(),
+                ExecutionValueTypeShapeReadV3::Scalar(ExecutionScalarTypeV3::RepoPath)
+                    | ExecutionValueTypeShapeReadV3::Record(_)
+            ));
+            match expression.shape() {
+                ExecutionExpressionShapeReadV3::Binding(binding) => {
+                    binding_count += 1;
+                    assert_eq!(binding.source_id(), source_id);
+                    assert_eq!(binding.name(), "f");
+                }
+                ExecutionExpressionShapeReadV3::Path { base, segments } => {
+                    path_count += 1;
+                    assert_eq!(segments.len(), 1);
+                    assert_eq!(segments.first(), Some("path"));
+                    assert!(relation
+                        .expressions()
+                        .iter()
+                        .any(|candidate| candidate.id() == *base));
+                }
+                other => panic!("unexpected scalar expression shape: {other:?}"),
+            }
+        }
+        assert_eq!((binding_count, path_count), (1, 1));
+        let read_clone = shared.clone();
+        assert!(shared.shares_payload_v3(&read_clone));
+        let cloned_name = read_clone
+            .relation_read_v3()
+            .expect("clone lends the same relation")
+            .root()
+            .children()
+            .first()
+            .expect("clone Scan child")
+            .source()
+            .expect("clone source")
+            .name();
+        assert!(std::ptr::eq(
+            scan_source.name().as_ptr(),
+            cloned_name.as_ptr()
+        ));
+        drop(read_clone);
+
         let foreign_live = Arc::new(AtomicU64::new(0));
         let foreign_sink = Sink {
             limit: AtomicU64::new(1_000_000),
@@ -381,6 +473,140 @@ mod request_owner {
         );
         drop(shared);
         assert_eq!(live.load(Ordering::Acquire), 0);
+    }
+
+    pub(super) fn onelet_probe(budget: &FrontendBudgetV2) {
+        let source_id = SourceIdV2::from_raw(45);
+        let source = String::from(
+            "let paths = from files f | project f.path as path \
+             from paths p | project p.path as path with paths",
+        );
+        let authority =
+            scalar_authority(budget, FrontendRelationAuthorityV2::CanonicalWorkspaceFiles);
+        let live = Arc::new(AtomicU64::new(0));
+        let sink = Sink {
+            limit: AtomicU64::new(1_000_000),
+            live: Arc::clone(&live),
+        };
+        let root =
+            FrontendRequestMaterializationRootV3::from_issued_sink_v3(source_id, &source, &sink);
+        let parsed = parse_source_document_with_request_owner_v3(source_id, &source, budget, &root)
+            .expect("external one-LET parser owner");
+        assert_eq!(parsed.item_count_v3(), 1);
+        assert_eq!(
+            parsed
+                .root_family_v3()
+                .expect("one-LET root classification"),
+            FrontendSourceRootFamilyV3::Composition
+        );
+        let admitted: AdmittedOneLetExecutionDocumentV3 =
+            match compile_source_parsed_with_request_owner_v3(
+                source_id, &source, &authority, &root, parsed,
+            )
+            .expect("external one-LET execution seal")
+            {
+                AdmittedSourceExecutionDocumentV3::OneLet(value) => value,
+                AdmittedSourceExecutionDocumentV3::Scalar(_) => {
+                    panic!("one-LET cannot grant a scalar capability")
+                }
+            };
+        let ordinary = compile_source_document_v3(source_id, &source, &authority)
+            .expect("independent ordinary one-LET execution oracle");
+        let shared: SharedAdmittedOneLetExecutionDocumentV3 = admitted
+            .into_shared_with_request_owner_v3(&root, &source)
+            .expect("external one-LET shared owner");
+        assert_eq!(shared.source_id_v3(), source_id);
+        assert_eq!(shared.item_family_v3(), ExecutionFamilyV3::Composition);
+        assert_eq!(
+            shared.source_digest_v3(),
+            ordinary.execution().source_digest()
+        );
+        assert_eq!(
+            shared.contract_digest_v3(),
+            ordinary.execution().contract_digest()
+        );
+        assert_eq!(
+            shared.qualification_digest_v3(),
+            ordinary.execution().qualification_digest()
+        );
+        assert!(shared.matches_source_bytes_v3(source.as_bytes()));
+        assert!(!shared.matches_source_bytes_v3(b"foreign source"));
+        let read: AdmittedOneLetCompositionReadV3<'_> = shared
+            .composition_read_v3()
+            .expect("external borrowed one-LET Composition read");
+        assert_eq!(read.binding_count_v3(), 1);
+        assert!(read.binding_at_v3(1).is_none());
+        assert!(read.project_scan_inspection_work_upper_v3().is_some());
+        let binding: AdmittedOneLetBindingReadV3<'_> =
+            read.binding_at_v3(0).expect("one-LET producer");
+        assert_eq!(binding.name_v3(), "paths");
+        assert_eq!(binding.with_name_v3(), "paths");
+        assert!(binding.matches_with_binding_v3());
+        assert_eq!(binding.producer_family_v3(), ExecutionFamilyV3::Relation);
+        assert!(binding.producer_is_relation_v3());
+        assert!(binding.producer_relation_present_v3());
+        assert!(binding.producer_schema_present_v3());
+        assert_eq!(binding.sample_v3(), None);
+        let identity: AdmittedBindingIdentityReadV3<'_> = binding.identity_v3();
+        assert!(identity.matches_v3(read.with_binding_v3()));
+        assert_eq!(identity.name_v3(), "paths");
+        let producer: AdmittedProjectScanReadV3<'_> = binding
+            .producer_project_scan_v3()
+            .expect("borrowed canonical files producer shape");
+        assert_eq!(
+            producer.source_authority_v3(),
+            ExecutionRelationAuthorityV3::CanonicalWorkspaceFiles
+        );
+        assert_eq!(producer.scan_field_name_v3(), "path");
+        assert_eq!(producer.output_field_name_v3(), "path");
+        assert!(producer.source_binding_v3().is_none());
+        assert!(binding.producer_schema_matches_project_scan_v3(producer));
+        let body: AdmittedProjectScanReadV3<'_> = read
+            .body_project_scan_v3()
+            .expect("borrowed Composition body shape");
+        assert_eq!(
+            body.source_authority_v3(),
+            ExecutionRelationAuthorityV3::CompositionBinding
+        );
+        assert_eq!(body.source_name_v3(), "paths");
+        assert_eq!(body.output_field_name_v3(), "path");
+        assert!(body
+            .source_binding_v3()
+            .expect("sealed WITH source identity")
+            .matches_v3(identity));
+        assert!(live.load(Ordering::Acquire) > 0);
+
+        let foreign_live = Arc::new(AtomicU64::new(0));
+        let foreign_sink = Sink {
+            limit: AtomicU64::new(1_000_000),
+            live: Arc::clone(&foreign_live),
+        };
+        let foreign_root = FrontendRequestMaterializationRootV3::from_issued_sink_v3(
+            source_id,
+            &source,
+            &foreign_sink,
+        );
+        assert_eq!(
+            shared.validate_owner_v3(&foreign_root, &source),
+            Err(FrontendStorageRefusalV3::ForeignRequestRoot)
+        );
+        assert_eq!(
+            shared.validate_issued_sink_v3(&foreign_sink),
+            Err(FrontendStorageRefusalV3::ForeignRequestRoot)
+        );
+        shared
+            .validate_owner_v3(&root, &source)
+            .expect("original one-LET owner validates");
+        shared
+            .validate_issued_sink_v3(&sink)
+            .expect("original one-LET sink validates");
+        let clone = shared.clone();
+        assert!(shared.shares_payload_v3(&clone));
+        drop(shared);
+        assert!(live.load(Ordering::Acquire) > 0);
+        drop(clone);
+        assert_eq!(live.load(Ordering::Acquire), 0);
+        assert_eq!(foreign_live.load(Ordering::Acquire), 0);
     }
 }
 
@@ -732,6 +958,7 @@ fn algebra_family_label(family: AlgebraFamilyV2) -> &'static str {
         AlgebraFamilyV2::SemiJoin => "semi-join",
         AlgebraFamilyV2::AntiJoin => "anti-join",
         AlgebraFamilyV2::ExistsFilter => "exists-filter",
+        AlgebraFamilyV2::Limit => "limit",
     }
 }
 
@@ -1782,6 +2009,7 @@ fn main() {
             name: "host_only".to_owned(),
             scalar_type: FrontendScalarTypeV2::String,
             optional: false,
+            sequence: false,
             location: host_relation_location,
         }],
         cardinality: FrontendRelationCardinalityV2::Set,
@@ -1812,6 +2040,7 @@ fn main() {
     lexical_owner_probe(&closed, &budget);
     request_owner::probe(&budget);
     request_owner::scalar_probe(&budget);
+    request_owner::onelet_probe(&budget);
     assert_declaration_dependency_stack(&closed);
     let compiled = compile_source_document_v3(DOCUMENT_SOURCE, DOCUMENT_TEXT, &closed)
         .expect("facade-only closed authority compiles the probe source");

@@ -1,8 +1,9 @@
 //! Source-bounded projection of the admitted scalar Project(Scan) family.
 
 use super::{
-    project_scalar_plan, ExecutionExpressionV3, ExecutionFamilyV3, ExecutionFieldV3,
-    ExecutionItemV3, ExecutionRecordFieldV3, ExecutionRelationV3, ExecutionRelationalOperatorV3,
+    project_scalar_plan, ExecutionCompositionBindingV3, ExecutionExpressionV3, ExecutionFamilyV3,
+    ExecutionFieldV3, ExecutionItemV3, ExecutionRecordFieldV3, ExecutionRelationV3,
+    ExecutionRelationalOperatorV3,
 };
 use quanta_gqlang_v2_sema::{
     ExpressionTypeStateV2, ResolvedScanSourceV2, ScalarSourceProjectReadV3,
@@ -62,11 +63,23 @@ fn scalar_field_bytes(output: &quanta_gqlang_v2_sema::RelationOutputContractV2) 
 pub fn scalar_relation_projection_demand_v3(
     read: &ScalarSourceProjectReadV3<'_, '_>,
 ) -> Result<usize, ScalarProjectionFailureV3> {
-    let ResolvedScanSourceV2::Relation(source_id) = read
+    let source = read
         .scan_source_v3()
-        .ok_or(ScalarProjectionFailureV3::UnsupportedShape)?
-    else {
-        return Err(ScalarProjectionFailureV3::UnsupportedShape);
+        .ok_or(ScalarProjectionFailureV3::UnsupportedShape)?;
+    let source_bytes = match source {
+        ResolvedScanSourceV2::Relation(id) => id
+            .namespace()
+            .as_str()
+            .len()
+            .checked_add(id.qualified_name().len())
+            .ok_or(ScalarProjectionFailureV3::DemandOverflow)?,
+        ResolvedScanSourceV2::Composition(id) => id
+            .binding()
+            .canonical_name()
+            .len()
+            .checked_mul(2)
+            .ok_or(ScalarProjectionFailureV3::DemandOverflow)?,
+        ResolvedScanSourceV2::View(_) => return Err(ScalarProjectionFailureV3::UnsupportedShape),
     };
     let scan = read.scan_output_v3();
     let project = read.project_output_v3();
@@ -98,8 +111,7 @@ pub fn scalar_relation_projection_demand_v3(
     .ok_or(ScalarProjectionFailureV3::DemandOverflow)?;
     bytes = bytes
         .checked_add(slots)
-        .and_then(|value| value.checked_add(source_id.namespace().as_str().len()))
-        .and_then(|value| value.checked_add(source_id.qualified_name().len()))
+        .and_then(|value| value.checked_add(source_bytes))
         .ok_or(ScalarProjectionFailureV3::DemandOverflow)?;
     for key in read.project_expression_keys_v3() {
         let expr = read
@@ -158,6 +170,45 @@ pub fn scalar_relation_projection_demand_v3(
             .ok_or(ScalarProjectionFailureV3::DemandOverflow)?;
     }
     Ok(bytes)
+}
+
+/// Reserve both Query projections and the one Composition envelope before
+/// either execution relation is born. The local-source String and binding copy
+/// are counted by the body's scalar demand.
+pub fn onelet_composition_projection_demand_v3(
+    plan: &quanta_gqlang_v2_planning::AdmittedOneLetPlanV3<'_>,
+) -> Result<usize, ScalarProjectionFailureV3> {
+    let reads = plan
+        .algebra_v3()
+        .source_project_reads_v3()
+        .ok_or(ScalarProjectionFailureV3::UnsupportedShape)?;
+    if !matches!(
+        reads[0].scan_source_v3(),
+        Some(ResolvedScanSourceV2::Relation(_))
+    ) || !matches!(
+        reads[1].scan_source_v3(),
+        Some(ResolvedScanSourceV2::Composition(_))
+    ) || reads[0].project_output_v3().row() != reads[1].scan_output_v3().row()
+    {
+        return Err(ScalarProjectionFailureV3::UnsupportedShape);
+    }
+    let binding = plan
+        .algebra_v3()
+        .semantic_v3()
+        .with_binding_v3()
+        .ok_or(ScalarProjectionFailureV3::UnsupportedShape)?;
+    let producer = scalar_relation_projection_demand_v3(&reads[0])?;
+    let body = scalar_relation_projection_demand_v3(&reads[1])?;
+    let schema = scalar_field_bytes(reads[0].project_output_v3())
+        .ok_or(ScalarProjectionFailureV3::UnsupportedShape)?;
+    let bindings = boxed_slots_peak::<ExecutionCompositionBindingV3>(1)
+        .ok_or(ScalarProjectionFailureV3::DemandOverflow)?;
+    producer
+        .checked_add(body)
+        .and_then(|value| value.checked_add(schema))
+        .and_then(|value| value.checked_add(bindings))
+        .and_then(|value| value.checked_add(binding.canonical_name().len().checked_mul(2)?))
+        .ok_or(ScalarProjectionFailureV3::DemandOverflow)
 }
 
 /// Called only after the same request root has reserved the demand above.

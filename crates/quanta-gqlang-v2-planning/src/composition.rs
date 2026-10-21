@@ -368,41 +368,18 @@ impl CompositionRetentionV2 {
         with_binding: ResolvedValueBindingV2,
         body: CompositionBodyIdentityV2,
     ) -> Result<Self, CompositionInvalidReasonV2> {
-        if producers.is_empty() {
-            return Err(CompositionInvalidReasonV2::EmptyProducers);
-        }
-        let mut seen = BTreeSet::new();
-        for (index, producer) in producers.iter().enumerate() {
-            if producer.ordinal() != index {
-                return Err(CompositionInvalidReasonV2::ProducerOrdinalMismatch);
-            }
-            if !seen.insert(producer.item_id()) {
-                return Err(CompositionInvalidReasonV2::DuplicateProducer);
-            }
-            if producer.item_id().source_id() != root_item_id.source_id()
-                || producer.name_location().location().source_id != root_item_id.source_id()
-            {
-                return Err(CompositionInvalidReasonV2::ProducerIdentityMismatch);
-            }
-        }
-
-        // The WITH binding belongs to THIS composition root and names exactly one
-        // of the ordered producers.
-        let names_exactly_one_producer = producers
-            .iter()
-            .filter(|producer| producer.ordinal() == with_binding.ordinal())
-            .count()
-            == 1;
-        if with_binding.source_id() != root_item_id.source_id()
-            || with_binding.target_node() != root_item_id.hir_item_id()
-            || !names_exactly_one_producer
-        {
-            return Err(CompositionInvalidReasonV2::WithTargetNotAProducer);
-        }
-
-        if body.item_id().source_id() != root_item_id.source_id() {
-            return Err(CompositionInvalidReasonV2::BodyIdentityMismatch);
-        }
+        validate_composition_retention_fields_v3(
+            root_item_id,
+            producers.iter().map(|producer| {
+                (
+                    producer.ordinal(),
+                    producer.item_id(),
+                    producer.name_location(),
+                )
+            }),
+            &with_binding,
+            body,
+        )?;
 
         Ok(Self {
             root_item_id,
@@ -437,6 +414,72 @@ impl CompositionRetentionV2 {
     const fn body(&self) -> CompositionBodyIdentityV2 {
         self.body
     }
+}
+
+/// Logical upper for the one-LET policy's new owned heap: one producer Vec,
+/// one boxed body policy, one cloned one-field output, and the exact WITH
+/// binding String. Sema checks its private inline singleton provenance and
+/// computes the output clone demand; no BTree layout is inferred here.
+pub(crate) enum OneLetPolicyStorageDemandErrorV3 {
+    UnsupportedShape,
+    DemandOverflow,
+}
+
+pub(crate) fn onelet_request_policy_storage_upper_v3(
+    producer_output: &RelationOutputContractV2,
+    with_binding: &ResolvedValueBindingV2,
+) -> Result<usize, OneLetPolicyStorageDemandErrorV3> {
+    use OneLetPolicyStorageDemandErrorV3::{DemandOverflow, UnsupportedShape};
+    let output = producer_output
+        .request_single_clone_storage_upper_v3()
+        .ok_or(UnsupportedShape)?;
+    output
+        .checked_add(std::mem::size_of::<CheckedCompositionProducerV2>())
+        .and_then(|sum| sum.checked_add(std::mem::size_of::<PlanPolicyV2>()))
+        .and_then(|sum| sum.checked_add(with_binding.canonical_name().len()))
+        .ok_or(DemandOverflow)
+}
+
+/// The ordinary owned policy and the request-owned one-LET policy use this
+/// same identity/order validator. A singleton source visits no temporary set.
+pub(crate) fn validate_composition_retention_fields_v3<'a>(
+    root_item_id: SemanticItemIdV2,
+    producers: impl ExactSizeIterator<Item = (usize, SemanticItemIdV2, &'a CheckedLocatedSpanV2)>,
+    with_binding: &ResolvedValueBindingV2,
+    body: CompositionBodyIdentityV2,
+) -> Result<(), CompositionInvalidReasonV2> {
+    let count = producers.len();
+    if count == 0 {
+        return Err(CompositionInvalidReasonV2::EmptyProducers);
+    }
+    let mut seen = BTreeSet::new();
+    let mut with_matches = 0_usize;
+    for (index, (ordinal, item_id, location)) in producers.enumerate() {
+        if ordinal != index {
+            return Err(CompositionInvalidReasonV2::ProducerOrdinalMismatch);
+        }
+        if count > 1 && !seen.insert(item_id) {
+            return Err(CompositionInvalidReasonV2::DuplicateProducer);
+        }
+        if item_id.source_id() != root_item_id.source_id()
+            || location.location().source_id != root_item_id.source_id()
+        {
+            return Err(CompositionInvalidReasonV2::ProducerIdentityMismatch);
+        }
+        if ordinal == with_binding.ordinal() {
+            with_matches += 1;
+        }
+    }
+    if with_binding.source_id() != root_item_id.source_id()
+        || with_binding.target_node() != root_item_id.hir_item_id()
+        || with_matches != 1
+    {
+        return Err(CompositionInvalidReasonV2::WithTargetNotAProducer);
+    }
+    if body.item_id().source_id() != root_item_id.source_id() {
+        return Err(CompositionInvalidReasonV2::BodyIdentityMismatch);
+    }
+    Ok(())
 }
 
 /// The body policy a composition plan retains: the body's OWN classified plan

@@ -460,10 +460,11 @@ class ExternalConsumerCacheTest(unittest.TestCase):
     def test_facade_dto_roots_have_exact_contract_owner(self):
         valid = "\n".join([
             "pub use quanta_gqlang_v2_pipeline::compile_source_document_v3;",
-            "pub use quanta_gqlang_v2_execution_contract::{ExecutionDocumentV3, execution_operator_descriptor_v3};",
+            "pub use quanta_gqlang_v2_pipeline::{compile_source_parsed_with_request_owner_v3, SharedAdmittedOneLetExecutionDocumentV3};",
+            "pub use quanta_gqlang_v2_execution_contract::{ExecutionDocumentV3, ExecutionRelationReadV3, execution_operator_descriptor_v3};",
         ])
         self.assertEqual(consumer_gate.facade_symbol_owner_mismatches(valid), [])
-        self.assertEqual(len(consumer_gate.facade_allowlist(valid)), 3)
+        self.assertEqual(len(consumer_gate.facade_allowlist(valid)), 6)
         for old, new in [
             ("quanta_gqlang_v2_execution_contract", "quanta_gqlang_v2_pipeline"),
             ("quanta_gqlang_v2_pipeline", "quanta_gqlang_v2_execution_contract"),

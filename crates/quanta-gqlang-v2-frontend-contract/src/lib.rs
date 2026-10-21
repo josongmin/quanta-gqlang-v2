@@ -32,6 +32,8 @@ pub use quanta_gqlang_v2_pipeline::compile_scalar_source_with_request_owner_v3;
 pub use quanta_gqlang_v2_pipeline::compile_source_document_v3;
 /// Versioned closed compile that retains its lexical-only storage owner.
 pub use quanta_gqlang_v2_pipeline::compile_source_document_with_lexical_owner_v1;
+/// Continue the same parser-issued source owner for scalar or one-LET input.
+pub use quanta_gqlang_v2_pipeline::compile_source_parsed_with_request_owner_v3;
 /// Format one source document under the canonical budget.
 pub use quanta_gqlang_v2_pipeline::format_source_document_v2;
 pub use quanta_gqlang_v2_pipeline::LexicalMaterializationCensusV1;
@@ -43,8 +45,11 @@ pub use quanta_gqlang_v2_pipeline::{
 /// Richer families and runtime admission retain their separate contracts.
 pub use quanta_gqlang_v2_pipeline::{
     check_source_document_with_request_owner_v3, parse_source_document_with_request_owner_v3,
-    AdmittedCanonicalFilesScalarReadV3, AdmittedScalarExecutionDocumentV3, CheckedRequestSourceV3,
-    FrontendRequestCheckErrorV3, ParsedRequestSourceV3, SharedAdmittedScalarExecutionDocumentV3,
+    AdmittedBindingIdentityReadV3, AdmittedCanonicalFilesScalarReadV3, AdmittedOneLetBindingReadV3,
+    AdmittedOneLetCompositionReadV3, AdmittedOneLetExecutionDocumentV3, AdmittedProjectScanReadV3,
+    AdmittedScalarExecutionDocumentV3, AdmittedSourceExecutionDocumentV3, CheckedRequestSourceV3,
+    FrontendRequestCheckErrorV3, ParsedRequestSourceV3, SharedAdmittedOneLetExecutionDocumentV3,
+    SharedAdmittedScalarExecutionDocumentV3,
 };
 pub use quanta_gqlang_v2_pipeline::{
     AdmittedLexicalCompiledSourceDocumentV1, FrontendLexicalHostCeilingV1,
@@ -115,4 +120,18 @@ pub use quanta_gqlang_v2_pipeline::{
 pub use quanta_gqlang_v2_pipeline::{
     AlgebraFamilyV2, CheckedLocatedSpanV2, LocatedSpanV2, SemanticItemIdV2, SourceIdV2,
     SourceQualifiedNodeIdV2, SpanV1,
+};
+
+// Borrowed execution observations retain their issuing owner lifetime.
+pub use quanta_gqlang_v2_execution_contract::{
+    ExecutionBindingReadV3, ExecutionBindingSliceReadV3, ExecutionCallTargetReadV3,
+    ExecutionCorrelationReadV3, ExecutionCorrelationSliceReadV3, ExecutionExistentialTermReadV3,
+    ExecutionExistentialTermSliceReadV3, ExecutionExpressionReadV3, ExecutionExpressionShapeReadV3,
+    ExecutionExpressionSliceReadV3, ExecutionFieldReadV3, ExecutionFieldSliceReadV3,
+    ExecutionLiteralReadV3, ExecutionOperatorReadV3, ExecutionOrderKeyReadV3,
+    ExecutionOrderKeySliceReadV3, ExecutionRecordExpressionSliceReadV3, ExecutionRecordFieldReadV3,
+    ExecutionRecordFieldSliceReadV3, ExecutionRelationReadV3, ExecutionRelationalOperatorReadV3,
+    ExecutionRelationalOperatorSliceReadV3, ExecutionSchemaReadV3, ExecutionSourceReadV3,
+    ExecutionStringSliceReadV3, ExecutionUnionVariantReadV3, ExecutionUnionVariantSliceReadV3,
+    ExecutionValueTypeReadV3, ExecutionValueTypeShapeReadV3, ExecutionValueTypeSliceReadV3,
 };

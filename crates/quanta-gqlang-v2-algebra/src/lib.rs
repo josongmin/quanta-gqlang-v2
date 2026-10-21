@@ -22,6 +22,7 @@ pub use node::{
 };
 pub use normalize::{lower_nested_relation_v2, lower_relation_item, AlgebraSessionV2};
 pub use scalar_request::{
-    lower_scalar_source_project_with_request_owner_v3, AdmittedScalarAlgebraV3,
-    ScalarAlgebraReadV3, ScalarAlgebraRequestErrorV3,
+    lower_scalar_source_project_with_request_owner_v3, lower_source_semantic_with_request_owner_v3,
+    AdmittedOneLetAlgebraV3, AdmittedScalarAlgebraV3, AdmittedSourceAlgebraV3, ScalarAlgebraReadV3,
+    ScalarAlgebraRequestErrorV3,
 };

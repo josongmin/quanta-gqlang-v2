@@ -3,8 +3,9 @@ use super::*;
 use quanta_gqlang_v2_pipeline::{
     compile_scalar_source_with_request_owner_v3, ExecutionCardinalityV3,
     ExecutionExpressionShapeV3, ExecutionExpressionV3, ExecutionFieldV3, ExecutionItemV3,
-    ExecutionRecordFieldV3, ExecutionRelationalOperatorV3, PlannedSourceBodyRequestSourceV3,
-    ScalarExecutionRequestErrorV3, ScalarSourceCompileRequestErrorV3, SourceQualifiedNodeIdV2,
+    ExecutionRecordFieldV3, ExecutionRelationalOperatorV3, LoweredSourceBodyRequestSourceV3,
+    PlannedSourceBodyRequestSourceV3, ScalarExecutionRequestErrorV3,
+    ScalarSourceCompileRequestErrorV3, SourceQualifiedNodeIdV2,
 };
 use quanta_gqlang_v2_surface::{
     FrontendRequestMaterializationRootV3, FrontendRequestStoragePermitV3,
@@ -139,18 +140,18 @@ fn nine_column_projection_bytes(names: &[String]) -> u64 {
     .expect("bounded N9 demand fits u64")
 }
 
-fn planned_nine_request<'a>(
+fn lowered_nine_request<'a>(
     source: &str,
     authority: &'a ClosedFrontendAuthorityV2,
     root: &FrontendRequestMaterializationRootV3<'_>,
-) -> PlannedSourceBodyRequestSourceV3<'a> {
+) -> LoweredSourceBodyRequestSourceV3<'a> {
     use quanta_gqlang_v2_pipeline::{
         begin_bind_source_document_with_request_owner_v3,
         begin_prepare_source_body_with_request_owner_v3,
         begin_resolve_source_document_with_request_owner_v3,
         check_source_document_with_request_owner_v3, declare_source_document_with_request_owner_v3,
         lower_source_body_with_request_owner_v3, materialize_source_body_with_request_owner_v3,
-        parse_source_document_with_request_owner_v3, plan_source_body_with_request_owner_v3,
+        parse_source_document_with_request_owner_v3,
         predeclare_source_catalog_with_request_owner_v3,
         resolve_source_bindings_with_request_owner_v3, seal_source_catalog_with_request_owner_v3,
         topologize_source_body_with_request_owner_v3, type_source_body_with_request_owner_v3,
@@ -179,8 +180,20 @@ fn planned_nine_request<'a>(
         materialize_source_body_with_request_owner_v3(source, root, topology).expect("body");
     let catalog =
         seal_source_catalog_with_request_owner_v3(source, root, materialized).expect("catalog");
-    let lowered = lower_source_body_with_request_owner_v3(source, root, catalog).expect("algebra");
-    plan_source_body_with_request_owner_v3(source, root, lowered).expect("plan")
+    lower_source_body_with_request_owner_v3(source, root, catalog).expect("algebra")
+}
+
+fn planned_nine_request<'a>(
+    source: &str,
+    authority: &'a ClosedFrontendAuthorityV2,
+    root: &FrontendRequestMaterializationRootV3<'_>,
+) -> PlannedSourceBodyRequestSourceV3<'a> {
+    quanta_gqlang_v2_pipeline::plan_source_body_with_request_owner_v3(
+        source,
+        root,
+        lowered_nine_request(source, authority, root),
+    )
+    .expect("plan")
 }
 
 fn new_sink(live: &Arc<AtomicU64>) -> BodyRequestSinkV3 {
@@ -288,6 +301,286 @@ fn parsed_scalar_owner_classifies_and_continues_without_changing_n1_n9_execution
         drop(admitted);
         assert_eq!(live.load(Ordering::Acquire), 0);
     }
+}
+
+#[test]
+fn parsed_onelet_composition_retains_one_request_root_and_refuses_foreign_or_short_funding() {
+    use quanta_gqlang_v2_pipeline::{
+        compile_source_parsed_with_request_owner_v3, parse_source_document_with_request_owner_v3,
+        AdmittedSourceExecutionDocumentV3, FrontendSourceRootFamilyV3,
+    };
+
+    let source = "let rows = from records r | project r.id as id \
+                  from rows x | project x.id as id with rows";
+    let authority = authority_with_records();
+    let live = Arc::new(AtomicU64::new(0));
+    let sink = TracedScalarSinkV3::new(&live);
+    let root = FrontendRequestMaterializationRootV3::from_issued_sink_v3(DOC_SOURCE, source, &sink);
+    let parsed =
+        parse_source_document_with_request_owner_v3(DOC_SOURCE, source, authority.budget(), &root)
+            .expect("one parser-issued Composition source");
+    assert_eq!(parsed.item_count_v3(), 1);
+    assert_eq!(
+        parsed
+            .root_family_v3()
+            .expect("one classified Composition root"),
+        FrontendSourceRootFamilyV3::Composition
+    );
+    let admitted = match compile_source_parsed_with_request_owner_v3(
+        DOC_SOURCE, source, &authority, &root, parsed,
+    )
+    .expect("onelet follows the same request owner through execution seal")
+    {
+        AdmittedSourceExecutionDocumentV3::OneLet(value) => value,
+        AdmittedSourceExecutionDocumentV3::Scalar(_) => {
+            panic!("Composition cannot be published as a scalar capability")
+        }
+    };
+    let compile_peak = sink.peak.load(Ordering::Acquire);
+    let ordinary = compile_source_document_v3(DOC_SOURCE, source, &authority)
+        .expect("independent canonical execution DTO oracle");
+    let shared = admitted
+        .into_shared_with_request_owner_v3(&root, source)
+        .expect("share the genuine retained onelet owner");
+    assert_eq!(
+        shared.source_digest_v3(),
+        ordinary.execution().source_digest()
+    );
+    assert_eq!(
+        shared.contract_digest_v3(),
+        ordinary.execution().contract_digest()
+    );
+    assert_eq!(
+        shared.qualification_digest_v3(),
+        ordinary.execution().qualification_digest()
+    );
+    let borrowed = shared
+        .composition_read_v3()
+        .expect("the admitted owner lends one Composition read");
+    assert_eq!(borrowed.binding_count_v3(), 1);
+    let binding = borrowed.binding_at_v3(0).expect("one retained LET");
+    assert_eq!(binding.name_v3(), "rows");
+    assert!(binding.matches_with_binding_v3());
+    assert_eq!(binding.sample_v3(), None);
+
+    let foreign_live = Arc::new(AtomicU64::new(0));
+    let foreign_sink = TracedScalarSinkV3::new(&foreign_live);
+    let foreign_root = FrontendRequestMaterializationRootV3::from_issued_sink_v3(
+        DOC_SOURCE,
+        source,
+        &foreign_sink,
+    );
+    assert_eq!(
+        shared.validate_owner_v3(&foreign_root, source),
+        Err(FrontendStorageRefusalV3::ForeignRequestRoot)
+    );
+    assert_eq!(
+        shared.validate_issued_sink_v3(&foreign_sink),
+        Err(FrontendStorageRefusalV3::ForeignRequestRoot)
+    );
+    let held = shared.clone();
+    drop(shared);
+    assert!(live.load(Ordering::Acquire) > 0);
+    drop(held);
+    assert_eq!(live.load(Ordering::Acquire), 0);
+    assert_eq!(foreign_live.load(Ordering::Acquire), 0);
+
+    let short_live = Arc::new(AtomicU64::new(0));
+    let short_sink = TracedScalarSinkV3::new(&short_live);
+    short_sink.limit.store(compile_peak - 1, Ordering::Release);
+    let short_root =
+        FrontendRequestMaterializationRootV3::from_issued_sink_v3(DOC_SOURCE, source, &short_sink);
+    let short_parsed = parse_source_document_with_request_owner_v3(
+        DOC_SOURCE,
+        source,
+        authority.budget(),
+        &short_root,
+    )
+    .expect("one-short projection budget still admits the same parser source");
+    assert!(matches!(
+        compile_source_parsed_with_request_owner_v3(
+            DOC_SOURCE,
+            source,
+            &authority,
+            &short_root,
+            short_parsed,
+        ),
+        Err(ScalarSourceCompileRequestErrorV3::Execution(
+            ScalarExecutionRequestErrorV3::Storage(FrontendStorageRefusalV3::BudgetRejected)
+        ))
+    ));
+    assert_eq!(short_live.load(Ordering::Acquire), 0);
+}
+
+#[test]
+fn admitted_onelet_explain_walk_matches_ordinary_body_plan() {
+    let source = "let rows = from records r | project r.id as id \
+                  from rows x | project x.id as id with rows";
+    let authority = authority_with_records();
+    let live = Arc::new(AtomicU64::new(0));
+    let sink = new_sink(&live);
+    let root = FrontendRequestMaterializationRootV3::from_issued_sink_v3(DOC_SOURCE, source, &sink);
+    let admitted = planned_nine_request(source, &authority, &root);
+    let ordinary = compile_source_document_v3(DOC_SOURCE, source, &authority)
+        .expect("independent ordinary Composition plan");
+    let [item] = ordinary.items() else {
+        panic!("one Composition plan item");
+    };
+    let ordinary_plan = item.plan().expect("ordinary body plan");
+    assert_eq!(admitted.item_id_v3(), item.item_id());
+    assert_eq!(admitted.policy_v3(), ordinary_plan.policy());
+    let PlanPolicyV2::Composition(admitted_policy) = admitted.policy_v3() else {
+        panic!("one-LET root must retain a Composition policy");
+    };
+    let PlanPolicyV2::Composition(ordinary_policy) = ordinary_plan.policy() else {
+        panic!("ordinary one-LET root has a Composition policy");
+    };
+    assert_eq!(admitted_policy.root_item_id(), item.item_id());
+    assert_eq!(admitted_policy.location(), ordinary_policy.location());
+    assert_eq!(admitted_policy.producers(), ordinary_policy.producers());
+    assert_eq!(admitted_policy.producers().len(), 1);
+    assert_eq!(
+        admitted_policy.producers()[0].relation_output(),
+        ordinary_policy.producers()[0].relation_output()
+    );
+    assert_eq!(
+        admitted_policy.with_binding(),
+        ordinary_policy.with_binding()
+    );
+    assert_eq!(
+        admitted_policy.body_item_id(),
+        ordinary_policy.body_item_id()
+    );
+    assert_eq!(admitted_policy.body_family(), ordinary_policy.body_family());
+    assert_eq!(admitted_policy.body(), ordinary_policy.body());
+    assert_eq!(admitted.result_v3(), ordinary_plan.result());
+    assert_eq!(admitted.semantic_cost_v3(), *ordinary_plan.semantic_cost());
+    assert_eq!(
+        admitted.evaluation_determinism_v3(),
+        ordinary_plan.evaluation_determinism()
+    );
+    assert_eq!(
+        admitted.root_location_v3(),
+        ordinary_plan.explain().root_location()
+    );
+    assert_eq!(
+        admitted.explain_families_v3(),
+        ordinary_plan.explain().families()
+    );
+    assert_eq!(
+        admitted.explain_family_count_v3(),
+        ordinary_plan.explain().families().len()
+    );
+    drop(admitted);
+    assert_eq!(live.load(Ordering::Acquire), 0);
+}
+
+#[test]
+fn admitted_onelet_policy_reserves_exact_new_owner_and_refuses_one_short() {
+    use quanta_gqlang_v2_pipeline::plan_source_body_with_request_owner_v3;
+    use quanta_gqlang_v2_planning::ScalarPlanningRequestErrorV3;
+
+    let source = "let rows = from records r | project r.id as id \
+                  from rows x | project x.id as id with rows";
+    let authority = authority_with_records();
+    // Independent fixed-shape calculation: one producer slot, one cloned
+    // output column, one boxed body policy, and exact singleton source,
+    // output-column and WITH name lengths. No BTree clone is admitted.
+    let expected_demand = std::mem::size_of::<
+        quanta_gqlang_v2_planning::CheckedCompositionProducerV2,
+    >() + std::mem::size_of::<quanta_gqlang_v2_sema::OutputColumnContractV2>(
+    ) + std::mem::size_of::<PlanPolicyV2>()
+        + "host".len()
+        + "app::records".len()
+        + "id".len()
+        + "rows".len();
+    let live = Arc::new(AtomicU64::new(0));
+    let sink = TracedScalarSinkV3::new(&live);
+    let root = FrontendRequestMaterializationRootV3::from_issued_sink_v3(DOC_SOURCE, source, &sink);
+    let lowered = lowered_nine_request(source, &authority, &root);
+    let before = sink.reservations().len();
+    let pre_plan_live = live.load(Ordering::Acquire);
+    let planned = plan_source_body_with_request_owner_v3(source, &root, lowered)
+        .expect("onelet plan admits its policy storage");
+    let reservations = sink.reservations();
+    assert_eq!(&reservations[before..], &[expected_demand as u64]);
+    let charge = expected_demand as u64 + std::mem::size_of::<TracedScalarPermitV3>() as u64;
+    assert_eq!(live.load(Ordering::Acquire), pre_plan_live + charge);
+    drop(planned);
+    assert_eq!(live.load(Ordering::Acquire), 0);
+
+    let short_live = Arc::new(AtomicU64::new(0));
+    let short_sink = TracedScalarSinkV3::new(&short_live);
+    let short_root =
+        FrontendRequestMaterializationRootV3::from_issued_sink_v3(DOC_SOURCE, source, &short_sink);
+    let lowered = lowered_nine_request(source, &authority, &short_root);
+    let short_pre_plan = short_live.load(Ordering::Acquire);
+    let short_count = short_sink.reservations().len();
+    short_sink
+        .limit
+        .store(short_pre_plan + charge - 1, Ordering::Release);
+    assert!(matches!(
+        plan_source_body_with_request_owner_v3(source, &short_root, lowered),
+        Err(ScalarPlanningRequestErrorV3::Storage(
+            FrontendStorageRefusalV3::BudgetRejected
+        ))
+    ));
+    assert_eq!(short_sink.reservations().len(), short_count);
+    assert_eq!(short_live.load(Ordering::Acquire), 0);
+}
+
+#[test]
+fn admitted_onelet_lends_project_scan_facts_without_nested_dto() {
+    use quanta_gqlang_v2_pipeline::{
+        compile_source_parsed_with_request_owner_v3, parse_source_document_with_request_owner_v3,
+        AdmittedSourceExecutionDocumentV3, ExecutionRelationAuthorityV3,
+    };
+    let source = "let paths = from files f | project f.path as path \
+                  from paths p | project p.path as path with paths";
+    let authority =
+        authority_with_workspace_files(FrontendRelationAuthorityV2::CanonicalWorkspaceFiles);
+    let live = Arc::new(AtomicU64::new(0));
+    let sink = new_sink(&live);
+    let root = FrontendRequestMaterializationRootV3::from_issued_sink_v3(DOC_SOURCE, source, &sink);
+    let parsed =
+        parse_source_document_with_request_owner_v3(DOC_SOURCE, source, authority.budget(), &root)
+            .expect("issued onelet parser owner");
+    let admitted = match compile_source_parsed_with_request_owner_v3(
+        DOC_SOURCE, source, &authority, &root, parsed,
+    )
+    .expect("same-owner onelet seal")
+    {
+        AdmittedSourceExecutionDocumentV3::OneLet(value) => value,
+        AdmittedSourceExecutionDocumentV3::Scalar(_) => panic!("onelet is not scalar"),
+    };
+    let shared = admitted
+        .into_shared_with_request_owner_v3(&root, source)
+        .expect("shared onelet owner");
+    let read = shared
+        .composition_read_v3()
+        .expect("opaque Composition read");
+    assert_eq!(read.binding_count_v3(), 1);
+    let binding = read.binding_at_v3(0).expect("one LET producer");
+    assert!(binding.matches_with_binding_v3());
+    let producer = binding
+        .producer_project_scan_v3()
+        .expect("issued producer shape");
+    assert_eq!(
+        producer.source_authority_v3(),
+        ExecutionRelationAuthorityV3::CanonicalWorkspaceFiles
+    );
+    assert!(producer.source_binding_v3().is_none());
+    let body = read.body_project_scan_v3().expect("issued body shape");
+    assert_eq!(
+        body.source_authority_v3(),
+        ExecutionRelationAuthorityV3::CompositionBinding
+    );
+    assert!(body
+        .source_binding_v3()
+        .expect("sealed WITH source")
+        .matches_v3(read.with_binding_v3()));
+    drop(shared);
+    assert_eq!(live.load(Ordering::Acquire), 0);
 }
 
 #[test]

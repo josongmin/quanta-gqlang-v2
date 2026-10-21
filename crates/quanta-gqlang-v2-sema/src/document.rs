@@ -10,18 +10,17 @@ use crate::diagnostic::{
 use crate::rule::{classify_rule_body_calls, RuleBodyClassificationErrorV2};
 use crate::{
     AggregateContextV2, AggregatePositionV2, CheckedLocatedSpanV2, GraphDirectionV2,
-    GraphReferenceRoleV2, GraphWitnessBoundsV2, NullOrderV2, OrderKeyContractV2,
-    OutputColumnContractV2, OutputColumnOriginV2, OutputProvenanceV2, PartitionInputBindingV2,
-    RelationOutputContractV2, ResolvedBindingKindV2, ResolvedCatalogItemV2,
-    ResolvedCatalogPayloadV2, ResolvedCatalogReferenceV2, ResolvedCheckV2,
-    ResolvedCompositionBindingV2, ResolvedCompositionBodyV2, ResolvedCompositionProducerV2,
-    ResolvedCompositionSourceIdV2, ResolvedCompositionV2, ResolvedDeclarationV2,
-    ResolvedExplainTargetV2, ResolvedGraphQueryV2, ResolvedGraphReferenceV2, ResolvedGraphTargetV2,
-    ResolvedGraphUseV2, ResolvedMetaKindV2, ResolvedMetaV2, ResolvedPresentationKindV2,
-    ResolvedPresentationV2, ResolvedRuleCallV2, ResolvedRuleV2, ResolvedScanSourceV2,
-    ResolvedValueBindingV2, SemanticItemIdV2, SemanticItemV2, TypedBoolExprV2, TypedCallArgumentV2,
-    TypedCorrelationEdgeV2, TypedExprShapeV2, TypedExprV2, TypedPathSegmentV2, TypedRecordFieldV2,
-    TypedRelationExprV2, TypedRelationV2,
+    GraphReferenceRoleV2, GraphWitnessBoundsV2, OrderKeyContractV2, OutputColumnContractV2,
+    OutputColumnOriginV2, OutputProvenanceV2, PartitionInputBindingV2, RelationOutputContractV2,
+    ResolvedBindingKindV2, ResolvedCatalogItemV2, ResolvedCatalogPayloadV2,
+    ResolvedCatalogReferenceV2, ResolvedCheckV2, ResolvedCompositionBindingV2,
+    ResolvedCompositionBodyV2, ResolvedCompositionProducerV2, ResolvedCompositionSourceIdV2,
+    ResolvedCompositionV2, ResolvedDeclarationV2, ResolvedExplainTargetV2, ResolvedGraphQueryV2,
+    ResolvedGraphReferenceV2, ResolvedGraphTargetV2, ResolvedGraphUseV2, ResolvedMetaKindV2,
+    ResolvedMetaV2, ResolvedPresentationKindV2, ResolvedPresentationV2, ResolvedRuleCallV2,
+    ResolvedRuleV2, ResolvedScanSourceV2, ResolvedValueBindingV2, SemanticItemIdV2, SemanticItemV2,
+    TypedBoolExprV2, TypedCallArgumentV2, TypedCorrelationEdgeV2, TypedExprShapeV2, TypedExprV2,
+    TypedPathSegmentV2, TypedRecordFieldV2, TypedRelationExprV2, TypedRelationV2,
 };
 use quanta_gqlang_v2_binder::{
     BindResultV1, Binder, BinderEvidenceReaderV3, BinderKindV1, ModuleGraphViewV1, ParamV1,
@@ -78,8 +77,10 @@ mod type_inputs;
 
 pub use body_materialization::{
     materialize_source_inline_view_with_request_owner_v3,
-    topologize_source_inline_view_with_request_owner_v3, AdmittedSourceInlineViewBodyV3,
-    AdmittedSourceViewTopologyV3, SourceBodyMaterializationRequestErrorV3,
+    materialize_source_one_let_body_with_request_owner_v3,
+    topologize_source_inline_view_with_request_owner_v3, AdmittedSourceBodyV3,
+    AdmittedSourceInlineViewBodyV3, AdmittedSourceOneLetBodyV3, AdmittedSourceViewTopologyV3,
+    SourceBodyMaterializationRequestErrorV3,
 };
 pub use body_types::{
     type_one_let_composition_body_with_request_owner_v3,
@@ -126,8 +127,10 @@ pub use request_body::{
     AdmittedSourceBinderResolutionV3,
 };
 pub use scalar_semantic::{
-    seal_source_scalar_catalog_with_request_owner_v3, AdmittedScalarSemanticDocumentV3,
-    AdmittedScalarSemanticKindV3, ScalarSemanticAssemblyErrorV3, ScalarSourceProjectReadV3,
+    seal_source_one_let_catalog_with_request_owner_v3,
+    seal_source_scalar_catalog_with_request_owner_v3, AdmittedOneLetSemanticDocumentV3,
+    AdmittedScalarSemanticDocumentV3, AdmittedScalarSemanticKindV3,
+    AdmittedSourceSemanticDocumentV3, ScalarSemanticAssemblyErrorV3, ScalarSourceProjectReadV3,
     SourceCatalogSealErrorV3,
 };
 pub use session::{

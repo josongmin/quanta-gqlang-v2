@@ -2,16 +2,17 @@
 
 use super::MaterializedSourceBodyRequestSourceV3;
 use quanta_gqlang_v2_algebra::{
-    lower_scalar_source_project_with_request_owner_v3, AdmittedScalarAlgebraV3, AlgebraFamilyV2,
+    lower_source_semantic_with_request_owner_v3, AdmittedSourceAlgebraV3, AlgebraFamilyV2,
     ScalarAlgebraRequestErrorV3,
 };
 use quanta_gqlang_v2_planning::{
-    plan_scalar_source_project_with_request_owner_v3, AdmittedScalarPlanV3, ResultKindV2,
+    plan_source_algebra_with_request_owner_v3, AdmittedSourcePlanV3, ResultKindV2,
     ScalarPlanningRequestErrorV3,
 };
 use quanta_gqlang_v2_sema::{
-    seal_source_scalar_catalog_with_request_owner_v3, AdmittedScalarSemanticDocumentV3,
-    AdmittedScalarSemanticKindV3, SemanticItemIdV2,
+    seal_source_one_let_catalog_with_request_owner_v3,
+    seal_source_scalar_catalog_with_request_owner_v3, AdmittedScalarSemanticKindV3,
+    AdmittedSourceBodyV3, AdmittedSourceSemanticDocumentV3, SemanticItemIdV2,
 };
 use quanta_gqlang_v2_surface::{FrontendRequestMaterializationRootV3, FrontendRequestOwnedValueV3};
 
@@ -19,16 +20,20 @@ use quanta_gqlang_v2_surface::{FrontendRequestMaterializationRootV3, FrontendReq
 mod execution;
 pub use execution::{
     project_source_body_with_request_owner_v3,
-    seal_scalar_execution_document_with_request_owner_v3, AdmittedCanonicalFilesScalarReadV3,
-    AdmittedScalarExecutionDocumentV3, ProjectedSourceBodyRequestSourceV3,
-    ScalarExecutionRequestErrorV3, SharedAdmittedScalarExecutionDocumentV3,
+    seal_scalar_execution_document_with_request_owner_v3,
+    seal_source_execution_document_with_request_owner_v3, AdmittedBindingIdentityReadV3,
+    AdmittedCanonicalFilesScalarReadV3, AdmittedOneLetBindingReadV3,
+    AdmittedOneLetCompositionReadV3, AdmittedOneLetExecutionDocumentV3, AdmittedProjectScanReadV3,
+    AdmittedScalarExecutionDocumentV3, AdmittedSourceExecutionDocumentV3,
+    ProjectedSourceBodyRequestSourceV3, ScalarExecutionRequestErrorV3,
+    SharedAdmittedOneLetExecutionDocumentV3, SharedAdmittedScalarExecutionDocumentV3,
 };
 
 pub use quanta_gqlang_v2_sema::SourceCatalogSealErrorV3;
 
 /// The exact source body and final catalog sealed by its issuing Modules session.
 pub struct CatalogSealedSourceBodyRequestSourceV3<'authority> {
-    owner: FrontendRequestOwnedValueV3<AdmittedScalarSemanticDocumentV3<'authority>>,
+    owner: FrontendRequestOwnedValueV3<AdmittedSourceSemanticDocumentV3<'authority>>,
 }
 
 impl CatalogSealedSourceBodyRequestSourceV3<'_> {
@@ -55,7 +60,7 @@ impl CatalogSealedSourceBodyRequestSourceV3<'_> {
 
 /// Move-only normalization with all preceding source and semantic custody.
 pub struct LoweredSourceBodyRequestSourceV3<'authority> {
-    owner: FrontendRequestOwnedValueV3<AdmittedScalarAlgebraV3<'authority>>,
+    owner: FrontendRequestOwnedValueV3<AdmittedSourceAlgebraV3<'authority>>,
 }
 
 impl LoweredSourceBodyRequestSourceV3<'_> {
@@ -72,7 +77,7 @@ impl LoweredSourceBodyRequestSourceV3<'_> {
 
 /// Checked finite plan whose borrowed observations retain the original source.
 pub struct PlannedSourceBodyRequestSourceV3<'authority> {
-    owner: FrontendRequestOwnedValueV3<AdmittedScalarPlanV3<'authority>>,
+    owner: FrontendRequestOwnedValueV3<AdmittedSourcePlanV3<'authority>>,
 }
 
 impl PlannedSourceBodyRequestSourceV3<'_> {
@@ -132,7 +137,7 @@ impl PlannedSourceBodyRequestSourceV3<'_> {
     }
 
     #[must_use]
-    pub fn explain_families_v3(&self) -> [AlgebraFamilyV2; 2] {
+    pub fn explain_families_v3(&self) -> &'static [AlgebraFamilyV2] {
         self.owner.value_v3().explain_families_v3()
     }
 
@@ -159,10 +164,17 @@ pub fn seal_source_catalog_with_request_owner_v3<'authority>(
     materialized: MaterializedSourceBodyRequestSourceV3<'authority>,
 ) -> Result<CatalogSealedSourceBodyRequestSourceV3<'authority>, SourceCatalogSealErrorV3> {
     let owner = materialized.owner.try_map_v3(
-        |(_extended, session, _assets, topology, body), parent| {
-            seal_source_scalar_catalog_with_request_owner_v3(
+        |(_extended, session, _assets, topology, body), parent| match body {
+            AdmittedSourceBodyV3::Scalar(body) => seal_source_scalar_catalog_with_request_owner_v3(
                 session, topology, body, root, source, parent,
             )
+            .map(AdmittedSourceSemanticDocumentV3::Scalar),
+            AdmittedSourceBodyV3::OneLet(body) => {
+                seal_source_one_let_catalog_with_request_owner_v3(
+                    session, topology, body, root, source, parent,
+                )
+                .map(AdmittedSourceSemanticDocumentV3::OneLet)
+            }
         },
     )?;
     Ok(CatalogSealedSourceBodyRequestSourceV3 { owner })
@@ -175,7 +187,7 @@ pub fn lower_source_body_with_request_owner_v3<'authority>(
     sealed: CatalogSealedSourceBodyRequestSourceV3<'authority>,
 ) -> Result<LoweredSourceBodyRequestSourceV3<'authority>, ScalarAlgebraRequestErrorV3> {
     let owner = sealed.owner.try_map_v3(|semantic, _parent| {
-        lower_scalar_source_project_with_request_owner_v3(semantic, root, source)
+        lower_source_semantic_with_request_owner_v3(semantic, root, source)
     })?;
     Ok(LoweredSourceBodyRequestSourceV3 { owner })
 }
@@ -187,7 +199,7 @@ pub fn plan_source_body_with_request_owner_v3<'authority>(
     lowered: LoweredSourceBodyRequestSourceV3<'authority>,
 ) -> Result<PlannedSourceBodyRequestSourceV3<'authority>, ScalarPlanningRequestErrorV3> {
     let owner = lowered.owner.try_map_v3(|algebra, _parent| {
-        plan_scalar_source_project_with_request_owner_v3(algebra, root, source)
+        plan_source_algebra_with_request_owner_v3(algebra, root, source)
     })?;
     Ok(PlannedSourceBodyRequestSourceV3 { owner })
 }

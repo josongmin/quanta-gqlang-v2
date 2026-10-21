@@ -8,10 +8,10 @@ use super::{
     lower_source_body_with_request_owner_v3, materialize_source_body_with_request_owner_v3,
     parse_source_document_with_request_owner_v3, plan_source_body_with_request_owner_v3,
     predeclare_source_catalog_with_request_owner_v3, project_source_body_with_request_owner_v3,
-    resolve_source_bindings_with_request_owner_v3,
-    seal_scalar_execution_document_with_request_owner_v3,
-    seal_source_catalog_with_request_owner_v3, topologize_source_body_with_request_owner_v3,
-    type_source_body_with_request_owner_v3, AdmittedScalarExecutionDocumentV3,
+    resolve_source_bindings_with_request_owner_v3, seal_source_catalog_with_request_owner_v3,
+    seal_source_execution_document_with_request_owner_v3,
+    topologize_source_body_with_request_owner_v3, type_source_body_with_request_owner_v3,
+    AdmittedScalarExecutionDocumentV3, AdmittedSourceExecutionDocumentV3,
     FrontendRequestCheckErrorV3, FrontendRequestPredeclareErrorV3, ParsedRequestSourceV3,
     ScalarExecutionRequestErrorV3, SourceBodyTopologyRequestErrorV3, SourceCatalogSealErrorV3,
 };
@@ -73,6 +73,32 @@ pub fn compile_scalar_parsed_source_with_request_owner_v3(
     if !matches!(parsed.root_family_v3(), Ok(SourceRootFamilyV3::Relation)) {
         return Err(ScalarSourceCompileRequestErrorV3::UnsupportedRoot);
     }
+    match compile_source_parsed_with_request_owner_v3(source_id, source, authority, root, parsed)? {
+        AdmittedSourceExecutionDocumentV3::Scalar(value) => Ok(value),
+        AdmittedSourceExecutionDocumentV3::OneLet(_) => {
+            Err(ScalarSourceCompileRequestErrorV3::UnsupportedRoot)
+        }
+    }
+}
+
+/// One parser-issued source, one request root and one stage chain for bare
+/// scalar Query or Binder-authenticated one-LET Composition.
+pub fn compile_source_parsed_with_request_owner_v3(
+    source_id: SourceIdV2,
+    source: &str,
+    authority: &ClosedFrontendAuthorityV2,
+    root: &FrontendRequestMaterializationRootV3<'_>,
+    parsed: ParsedRequestSourceV3,
+) -> Result<AdmittedSourceExecutionDocumentV3, ScalarSourceCompileRequestErrorV3> {
+    if parsed.budget != *authority.budget() {
+        return Err(ScalarSourceCompileRequestErrorV3::ParsedBudgetMismatch);
+    }
+    if !matches!(
+        parsed.root_family_v3(),
+        Ok(SourceRootFamilyV3::Relation | SourceRootFamilyV3::Composition)
+    ) {
+        return Err(ScalarSourceCompileRequestErrorV3::UnsupportedRoot);
+    }
     let checked = check_source_document_with_request_owner_v3(source_id, source, root, parsed)
         .map_err(ScalarSourceCompileRequestErrorV3::Check)?;
     let declared = declare_source_document_with_request_owner_v3(source, authority, root, checked)
@@ -101,6 +127,6 @@ pub fn compile_scalar_parsed_source_with_request_owner_v3(
         .map_err(ScalarSourceCompileRequestErrorV3::Planning)?;
     let projected = project_source_body_with_request_owner_v3(source, root, planned)
         .map_err(ScalarSourceCompileRequestErrorV3::Execution)?;
-    seal_scalar_execution_document_with_request_owner_v3(source, root, projected)
+    seal_source_execution_document_with_request_owner_v3(source, root, projected)
         .map_err(ScalarSourceCompileRequestErrorV3::Execution)
 }

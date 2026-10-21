@@ -3,7 +3,8 @@
 use crate::node::{projection_agrees_with_output, scan_agrees_with_output};
 use crate::{AlgebraFailureKindV2, AlgebraFamilyV2};
 use quanta_gqlang_v2_sema::{
-    AdmittedScalarSemanticDocumentV3, CheckedLocatedSpanV2, DownstreamBudgetReceiptV2,
+    AdmittedOneLetSemanticDocumentV3, AdmittedScalarSemanticDocumentV3,
+    AdmittedSourceSemanticDocumentV3, CheckedLocatedSpanV2, DownstreamBudgetReceiptV2,
     FrontendRequestMaterializationRootV3, FrontendStorageRefusalV3, OutputColumnOriginV2,
     RelationOutputContractV2, ResolvedScanSourceV2, ScalarSourceProjectReadV3, SemanticItemIdV2,
     TypedExprShapeV2, TypedExprV2,
@@ -17,6 +18,59 @@ use quanta_gqlang_v2_types::{
 /// BTree provenance or issuing a detached V2 lowering product.
 pub struct AdmittedScalarAlgebraV3<'authority> {
     semantic: AdmittedScalarSemanticDocumentV3<'authority>,
+}
+
+/// The two authenticated Query roots remain with the Composition semantic owner.
+pub struct AdmittedOneLetAlgebraV3<'authority> {
+    semantic: AdmittedOneLetSemanticDocumentV3<'authority>,
+}
+
+pub enum AdmittedSourceAlgebraV3<'authority> {
+    Scalar(AdmittedScalarAlgebraV3<'authority>),
+    OneLet(AdmittedOneLetAlgebraV3<'authority>),
+}
+
+impl AdmittedSourceAlgebraV3<'_> {
+    #[must_use]
+    pub fn item_id_v3(&self) -> SemanticItemIdV2 {
+        match self {
+            Self::Scalar(value) => value.item_id_v3(),
+            Self::OneLet(value) => value.semantic.authored_item_id_v3(),
+        }
+    }
+
+    #[must_use]
+    pub fn output_field_count_v3(&self) -> usize {
+        match self {
+            Self::Scalar(value) => value.output_field_count_v3(),
+            Self::OneLet(value) => value.semantic.output_field_count_v3(),
+        }
+    }
+
+    #[must_use]
+    pub const fn root_family_v3(&self) -> AlgebraFamilyV2 {
+        AlgebraFamilyV2::Project
+    }
+}
+
+impl AdmittedOneLetAlgebraV3<'_> {
+    #[must_use]
+    pub fn source_project_reads_v3(&self) -> Option<[ScalarSourceProjectReadV3<'_, '_>; 2]> {
+        self.semantic.source_project_reads_v3()
+    }
+
+    #[must_use]
+    pub fn semantic_v3(&self) -> &AdmittedOneLetSemanticDocumentV3<'_> {
+        &self.semantic
+    }
+
+    pub fn validate_owner_v3(
+        &self,
+        root: &FrontendRequestMaterializationRootV3<'_>,
+        source: &str,
+    ) -> Result<(), FrontendStorageRefusalV3> {
+        self.semantic.validate_owner_v3(root, source)
+    }
 }
 
 /// Immutable checked scalar Algebra observations for Planning.
@@ -147,12 +201,16 @@ fn finite_output(
 
 fn checked_scalar_view(
     view: &ScalarSourceProjectReadV3<'_, '_>,
+    composition_source: bool,
 ) -> Result<(), ScalarAlgebraRequestErrorV3> {
     let source = view
         .scan_source_v3()
         .ok_or(ScalarAlgebraRequestErrorV3::UnsupportedShape)?;
-    if !matches!(source, ResolvedScanSourceV2::Relation(_))
-        || !finite_output(view.scan_output_v3(), source, true)
+    if !(if composition_source {
+        matches!(source, ResolvedScanSourceV2::Composition(_))
+    } else {
+        matches!(source, ResolvedScanSourceV2::Relation(_))
+    }) || !finite_output(view.scan_output_v3(), source, true)
         || !finite_output(view.project_output_v3(), source, false)
     {
         return Err(ScalarAlgebraRequestErrorV3::UnsupportedShape);
@@ -222,6 +280,42 @@ pub fn lower_scalar_source_project_with_request_owner_v3<'authority>(
     if view.budget_receipt_v3().max_semantic_steps() < 2 {
         return Err(ScalarAlgebraRequestErrorV3::SemanticStepLimit);
     }
-    checked_scalar_view(&view)?;
+    checked_scalar_view(&view, false)?;
     Ok(AdmittedScalarAlgebraV3 { semantic })
+}
+
+/// Normalize both already sealed Query roots using the same scalar shape
+/// checker. Their exact producer-to-local-source row join was checked by Sema.
+pub fn lower_source_semantic_with_request_owner_v3<'authority>(
+    semantic: AdmittedSourceSemanticDocumentV3<'authority>,
+    root: &FrontendRequestMaterializationRootV3<'_>,
+    source: &str,
+) -> Result<AdmittedSourceAlgebraV3<'authority>, ScalarAlgebraRequestErrorV3> {
+    match semantic {
+        AdmittedSourceSemanticDocumentV3::Scalar(value) => {
+            lower_scalar_source_project_with_request_owner_v3(value, root, source)
+                .map(AdmittedSourceAlgebraV3::Scalar)
+        }
+        AdmittedSourceSemanticDocumentV3::OneLet(value) => {
+            value
+                .validate_owner_v3(root, source)
+                .map_err(ScalarAlgebraRequestErrorV3::Storage)?;
+            let reads = value
+                .source_project_reads_v3()
+                .ok_or(ScalarAlgebraRequestErrorV3::UnsupportedShape)?;
+            if reads[0].budget_receipt_v3().max_semantic_steps() < 6 {
+                return Err(ScalarAlgebraRequestErrorV3::SemanticStepLimit);
+            }
+            checked_scalar_view(&reads[0], false)?;
+            checked_scalar_view(&reads[1], true)?;
+            if reads[0].project_output_v3().row() != reads[1].scan_output_v3().row() {
+                return Err(ScalarAlgebraRequestErrorV3::Algebra(
+                    AlgebraFailureKindV2::InvalidStageContract,
+                ));
+            }
+            Ok(AdmittedSourceAlgebraV3::OneLet(AdmittedOneLetAlgebraV3 {
+                semantic: value,
+            }))
+        }
+    }
 }

@@ -109,8 +109,8 @@ use crate::result_kind::{
 
 mod scalar_request;
 pub use scalar_request::{
-    plan_scalar_source_project_with_request_owner_v3, AdmittedScalarPlanV3,
-    ScalarPlanningRequestErrorV3,
+    plan_scalar_source_project_with_request_owner_v3, plan_source_algebra_with_request_owner_v3,
+    AdmittedOneLetPlanV3, AdmittedScalarPlanV3, AdmittedSourcePlanV3, ScalarPlanningRequestErrorV3,
 };
 
 /// The checked outcome of planning one sealed input.

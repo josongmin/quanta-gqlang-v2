@@ -73,6 +73,128 @@ pub(super) fn materialize_host_source_v3(
     })
 }
 
+/// Canonical Composition-local scan construction shared by the ordinary
+/// relation walk and a request-owned one-LET body. A request-owned caller must
+/// reserve the binding, row, provenance, and column copies before this call.
+pub(super) fn materialize_composition_source_from_prior_v3(
+    relation: &quanta_gqlang_v2_hir::RelationExprHirV1,
+    checked: quanta_gqlang_v2_hir::CheckedLocatedSpanV2,
+    key: SourceQualifiedNodeIdV2,
+    source: &quanta_gqlang_v2_hir::RelationSourceV1,
+    target: &ResolvedTargetV1,
+    identity: (HirNodeIdV1, usize),
+    previous: &RelationOutputContractV2,
+    facts: &dyn TypeFactsReaderV3,
+    extended: &ExtendedSourceRegistryViewV2,
+    source_id: SourceIdV2,
+    mut columns: Vec<OutputColumnContractV2>,
+) -> Result<TypedRelationExprV2, FrontendFailureV2> {
+    let ResolvedTargetV1::Local(binding) = target else {
+        return Err(document_failure(
+            "sema.invalid_relation_source_kind",
+            source_id,
+            source.name_span,
+            "resolved relation source is not a local Composition binding",
+        ));
+    };
+    if binding.kind != BinderKindV1::CompositionLet || binding.identity() != identity {
+        return Err(document_failure(
+            "sema.invalid_relation_source_kind",
+            source_id,
+            source.name_span,
+            "resolved local source is not a Composition relation binding",
+        ));
+    }
+    let checked_row = facts.relation_row(key).ok_or_else(|| {
+        document_failure(
+            "sema.document_validation_failed",
+            source_id,
+            relation.span,
+            "types owner omitted Composition-local scan row fact",
+        )
+    })?;
+    if checked_row != previous.row() {
+        return Err(document_failure(
+            "sema.document_validation_failed",
+            source_id,
+            relation.span,
+            "Composition-local scan row differs from the prior sealed producer",
+        ));
+    }
+    let composition_binding = ResolvedValueBindingV2::try_new(
+        source_id,
+        identity.0,
+        identity.1,
+        ResolvedBindingKindV2::Composition,
+        binding.name.clone(),
+    )
+    .map_err(|error| {
+        document_failure(
+            "sema.document_validation_failed",
+            source_id,
+            source.name_span,
+            error,
+        )
+    })?;
+    let scan = ResolvedScanSourceV2::Composition(
+        ResolvedCompositionSourceIdV2::try_from_binding(composition_binding).map_err(|error| {
+            document_failure(
+                "sema.document_validation_failed",
+                source_id,
+                source.name_span,
+                error,
+            )
+        })?,
+    );
+    let use_location = extended
+        .combined()
+        .try_check_location(location(source_id, source.name_span))
+        .map_err(|error| {
+            document_failure(
+                "sema.document_validation_failed",
+                source_id,
+                source.name_span,
+                error.to_string(),
+            )
+        })?;
+    for field in previous.row().fields() {
+        columns.push(OutputColumnContractV2::new(
+            field.name().to_owned(),
+            OutputColumnOriginV2::SourceField {
+                source: scan.clone(),
+                scan_stage: key,
+                field_name: field.name().to_owned(),
+            },
+            use_location.clone(),
+        ));
+    }
+    let output = RelationOutputContractV2::try_new(
+        checked_row.clone(),
+        OutputProvenanceV2::new([scan.clone()]),
+        columns,
+        previous.cardinality(),
+        previous.partition_keys().to_vec(),
+        previous.ordering().to_vec(),
+        previous.effects(),
+    )
+    .map_err(|error| {
+        document_failure(
+            "sema.document_validation_failed",
+            source_id,
+            relation.span,
+            error,
+        )
+    })?;
+    TypedRelationExprV2::scan(key, checked, scan, output).map_err(|error| {
+        document_failure(
+            "sema.document_validation_failed",
+            source_id,
+            relation.span,
+            error,
+        )
+    })
+}
+
 pub(super) struct ScalarProjectPartsV3 {
     pub input: TypedRelationExprV2,
     pub row: quanta_gqlang_v2_types::RecordTypeV1,
@@ -361,14 +483,10 @@ impl RelationMaterializer<'_, '_> {
         source: &quanta_gqlang_v2_hir::RelationSourceV1,
         target: &ResolvedTargetV1,
     ) -> Result<TypedRelationExprV2, FrontendFailureV2> {
-        let source_id = self.source_id;
-        let facts = self.facts;
-        let extended = self.extended;
-        let composition_outputs = self.composition_outputs;
         let ResolvedTargetV1::Local(binding) = target else {
             return Err(document_failure(
                 "sema.invalid_relation_source_kind",
-                source_id,
+                self.source_id,
                 source.name_span,
                 "resolved relation source is not a local Composition binding",
             ));
@@ -376,115 +494,33 @@ impl RelationMaterializer<'_, '_> {
         if binding.kind != BinderKindV1::CompositionLet {
             return Err(document_failure(
                 "sema.invalid_relation_source_kind",
-                source_id,
+                self.source_id,
                 source.name_span,
                 "resolved local source is not a Composition relation binding",
             ));
         }
         let identity = binding.identity();
-        let previous = composition_outputs.get(&identity).ok_or_else(|| {
+        let previous = self.composition_outputs.get(&identity).ok_or_else(|| {
             document_failure(
                 "sema.non_relation_composition_source",
-                source_id,
+                self.source_id,
                 source.name_span,
                 "Composition binding has no prior sealed relation output",
             )
         })?;
-        let checked_row = facts.relation_row(key).ok_or_else(|| {
-            document_failure(
-                "sema.document_validation_failed",
-                source_id,
-                relation.span,
-                "types owner omitted Composition-local scan row fact",
-            )
-        })?;
-        if checked_row != previous.row() {
-            return Err(document_failure(
-                "sema.document_validation_failed",
-                source_id,
-                relation.span,
-                "Composition-local scan row differs from the prior sealed producer",
-            ));
-        }
-        let composition_binding = ResolvedValueBindingV2::try_new(
-            source_id,
-            identity.0,
-            identity.1,
-            ResolvedBindingKindV2::Composition,
-            binding.name.clone(),
+        materialize_composition_source_from_prior_v3(
+            relation,
+            checked,
+            key,
+            source,
+            target,
+            identity,
+            previous,
+            self.facts,
+            self.extended,
+            self.source_id,
+            Vec::new(),
         )
-        .map_err(|error| {
-            document_failure(
-                "sema.document_validation_failed",
-                source_id,
-                source.name_span,
-                error,
-            )
-        })?;
-        let scan = ResolvedScanSourceV2::Composition(
-            ResolvedCompositionSourceIdV2::try_from_binding(composition_binding).map_err(
-                |error| {
-                    document_failure(
-                        "sema.document_validation_failed",
-                        source_id,
-                        source.name_span,
-                        error,
-                    )
-                },
-            )?,
-        );
-        let use_location = extended
-            .combined()
-            .try_check_location(location(source_id, source.name_span))
-            .map_err(|error| {
-                document_failure(
-                    "sema.document_validation_failed",
-                    source_id,
-                    source.name_span,
-                    error.to_string(),
-                )
-            })?;
-        let columns = previous
-            .row()
-            .fields()
-            .iter()
-            .map(|field| {
-                OutputColumnContractV2::new(
-                    field.name().to_owned(),
-                    OutputColumnOriginV2::SourceField {
-                        source: scan.clone(),
-                        scan_stage: key,
-                        field_name: field.name().to_owned(),
-                    },
-                    use_location.clone(),
-                )
-            })
-            .collect();
-        let output = RelationOutputContractV2::try_new(
-            checked_row.clone(),
-            OutputProvenanceV2::new([scan.clone()]),
-            columns,
-            previous.cardinality(),
-            previous.partition_keys().to_vec(),
-            previous.ordering().to_vec(),
-            previous.effects(),
-        )
-        .map_err(|error| {
-            document_failure(
-                "sema.document_validation_failed",
-                source_id,
-                relation.span,
-                error,
-            )
-        })?;
-        TypedRelationExprV2::scan(key, checked, scan, output).map_err(|error| {
-            document_failure(
-                "sema.document_validation_failed",
-                source_id,
-                relation.span,
-                error,
-            )
-        })
     }
 
     fn materialize_host_source(

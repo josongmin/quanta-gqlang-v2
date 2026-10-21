@@ -9,6 +9,101 @@ use quanta_gqlang_v2_types::RecordFieldTypeV1;
 #[test]
 #[expect(
     clippy::panic_in_result_fn,
+    reason = "independent request clone admission oracle"
+)]
+fn request_policy_clone_refuses_tree_backing_and_non_expression_columns() -> Result<(), String> {
+    let source_id = SourceIdV2::from_raw(8);
+    let registry = SourceRegistryViewV2::try_new(vec![SourceRegistrationV2 {
+        source_id,
+        source_len: 2,
+    }])
+    .map_err(|error| format!("{error:?}"))?;
+    let location = registry
+        .try_check_location(LocatedSpanV2 {
+            source_id,
+            span: SpanV1::new(0, 1),
+        })
+        .map_err(|error| format!("{error:?}"))?;
+    let source = ResolvedScanSourceV2::Composition(
+        ResolvedCompositionSourceIdV2::try_from_binding(
+            ResolvedValueBindingV2::try_new(
+                source_id,
+                HirNodeIdV1::from_raw(2),
+                0,
+                ResolvedBindingKindV2::Composition,
+                "rows".into(),
+            )
+            .map_err(str::to_owned)?,
+        )
+        .map_err(str::to_owned)?,
+    );
+    let key = SourceQualifiedNodeIdV2 {
+        source_id,
+        node_id: HirNodeIdV1::from_raw(9),
+    };
+    let row = RecordTypeV1::try_new(vec![RecordFieldTypeV1::try_new(
+        "value",
+        ValueTypeV1::int(),
+        location.clone(),
+    )
+    .map_err(|error| format!("{error:?}"))?])
+    .map_err(|error| format!("{error:?}"))?;
+    let build = |provenance, origin| {
+        RelationOutputContractV2::try_new(
+            row.clone(),
+            provenance,
+            vec![OutputColumnContractV2::new(
+                "value".into(),
+                origin,
+                location.clone(),
+            )],
+            CardinalityV1::Bag,
+            Vec::new(),
+            Vec::new(),
+            ExpressionEffectsV2::pure_scalar(),
+        )
+        .map_err(str::to_owned)
+    };
+    let inline = build(
+        OutputProvenanceV2::from_single_source_v3(source.clone()),
+        OutputColumnOriginV2::Expression(key),
+    )?;
+    assert_eq!(
+        inline.request_single_clone_storage_upper_v3(),
+        Some(std::mem::size_of::<OutputColumnContractV2>() + 5 + 4)
+    );
+    let tree = build(
+        OutputProvenanceV2::new([source.clone()]),
+        OutputColumnOriginV2::Expression(key),
+    )?;
+    assert_eq!(
+        inline, tree,
+        "semantic equality does not imply identical allocation backing"
+    );
+    assert_eq!(
+        tree.request_single_clone_storage_upper_v3(),
+        None,
+        "a singleton BTree must not be charged as an inline source"
+    );
+    let scan = build(
+        OutputProvenanceV2::from_single_source_v3(source.clone()),
+        OutputColumnOriginV2::SourceField {
+            source,
+            scan_stage: key,
+            field_name: "value".into(),
+        },
+    )?;
+    assert_eq!(
+        scan.request_single_clone_storage_upper_v3(),
+        None,
+        "new nested source/string births need their own owner demand"
+    );
+    Ok(())
+}
+
+#[test]
+#[expect(
+    clippy::panic_in_result_fn,
     reason = "assertions are the independent semantic oracle"
 )]
 fn request_single_provenance_matches_legacy_set_without_heap_nodes() -> Result<(), String> {

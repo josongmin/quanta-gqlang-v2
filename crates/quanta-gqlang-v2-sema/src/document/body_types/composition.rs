@@ -13,16 +13,16 @@ use quanta_gqlang_v2_hir::{
     RelationExprKindV1, RelationSourceV1,
 };
 
-struct QueryPartsV3<'a> {
-    scan_root: &'a RelationExprHirV1,
-    project_root: &'a RelationExprHirV1,
-    scan: &'a RelationSourceV1,
-    item: &'a ProjectionItemV1,
-    base: &'a quanta_gqlang_v2_hir::ValueExprHirV1,
-    field: &'a quanta_gqlang_v2_hir::PathSegmentV1,
+pub(in crate::document) struct QueryPartsV3<'a> {
+    pub(in crate::document) scan_root: &'a RelationExprHirV1,
+    pub(in crate::document) project_root: &'a RelationExprHirV1,
+    pub(in crate::document) scan: &'a RelationSourceV1,
+    pub(in crate::document) item: &'a ProjectionItemV1,
+    pub(in crate::document) base: &'a quanta_gqlang_v2_hir::ValueExprHirV1,
+    pub(in crate::document) field: &'a quanta_gqlang_v2_hir::PathSegmentV1,
 }
 
-fn query_parts(query: &QueryHirV1) -> Option<QueryPartsV3<'_>> {
+pub(in crate::document) fn query_parts(query: &QueryHirV1) -> Option<QueryPartsV3<'_>> {
     if query.result_shape.is_some() {
         return None;
     }
@@ -55,7 +55,7 @@ fn query_parts(query: &QueryHirV1) -> Option<QueryPartsV3<'_>> {
     })
 }
 
-fn output_name(item: &ProjectionItemV1) -> Option<&str> {
+pub(in crate::document) fn output_name(item: &ProjectionItemV1) -> Option<&str> {
     let ValueExprKindV1::Path(path) = &item.value.kind else {
         return None;
     };

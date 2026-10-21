@@ -235,6 +235,42 @@ pub struct RelationOutputContractV2 {
 }
 
 impl RelationOutputContractV2 {
+    /// New logical heap retained by cloning the finite one-field request
+    /// output. Shared row types and checked locations retain their issuers;
+    /// non-inline provenance is refused rather than estimating BTree nodes.
+    #[must_use]
+    pub fn request_single_clone_storage_upper_v3(&self) -> Option<usize> {
+        let [column] = self.columns.as_slice() else {
+            return None;
+        };
+        if self.row.fields().len() != 1
+            || !self.partition_keys.is_empty()
+            || !self.ordering.is_empty()
+            || !matches!(column.origin, OutputColumnOriginV2::Expression(_))
+        {
+            return None;
+        }
+        let ProvenanceStorageV2::Single(source) = &self.provenance.0 else {
+            return None;
+        };
+        let source_bytes = match source {
+            ResolvedScanSourceV2::Relation(id) => id
+                .namespace()
+                .as_str()
+                .len()
+                .checked_add(id.qualified_name().len())?,
+            ResolvedScanSourceV2::View(id) => id
+                .module_id()
+                .as_str()
+                .len()
+                .checked_add(id.local_name().len())?,
+            ResolvedScanSourceV2::Composition(id) => id.binding().canonical_name().len(),
+        };
+        std::mem::size_of::<OutputColumnContractV2>()
+            .checked_add(column.name.len())?
+            .checked_add(source_bytes)
+    }
+
     /// Construct an output proof; repeated partition/order keys are rejected.
     pub(crate) fn try_new(
         row: RecordTypeV1,

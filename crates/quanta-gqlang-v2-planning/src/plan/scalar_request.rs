@@ -9,10 +9,12 @@ use crate::effect::{
 use crate::policy::{EffectSummaryV2, PlanPolicyV2};
 use crate::result_kind::{ResultContractV2, ResultKindV2};
 use crate::PlanningDiagnosticV1;
-use quanta_gqlang_v2_algebra::{AdmittedScalarAlgebraV3, AlgebraFamilyV2};
+use quanta_gqlang_v2_algebra::{
+    AdmittedOneLetAlgebraV3, AdmittedScalarAlgebraV3, AdmittedSourceAlgebraV3, AlgebraFamilyV2,
+};
 use quanta_gqlang_v2_sema::{
-    CheckedLocatedSpanV2, FrontendRequestMaterializationRootV3, FrontendStorageRefusalV3,
-    ScalarSourceProjectReadV3, SemanticItemIdV2,
+    CheckedLocatedSpanV2, FrontendRequestMaterializationRootV3, FrontendRetainedStoragePermitV3,
+    FrontendStorageRefusalV3, ScalarSourceProjectReadV3, SemanticItemIdV2,
 };
 use quanta_gqlang_v2_types::{CardinalityV1, ExpressionEffectsV2};
 
@@ -26,6 +28,176 @@ pub struct AdmittedScalarPlanV3<'authority> {
     effects: EffectSummaryV2,
     policy: PlanPolicyV2,
     root_location: CheckedLocatedSpanV2,
+}
+
+/// The Composition policy retains its exact same-request Binder binding in
+/// Algebra and the canonical relational policies of both checked Query roots.
+pub struct AdmittedOneLetPlanV3<'authority> {
+    policy: PlanPolicyV2,
+    root_location: CheckedLocatedSpanV2,
+    _policy_storage: FrontendRetainedStoragePermitV3,
+    algebra: AdmittedOneLetAlgebraV3<'authority>,
+    result: ResultContractV2,
+    cost: SemanticCostV2,
+    effects: EffectSummaryV2,
+    producer_policy: PlanPolicyV2,
+    body_policy: PlanPolicyV2,
+}
+
+pub enum AdmittedSourcePlanV3<'authority> {
+    Scalar(AdmittedScalarPlanV3<'authority>),
+    OneLet(AdmittedOneLetPlanV3<'authority>),
+}
+
+impl AdmittedOneLetPlanV3<'_> {
+    #[must_use]
+    pub fn algebra_v3(&self) -> &AdmittedOneLetAlgebraV3<'_> {
+        &self.algebra
+    }
+
+    #[must_use]
+    pub fn producer_policy_v3(&self) -> &PlanPolicyV2 {
+        &self.producer_policy
+    }
+
+    #[must_use]
+    pub fn body_policy_v3(&self) -> &PlanPolicyV2 {
+        &self.body_policy
+    }
+
+    #[must_use]
+    pub fn policy_v3(&self) -> &PlanPolicyV2 {
+        &self.policy
+    }
+
+    #[must_use]
+    pub fn item_id_v3(&self) -> SemanticItemIdV2 {
+        self.algebra.semantic_v3().authored_item_id_v3()
+    }
+
+    pub fn validate_owner_v3(
+        &self,
+        root: &FrontendRequestMaterializationRootV3<'_>,
+        source: &str,
+    ) -> Result<(), FrontendStorageRefusalV3> {
+        self.algebra.validate_owner_v3(root, source)?;
+        self._policy_storage
+            .validate_owner_v3(root, self.item_id_v3().source_id(), source)
+    }
+}
+
+impl AdmittedSourcePlanV3<'_> {
+    #[must_use]
+    pub fn item_id_v3(&self) -> SemanticItemIdV2 {
+        match self {
+            Self::Scalar(value) => value.item_id_v3(),
+            Self::OneLet(value) => value.item_id_v3(),
+        }
+    }
+
+    #[must_use]
+    pub fn result_kind_v3(&self) -> ResultKindV2 {
+        self.result_v3().result_kind()
+    }
+
+    #[must_use]
+    pub fn result_v3(&self) -> &ResultContractV2 {
+        match self {
+            Self::Scalar(value) => value.result_v3(),
+            Self::OneLet(value) => &value.result,
+        }
+    }
+
+    #[must_use]
+    pub const fn authority_lane_v3(&self) -> AuthorityLaneV2 {
+        AuthorityLaneV2::FrontendChecked
+    }
+
+    #[must_use]
+    pub const fn evidence_v3(&self) -> EvidenceRequirementV2 {
+        EvidenceRequirementV2::None
+    }
+
+    #[must_use]
+    pub const fn effect_v3(&self) -> EffectClassV2 {
+        EffectClassV2::ReadOnly
+    }
+
+    #[must_use]
+    pub fn evaluation_determinism_v3(&self) -> EvaluationDeterminismV2 {
+        determinism_of(self.effect_summary_v3())
+    }
+
+    #[must_use]
+    pub fn effect_summary_v3(&self) -> EffectSummaryV2 {
+        match self {
+            Self::Scalar(value) => value.effect_summary_v3(),
+            Self::OneLet(value) => value.effects,
+        }
+    }
+
+    #[must_use]
+    pub fn semantic_cost_v3(&self) -> SemanticCostV2 {
+        match self {
+            Self::Scalar(value) => value.semantic_cost_v3(),
+            Self::OneLet(value) => value.cost,
+        }
+    }
+
+    /// The one-LET root retains the same checked Composition policy as the
+    /// ordinary plan, including its producer output and exact WITH binding.
+    #[must_use]
+    pub fn policy_v3(&self) -> &PlanPolicyV2 {
+        match self {
+            Self::Scalar(value) => value.policy_v3(),
+            Self::OneLet(value) => value.policy_v3(),
+        }
+    }
+
+    #[must_use]
+    pub const fn scan_capability_v3(&self) -> CapabilityV2 {
+        CapabilityV2::RelationScan
+    }
+
+    #[must_use]
+    pub const fn capability_count_v3(&self) -> usize {
+        1
+    }
+
+    #[must_use]
+    pub const fn explain_families_v3(&self) -> &'static [AlgebraFamilyV2] {
+        const SCALAR: &[AlgebraFamilyV2] = &[AlgebraFamilyV2::Project, AlgebraFamilyV2::Scan];
+        match self {
+            Self::Scalar(_) => SCALAR,
+            // The canonical Composition plan is its body's plan. The LET
+            // producer is retained as authority, not appended to Explain.
+            Self::OneLet(_) => SCALAR,
+        }
+    }
+
+    #[must_use]
+    pub fn explain_family_count_v3(&self) -> usize {
+        self.explain_families_v3().len()
+    }
+
+    #[must_use]
+    pub fn root_location_v3(&self) -> &CheckedLocatedSpanV2 {
+        match self {
+            Self::Scalar(value) => value.root_location_v3(),
+            Self::OneLet(value) => &value.root_location,
+        }
+    }
+
+    pub fn validate_owner_v3(
+        &self,
+        root: &FrontendRequestMaterializationRootV3<'_>,
+        source: &str,
+    ) -> Result<(), FrontendStorageRefusalV3> {
+        match self {
+            Self::Scalar(value) => value.validate_owner_v3(root, source),
+            Self::OneLet(value) => value.validate_owner_v3(root, source),
+        }
+    }
 }
 
 impl AdmittedScalarPlanV3<'_> {
@@ -130,6 +302,7 @@ pub enum ScalarPlanningRequestErrorV3 {
     DemandOverflow,
     Allocation,
     SemanticSteps(PlanningDiagnosticV1),
+    Composition(PlanningDiagnosticV1),
 }
 
 fn derive_scalar_plan_parts_v3(
@@ -207,6 +380,168 @@ pub fn plan_scalar_source_project_with_request_owner_v3<'authority>(
         policy,
         root_location,
     })
+}
+
+/// Classify a genuine one-LET Composition from the same Sema/Algebra owner.
+/// Both relational policies use the canonical scalar classifier; root and
+/// ordered binding identity use the ordinary Composition retention validator.
+pub fn plan_source_algebra_with_request_owner_v3<'authority>(
+    algebra: AdmittedSourceAlgebraV3<'authority>,
+    root: &FrontendRequestMaterializationRootV3<'_>,
+    source: &str,
+) -> Result<AdmittedSourcePlanV3<'authority>, ScalarPlanningRequestErrorV3> {
+    match algebra {
+        AdmittedSourceAlgebraV3::Scalar(value) => {
+            plan_scalar_source_project_with_request_owner_v3(value, root, source)
+                .map(AdmittedSourcePlanV3::Scalar)
+        }
+        AdmittedSourceAlgebraV3::OneLet(value) => {
+            value
+                .validate_owner_v3(root, source)
+                .map_err(ScalarPlanningRequestErrorV3::Storage)?;
+            let semantic = value.semantic_v3();
+            let reads = value
+                .source_project_reads_v3()
+                .ok_or(ScalarPlanningRequestErrorV3::UnsupportedShape)?;
+            let limit = reads[1].budget_receipt_v3().max_semantic_steps();
+            if limit < 6 {
+                return Err(ScalarPlanningRequestErrorV3::SemanticSteps(
+                    PlanningDiagnosticV1::SemanticStepBudgetExceeded {
+                        limit,
+                        span: reads[0].scan_location_v3().clone(),
+                    },
+                ));
+            }
+            let binding = semantic
+                .with_binding_v3()
+                .ok_or(ScalarPlanningRequestErrorV3::UnsupportedShape)?;
+            crate::composition::validate_composition_retention_fields_v3(
+                semantic.authored_item_id_v3(),
+                std::iter::once((
+                    0,
+                    semantic.producer_item_id_v3(),
+                    semantic.binding_name_location_v3(),
+                )),
+                binding,
+                crate::composition::CompositionBodyIdentityV2::new(
+                    crate::composition::CompositionBodyFamilyV2::Query,
+                    semantic.body_item_id_v3(),
+                ),
+            )
+            .map_err(|reason| {
+                ScalarPlanningRequestErrorV3::Composition(
+                    PlanningDiagnosticV1::InvalidComposition {
+                        reason,
+                        span: semantic.authored_item_location_v3().clone(),
+                    },
+                )
+            })?;
+            let producer = &reads[0];
+            let body = &reads[1];
+            let (_, _, _, producer_policy) = derive_scalar_plan_parts_v3(
+                producer.project_output_v3().cardinality(),
+                producer.project_output_v3().effects(),
+                producer.scan_output_v3().effects(),
+                producer.project_expression_keys_v3().map(|key| {
+                    producer
+                        .expression_v3(key)
+                        .map(quanta_gqlang_v2_sema::TypedExprV2::effects)
+                }),
+            )
+            .ok_or(ScalarPlanningRequestErrorV3::UnsupportedShape)?;
+            let (result, cost, effects, body_policy) = derive_scalar_plan_parts_v3(
+                body.project_output_v3().cardinality(),
+                body.project_output_v3()
+                    .effects()
+                    .join(producer.project_output_v3().effects()),
+                body.scan_output_v3()
+                    .effects()
+                    .join(producer.scan_output_v3().effects()),
+                producer
+                    .project_expression_keys_v3()
+                    .map(|key| {
+                        producer
+                            .expression_v3(key)
+                            .map(quanta_gqlang_v2_sema::TypedExprV2::effects)
+                    })
+                    .chain(body.project_expression_keys_v3().map(|key| {
+                        body.expression_v3(key)
+                            .map(quanta_gqlang_v2_sema::TypedExprV2::effects)
+                    })),
+            )
+            .ok_or(ScalarPlanningRequestErrorV3::UnsupportedShape)?;
+            let root_location = semantic.authored_item_location_v3().clone();
+            let producer_output = semantic.producer_output_v3();
+            let demand = crate::composition::onelet_request_policy_storage_upper_v3(
+                producer_output,
+                binding,
+            )
+            .map_err(|error| match error {
+                crate::composition::OneLetPolicyStorageDemandErrorV3::UnsupportedShape => {
+                    ScalarPlanningRequestErrorV3::UnsupportedShape
+                }
+                crate::composition::OneLetPolicyStorageDemandErrorV3::DemandOverflow => {
+                    ScalarPlanningRequestErrorV3::DemandOverflow
+                }
+            })?;
+            let policy_storage = root
+                .reserve_v3(semantic.authored_item_id_v3().source_id(), source, demand)
+                .map_err(ScalarPlanningRequestErrorV3::Storage)?;
+            let mut producers = Vec::new();
+            producers
+                .try_reserve_exact(1)
+                .map_err(|_allocation| ScalarPlanningRequestErrorV3::Allocation)?;
+            if producers.capacity() != 1 {
+                return Err(ScalarPlanningRequestErrorV3::Allocation);
+            }
+            let invalid_composition = |reason| {
+                ScalarPlanningRequestErrorV3::Composition(
+                    PlanningDiagnosticV1::InvalidComposition {
+                        reason,
+                        span: root_location.clone(),
+                    },
+                )
+            };
+            producers.push(
+                crate::composition::CheckedCompositionProducerV2::try_new(
+                    0,
+                    semantic.producer_item_id_v3(),
+                    semantic.binding_name_location_v3().clone(),
+                    Some(producer_output.clone()),
+                )
+                .map_err(invalid_composition)?,
+            );
+            let retention = crate::composition::CompositionRetentionV2::try_new(
+                semantic.authored_item_id_v3(),
+                root_location.clone(),
+                producers,
+                binding.clone(),
+                crate::composition::CompositionBodyIdentityV2::new(
+                    crate::composition::CompositionBodyFamilyV2::Query,
+                    semantic.body_item_id_v3(),
+                ),
+            )
+            .map_err(invalid_composition)?;
+            let retained_body =
+                crate::composition::CompositionBodyPolicyV2::try_new(body_policy.clone())
+                    .map_err(invalid_composition)?;
+            let policy = PlanPolicyV2::Composition(
+                crate::composition::CompositionPolicyV2::try_new(retention, retained_body)
+                    .map_err(invalid_composition)?,
+            );
+            Ok(AdmittedSourcePlanV3::OneLet(AdmittedOneLetPlanV3 {
+                algebra: value,
+                result,
+                cost,
+                effects,
+                producer_policy,
+                body_policy,
+                policy,
+                _policy_storage: policy_storage,
+                root_location,
+            }))
+        }
+    }
 }
 
 #[cfg(test)]

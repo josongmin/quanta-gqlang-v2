@@ -813,8 +813,23 @@ pub(super) fn project_schema(output: &RelationOutputContractV2) -> ExecutionSche
 }
 
 pub(super) fn project_source(source: &ResolvedRelationSourceKindV2) -> ExecutionSourceV3 {
+    let projected = project_source_with_writer_v3(source, &mut |value| {
+        Ok::<String, std::convert::Infallible>(value.to_owned())
+    });
+    match projected {
+        Ok(value) => value,
+        Err(never) => match never {},
+    }
+}
+
+/// Ordinary and request-owned projection share one source-kind/authority
+/// policy; only the String birth mechanism differs.
+pub(crate) fn project_source_with_writer_v3<E>(
+    source: &ResolvedRelationSourceKindV2,
+    copy: &mut impl FnMut(&str) -> Result<String, E>,
+) -> Result<ExecutionSourceV3, E> {
     match source {
-        ResolvedRelationSourceKindV2::Relation(id) => ExecutionSourceV3 {
+        ResolvedRelationSourceKindV2::Relation(id) => Ok(ExecutionSourceV3 {
             host_binding_identity: id.host_binding_identity(),
             authority: match id.authority() {
                 RelationAuthorityV2::Host => ExecutionRelationAuthorityV3::Host,
@@ -823,34 +838,47 @@ pub(super) fn project_source(source: &ResolvedRelationSourceKindV2) -> Execution
                 }
             },
             kind: ExecutionSourceKindV3::Relation,
-            namespace: Some(id.namespace().as_str().to_owned()),
-            name: id.qualified_name().to_owned(),
+            namespace: Some(copy(id.namespace().as_str())?),
+            name: copy(id.qualified_name())?,
             composition_binding: None,
-        },
-        ResolvedRelationSourceKindV2::View(id) => ExecutionSourceV3 {
-            host_binding_identity: None,
+        }),
+        ResolvedRelationSourceKindV2::View(id) => Ok(ExecutionSourceV3 {
             authority: ExecutionRelationAuthorityV3::CatalogView,
             kind: ExecutionSourceKindV3::View,
-            namespace: Some(id.module_id().as_str().to_owned()),
-            name: id.local_name().to_owned(),
+            namespace: Some(copy(id.module_id().as_str())?),
+            name: copy(id.local_name())?,
             composition_binding: None,
-        },
-        ResolvedRelationSourceKindV2::Composition(id) => ExecutionSourceV3 {
             host_binding_identity: None,
+        }),
+        ResolvedRelationSourceKindV2::Composition(id) => Ok(ExecutionSourceV3 {
             authority: ExecutionRelationAuthorityV3::CompositionBinding,
             kind: ExecutionSourceKindV3::Composition,
             namespace: None,
-            name: id.binding().canonical_name().to_owned(),
-            composition_binding: Some(project_binding(id.binding())),
-        },
+            name: copy(id.binding().canonical_name())?,
+            composition_binding: Some(project_binding_with_writer_v3(id.binding(), copy)?),
+            host_binding_identity: None,
+        }),
     }
 }
 
 fn project_binding(binding: &quanta_gqlang_v2_sema::ResolvedValueBindingV2) -> ExecutionBindingV3 {
-    ExecutionBindingV3 {
+    let projected = project_binding_with_writer_v3(binding, &mut |value| {
+        Ok::<String, std::convert::Infallible>(value.to_owned())
+    });
+    match projected {
+        Ok(value) => value,
+        Err(never) => match never {},
+    }
+}
+
+pub(crate) fn project_binding_with_writer_v3<E>(
+    binding: &quanta_gqlang_v2_sema::ResolvedValueBindingV2,
+    copy: &mut impl FnMut(&str) -> Result<String, E>,
+) -> Result<ExecutionBindingV3, E> {
+    Ok(ExecutionBindingV3 {
         source_id: binding.source_id(),
         owner_node: binding.target_node().raw(),
         ordinal: binding.ordinal(),
-        name: binding.canonical_name().to_owned(),
-    }
+        name: copy(binding.canonical_name())?,
+    })
 }

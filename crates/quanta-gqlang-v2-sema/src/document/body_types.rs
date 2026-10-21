@@ -11,6 +11,9 @@ use super::{
 #[path = "body_types/composition.rs"]
 mod composition;
 pub use composition::type_one_let_composition_body_with_request_owner_v3;
+pub(in crate::document) use composition::{
+    output_name as one_let_output_name_v3, query_parts as one_let_query_parts_v3,
+};
 
 /// Types facts for one source-backed inline View. The Binder result, builtin
 /// inventory, and Types reservation cannot be detached from the facts.
@@ -23,6 +26,11 @@ pub struct AdmittedSourceBodyTypesV3<'authority> {
 }
 
 impl AdmittedSourceBodyTypesV3<'_> {
+    #[must_use]
+    pub fn is_one_let_composition_v3(&self) -> bool {
+        self._declared.is_one_let_composition_v3()
+    }
+
     #[must_use]
     pub fn source_id_v3(&self) -> SourceIdV2 {
         self._declared.checked().source_id()

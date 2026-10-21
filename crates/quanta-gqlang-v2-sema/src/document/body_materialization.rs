@@ -20,19 +20,29 @@ struct ScalarBodyBuffersV3 {
     effects: Vec<ExpressionEffectsV2>,
 }
 
+enum ScalarSourceInputV3<'a> {
+    Host(&'a quanta_gqlang_v2_hir::RelationSourceV1),
+    Composition {
+        source: &'a quanta_gqlang_v2_hir::RelationSourceV1,
+        target: &'a super::ResolvedTargetV1,
+        identity: (super::HirNodeIdV1, usize),
+        previous: &'a super::RelationOutputContractV2,
+    },
+}
+
 fn materialize_scalar_projection_v3(
     query: &quanta_gqlang_v2_hir::QueryHirV1,
     project: &quanta_gqlang_v2_hir::ProjectionV1,
-    scan: &quanta_gqlang_v2_hir::RelationSourceV1,
+    source_input: ScalarSourceInputV3<'_>,
     typed: &AdmittedSourceBodyTypesV3<'_>,
     buffers: &mut ScalarBodyBuffersV3,
+    steps: &mut SemanticStepCounterV2,
 ) -> Result<TypedRelationV2, FrontendFailureV2> {
     let source_id = typed.source_id_v3();
     let authority = typed._authority;
     let extended = &typed._extended;
     let bound = typed._bound.evidence_v3();
     let facts = &typed.facts;
-    let mut steps = SemanticStepCounterV2::new(authority.budget());
     let checked = |span| {
         extended
             .combined()
@@ -64,16 +74,38 @@ fn materialize_scalar_projection_v3(
         source_id,
         node_id: project.input.id,
     };
-    let input = super::relation_materialization::materialize_host_source_v3(
-        &project.input,
-        checked(project.input.span)?,
-        source_key,
-        scan,
-        authority,
-        source_id,
-        true,
-        std::mem::take(&mut buffers.source_columns),
-    )?;
+    let input = match source_input {
+        ScalarSourceInputV3::Host(scan) => {
+            super::relation_materialization::materialize_host_source_v3(
+                &project.input,
+                checked(project.input.span)?,
+                source_key,
+                scan,
+                authority,
+                source_id,
+                true,
+                std::mem::take(&mut buffers.source_columns),
+            )?
+        }
+        ScalarSourceInputV3::Composition {
+            source,
+            target,
+            identity,
+            previous,
+        } => super::relation_materialization::materialize_composition_source_from_prior_v3(
+            &project.input,
+            checked(project.input.span)?,
+            source_key,
+            source,
+            target,
+            identity,
+            previous,
+            facts,
+            extended,
+            source_id,
+            std::mem::take(&mut buffers.source_columns),
+        )?,
+    };
     let frame = bound.relation_output(query.body.id).ok_or_else(|| {
         super::document_failure(
             "sema.document_validation_failed",
@@ -106,7 +138,7 @@ fn materialize_scalar_projection_v3(
             facts,
             extended,
             &mut buffers.expressions,
-            &mut steps,
+            steps,
             super::AggregatePositionV2::Projection,
         )?;
         if !matches!(value.type_state(), super::ExpressionTypeStateV2::Known(_)) {
@@ -169,6 +201,299 @@ fn materialize_scalar_projection_v3(
             query.span,
             error,
         )
+    })
+}
+
+/// The two Query relations of one Binder-identified LET remain under the
+/// Types and Modules owners that produced them.
+pub struct AdmittedSourceOneLetBodyV3<'authority> {
+    pub(super) _types: AdmittedSourceBodyTypesV3<'authority>,
+    pub(super) producer: TypedRelationV2,
+    pub(super) body: TypedRelationV2,
+    pub(super) producer_expressions: Vec<(SourceQualifiedNodeIdV2, TypedExprV2)>,
+    pub(super) body_expressions: Vec<(SourceQualifiedNodeIdV2, TypedExprV2)>,
+    pub(super) catalog_session: DocumentCatalogSessionWitnessV3,
+    pub(super) _storage: FrontendRetainedStoragePermitV3,
+}
+
+/// Exactly one source-owned body shape continues through catalog and planning.
+pub enum AdmittedSourceBodyV3<'authority> {
+    Scalar(AdmittedSourceInlineViewBodyV3<'authority>),
+    OneLet(AdmittedSourceOneLetBodyV3<'authority>),
+}
+
+impl AdmittedSourceBodyV3<'_> {
+    #[must_use]
+    pub fn output_row_v3(&self) -> &quanta_gqlang_v2_types::RecordTypeV1 {
+        match self {
+            Self::Scalar(body) => body.output_row_v3(),
+            Self::OneLet(body) => body.body.output().row(),
+        }
+    }
+
+    #[must_use]
+    pub fn source_id_v3(&self) -> SourceIdV2 {
+        match self {
+            Self::Scalar(body) => body.source_id_v3(),
+            Self::OneLet(body) => body.source_id_v3(),
+        }
+    }
+
+    #[must_use]
+    pub fn output_columns_v3(&self) -> &[OutputColumnContractV2] {
+        match self {
+            Self::Scalar(body) => body.output_columns_v3(),
+            Self::OneLet(body) => body.body_output_columns_v3(),
+        }
+    }
+
+    #[must_use]
+    pub fn output_field_count_v3(&self) -> usize {
+        self.output_columns_v3().len()
+    }
+
+    #[must_use]
+    pub fn expression_count_v3(&self) -> usize {
+        match self {
+            Self::Scalar(body) => body.expression_count_v3(),
+            Self::OneLet(body) => body.producer_expressions.len() + body.body_expressions.len(),
+        }
+    }
+
+    pub fn output_field_names_v3(&self) -> impl ExactSizeIterator<Item = &str> {
+        self.output_columns_v3()
+            .iter()
+            .map(OutputColumnContractV2::name)
+    }
+
+    pub fn expression_keys_v3(
+        &self,
+    ) -> impl ExactSizeIterator<Item = SourceQualifiedNodeIdV2> + '_ {
+        let (producer, body): (&[(SourceQualifiedNodeIdV2, TypedExprV2)], &[_]) = match self {
+            Self::Scalar(body) => (&[], &body.expressions),
+            Self::OneLet(body) => (&body.producer_expressions, &body.body_expressions),
+        };
+        (0..self.expression_count_v3()).map(move |index| {
+            if index < producer.len() {
+                producer[index].0
+            } else {
+                body[index - producer.len()].0
+            }
+        })
+    }
+}
+
+impl AdmittedSourceOneLetBodyV3<'_> {
+    #[must_use]
+    pub fn source_id_v3(&self) -> SourceIdV2 {
+        self._types.source_id_v3()
+    }
+
+    #[must_use]
+    pub fn body_output_columns_v3(&self) -> &[OutputColumnContractV2] {
+        self.body.output().columns()
+    }
+}
+
+/// Materialize only the exact one-LET Query/Query body already admitted by
+/// Binder and Types. The source-local scan uses the ordinary canonical
+/// constructor with its producer output borrowed from the same request.
+pub fn materialize_source_one_let_body_with_request_owner_v3<'authority>(
+    typed: AdmittedSourceBodyTypesV3<'authority>,
+    assets: &SourceCatalogAssetsV3,
+    topology: &AdmittedSourceViewTopologyV3,
+    root: &FrontendRequestMaterializationRootV3<'_>,
+    source: &str,
+    parent: &FrontendRetainedStoragePermitV3,
+) -> Result<AdmittedSourceOneLetBodyV3<'authority>, SourceBodyMaterializationRequestErrorV3> {
+    use quanta_gqlang_v2_hir::{CompositionBodyV1, CompositionProducerV1, RelationExprKindV1};
+    let source_id = typed.source_id_v3();
+    parent
+        .validate_owner_v3(root, source_id, source)
+        .map_err(SourceBodyMaterializationRequestErrorV3::Storage)?;
+    typed
+        .facts
+        .validate_owner_v3(root, source_id, source)
+        .map_err(SourceBodyMaterializationRequestErrorV3::Storage)?;
+    topology
+        .storage
+        .validate_owner_v3(root, source_id, source)
+        .map_err(SourceBodyMaterializationRequestErrorV3::Storage)?;
+    if !assets.is_empty() || topology.proof.dependency_first_order().len() != 0 {
+        return Err(SourceBodyMaterializationRequestErrorV3::UnsupportedShape);
+    }
+    let [ProgramItemHirV1::Composition(composition)] = typed
+        ._declared
+        .checked()
+        .checked()
+        .document()
+        .items
+        .as_slice()
+    else {
+        return Err(SourceBodyMaterializationRequestErrorV3::UnsupportedShape);
+    };
+    let [authored] = composition.bindings.as_slice() else {
+        return Err(SourceBodyMaterializationRequestErrorV3::UnsupportedShape);
+    };
+    let CompositionProducerV1::Query(producer_query) = &authored.producer else {
+        return Err(SourceBodyMaterializationRequestErrorV3::UnsupportedShape);
+    };
+    let CompositionBodyV1::Query(body_query) = &composition.body else {
+        return Err(SourceBodyMaterializationRequestErrorV3::UnsupportedShape);
+    };
+    let producer_parts = super::body_types::one_let_query_parts_v3(producer_query)
+        .ok_or(SourceBodyMaterializationRequestErrorV3::UnsupportedShape)?;
+    let body_parts = super::body_types::one_let_query_parts_v3(body_query)
+        .ok_or(SourceBodyMaterializationRequestErrorV3::UnsupportedShape)?;
+    let RelationExprKindV1::Project(producer_project) = &producer_query.body.kind else {
+        return Err(SourceBodyMaterializationRequestErrorV3::UnsupportedShape);
+    };
+    let RelationExprKindV1::Project(body_project) = &body_query.body.kind else {
+        return Err(SourceBodyMaterializationRequestErrorV3::UnsupportedShape);
+    };
+    let producer_name = super::body_types::one_let_output_name_v3(producer_parts.item)
+        .ok_or(SourceBodyMaterializationRequestErrorV3::UnsupportedShape)?;
+    let body_name = super::body_types::one_let_output_name_v3(body_parts.item)
+        .ok_or(SourceBodyMaterializationRequestErrorV3::UnsupportedShape)?;
+    let bound = typed._bound.evidence_v3();
+    let let_proof = bound
+        .composition_binding(composition.id, 0)
+        .ok_or(SourceBodyMaterializationRequestErrorV3::UnsupportedShape)?;
+    let target = bound
+        .target_of_use(
+            body_parts.scan_root.id,
+            body_parts.scan.name_span,
+            &body_parts.scan.name,
+        )
+        .ok_or(SourceBodyMaterializationRequestErrorV3::UnsupportedShape)?;
+    if !matches!(target, super::ResolvedTargetV1::Local(found) if found == let_proof)
+        || let_proof.identity() != (composition.id, 0)
+        || let_proof.name != authored.name
+        || composition.with_name != authored.name
+    {
+        return Err(SourceBodyMaterializationRequestErrorV3::UnsupportedShape);
+    }
+    let host = typed
+        ._authority
+        .relations()
+        .get(&producer_parts.scan.name)
+        .ok_or(SourceBodyMaterializationRequestErrorV3::UnsupportedShape)?;
+    let schema = host.relation_type().row().fields();
+    let schema_names = schema
+        .iter()
+        .try_fold(0_usize, |n, field| n.checked_add(field.name().len()))
+        .ok_or(SourceBodyMaterializationRequestErrorV3::DemandOverflow)?;
+    let producer_bytes = scalar_projection_body_storage_upper_v3(
+        schema.len(),
+        schema_names,
+        1,
+        producer_name.len(),
+        producer_parts.field.name.len(),
+        producer_parts
+            .scan
+            .alias
+            .as_ref()
+            .map_or(0, |alias| alias.name.len()),
+        host.id()
+            .namespace()
+            .as_str()
+            .len()
+            .checked_add(host.id().qualified_name().len())
+            .ok_or(SourceBodyMaterializationRequestErrorV3::DemandOverflow)?,
+        source.len(),
+    )
+    .ok_or(SourceBodyMaterializationRequestErrorV3::DemandOverflow)?;
+    let body_bytes = scalar_projection_body_storage_upper_v3(
+        1,
+        producer_name.len(),
+        1,
+        body_name.len(),
+        body_parts.field.name.len(),
+        body_parts
+            .scan
+            .alias
+            .as_ref()
+            .map_or(0, |alias| alias.name.len()),
+        authored.name.len(),
+        source.len(),
+    )
+    .ok_or(SourceBodyMaterializationRequestErrorV3::DemandOverflow)?;
+    let bytes = producer_bytes
+        .checked_add(body_bytes)
+        .ok_or(SourceBodyMaterializationRequestErrorV3::DemandOverflow)?;
+    let storage = root
+        .reserve_v3(source_id, source, bytes)
+        .map_err(SourceBodyMaterializationRequestErrorV3::Storage)?;
+    let mut producer_buffers = ScalarBodyBuffersV3 {
+        expressions: reserve_scalar_body_vec_v3(2)?,
+        source_columns: reserve_scalar_body_vec_v3(schema.len())?,
+        columns: reserve_scalar_body_vec_v3(1)?,
+        keys: reserve_scalar_body_vec_v3(1)?,
+        effects: reserve_scalar_body_vec_v3(1)?,
+    };
+    let mut body_buffers = ScalarBodyBuffersV3 {
+        expressions: reserve_scalar_body_vec_v3(2)?,
+        source_columns: reserve_scalar_body_vec_v3(1)?,
+        columns: reserve_scalar_body_vec_v3(1)?,
+        keys: reserve_scalar_body_vec_v3(1)?,
+        effects: reserve_scalar_body_vec_v3(1)?,
+    };
+    let mut steps = SemanticStepCounterV2::new(typed._authority.budget());
+    let producer = match materialize_scalar_projection_v3(
+        producer_query,
+        producer_project,
+        ScalarSourceInputV3::Host(producer_parts.scan),
+        &typed,
+        &mut producer_buffers,
+        &mut steps,
+    ) {
+        Ok(value) => value,
+        Err(failure) => {
+            return Err(SourceBodyMaterializationRequestErrorV3::Diagnostic(
+                AdmittedSourceBodyMaterializationDiagnosticV3 {
+                    failure,
+                    _storage: storage,
+                },
+            ));
+        }
+    };
+    let body = match materialize_scalar_projection_v3(
+        body_query,
+        body_project,
+        ScalarSourceInputV3::Composition {
+            source: body_parts.scan,
+            target,
+            identity: let_proof.identity(),
+            previous: producer.output(),
+        },
+        &typed,
+        &mut body_buffers,
+        &mut steps,
+    ) {
+        Ok(value) => value,
+        Err(failure) => {
+            return Err(SourceBodyMaterializationRequestErrorV3::Diagnostic(
+                AdmittedSourceBodyMaterializationDiagnosticV3 {
+                    failure,
+                    _storage: storage,
+                },
+            ));
+        }
+    };
+    producer_buffers
+        .expressions
+        .sort_unstable_by_key(|(key, _)| *key);
+    body_buffers
+        .expressions
+        .sort_unstable_by_key(|(key, _)| *key);
+    Ok(AdmittedSourceOneLetBodyV3 {
+        _types: typed,
+        producer,
+        body,
+        producer_expressions: producer_buffers.expressions,
+        body_expressions: body_buffers.expressions,
+        catalog_session: topology.proof.retain_session_v3(),
+        _storage: storage,
     })
 }
 
@@ -556,18 +881,24 @@ pub fn materialize_source_inline_view_with_request_owner_v3<'authority>(
         keys,
         effects,
     };
-    let relation =
-        match materialize_scalar_projection_v3(query, project, scan, &typed, &mut buffers) {
-            Ok(value) => value,
-            Err(failure) => {
-                return Err(SourceBodyMaterializationRequestErrorV3::Diagnostic(
-                    AdmittedSourceBodyMaterializationDiagnosticV3 {
-                        failure,
-                        _storage: storage,
-                    },
-                ));
-            }
-        };
+    let relation = match materialize_scalar_projection_v3(
+        query,
+        project,
+        ScalarSourceInputV3::Host(scan),
+        &typed,
+        &mut buffers,
+        &mut SemanticStepCounterV2::new(typed._authority.budget()),
+    ) {
+        Ok(value) => value,
+        Err(failure) => {
+            return Err(SourceBodyMaterializationRequestErrorV3::Diagnostic(
+                AdmittedSourceBodyMaterializationDiagnosticV3 {
+                    failure,
+                    _storage: storage,
+                },
+            ));
+        }
+    };
     buffers
         .expressions
         .sort_unstable_by_key(|(key, _value)| *key);

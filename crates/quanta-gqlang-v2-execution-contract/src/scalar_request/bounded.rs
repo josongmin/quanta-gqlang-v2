@@ -3,9 +3,8 @@
 use super::ScalarProjectionFailureV3;
 use crate::{
     project_cardinality, project_value_type, ExecutionBindingV3, ExecutionExpressionShapeV3,
-    ExecutionExpressionV3, ExecutionFieldV3, ExecutionRecordFieldV3, ExecutionRelationAuthorityV3,
-    ExecutionSchemaV3, ExecutionSourceKindV3, ExecutionSourceV3, ExecutionValueTypeV3,
-    RelationAuthorityV2,
+    ExecutionExpressionV3, ExecutionFieldV3, ExecutionRecordFieldV3, ExecutionSchemaV3,
+    ExecutionSourceV3, ExecutionValueTypeV3,
 };
 use quanta_gqlang_v2_sema::{
     ExpressionTypeStateV2, RelationOutputContractV2, ResolvedRelationSourceKindV2,
@@ -119,7 +118,7 @@ pub(super) fn expression(
     })
 }
 
-pub(super) fn schema(
+pub(crate) fn schema(
     output: &RelationOutputContractV2,
 ) -> Result<ExecutionSchemaV3, ScalarProjectionFailureV3> {
     if !output.partition_keys().is_empty() || !output.ordering().is_empty() {
@@ -143,20 +142,11 @@ pub(super) fn schema(
 pub(super) fn source(
     source: &ResolvedRelationSourceKindV2,
 ) -> Result<ExecutionSourceV3, ScalarProjectionFailureV3> {
-    let ResolvedRelationSourceKindV2::Relation(id) = source else {
-        return Err(ScalarProjectionFailureV3::UnsupportedShape);
-    };
-    Ok(ExecutionSourceV3 {
-        authority: match id.authority() {
-            RelationAuthorityV2::Host => ExecutionRelationAuthorityV3::Host,
-            RelationAuthorityV2::CanonicalWorkspaceFiles => {
-                ExecutionRelationAuthorityV3::CanonicalWorkspaceFiles
-            }
-        },
-        kind: ExecutionSourceKindV3::Relation,
-        namespace: Some(string(id.namespace().as_str())?),
-        name: string(id.qualified_name())?,
-        host_binding_identity: id.host_binding_identity(),
-        composition_binding: None,
-    })
+    crate::projection::project_source_with_writer_v3(source, &mut string)
+}
+
+pub(crate) fn composition_binding(
+    value: &ResolvedValueBindingV2,
+) -> Result<ExecutionBindingV3, ScalarProjectionFailureV3> {
+    crate::projection::project_binding_with_writer_v3(value, &mut string)
 }

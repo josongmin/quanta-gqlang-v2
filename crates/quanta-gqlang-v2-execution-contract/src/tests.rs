@@ -5,6 +5,148 @@ use quanta_gqlang_v2_sema::{
 };
 
 #[test]
+fn relation_reads_preserve_issued_source_order_and_borrow_original_storage() {
+    let mut dto = relation();
+    dto.root.limit = Some(17);
+    dto.root.source = Some(ExecutionSourceV3 {
+        authority: ExecutionRelationAuthorityV3::Host,
+        kind: ExecutionSourceKindV3::Relation,
+        namespace: Some("issued".to_owned()),
+        name: "자료".to_owned(),
+        host_binding_identity: Some([0x91; 32]),
+        composition_binding: Some(binding("exact-let")),
+    });
+    dto.root.children = Box::new([root(), root()]);
+    dto.root.children[0].stage = key(0, 81);
+    dto.root.children[1].stage = key(0, 19);
+    dto.expressions = Box::new([
+        ExecutionExpressionV3 {
+            id: key(0, 41),
+            value_type: ExecutionValueTypeV3::Scalar(ExecutionScalarTypeV3::Bool),
+            shape: ExecutionExpressionShapeV3::Compare {
+                operator: operator("!=", 101),
+                lhs: key(0, 19),
+                rhs: key(0, 81),
+            },
+        },
+        ExecutionExpressionV3 {
+            id: key(0, 19),
+            value_type: ExecutionValueTypeV3::Scalar(ExecutionScalarTypeV3::String),
+            shape: ExecutionExpressionShapeV3::Literal(ExecutionLiteralV3::String("값".to_owned())),
+        },
+    ]);
+    let read = dto.read_v3();
+    let copied = read;
+    assert_eq!(copied.item_id(), item(0, 1));
+    let node = read.root();
+    assert_eq!(node.limit_count(), Some(17));
+    assert_eq!(
+        node.children()
+            .iter()
+            .map(|child| child.stage())
+            .collect::<Vec<_>>(),
+        [key(0, 81), key(0, 19)]
+    );
+    assert!(node.children().get(2).is_none());
+    let source = node.source().expect("issued source");
+    assert_eq!(source.authority(), ExecutionRelationAuthorityV3::Host);
+    assert_eq!(source.namespace(), Some("issued"));
+    assert_eq!(source.host_binding_identity(), Some([0x91; 32]));
+    assert_eq!(
+        source.composition_binding().expect("binding").name(),
+        "exact-let"
+    );
+    assert!(std::ptr::eq(
+        source.name().as_ptr(),
+        dto.root.source.as_ref().expect("source").name().as_ptr()
+    ));
+    let first = read.expressions().first().expect("comparison");
+    let ExecutionExpressionShapeReadV3::Compare { operator, lhs, rhs } = first.shape() else {
+        panic!("comparison must keep its closed shape");
+    };
+    assert_eq!((*lhs, *rhs), (key(0, 19), key(0, 81)));
+    assert_eq!((operator.symbol(), operator.overload_id()), ("!=", 101));
+    assert_eq!(
+        first.value_type().shape(),
+        ExecutionValueTypeShapeReadV3::Scalar(ExecutionScalarTypeV3::Bool)
+    );
+    let second = copied.expressions().get(1).expect("literal");
+    let ExecutionExpressionShapeReadV3::Literal(ExecutionLiteralReadV3::String(text)) =
+        second.shape()
+    else {
+        panic!("string literal");
+    };
+    assert_eq!(text, "값");
+    let ExecutionExpressionShapeV3::Literal(ExecutionLiteralV3::String(original)) =
+        dto.expressions[1].shape()
+    else {
+        panic!("fixture string");
+    };
+    assert!(std::ptr::eq(text.as_ptr(), original.as_ptr()));
+}
+
+#[test]
+fn nested_value_reads_preserve_tags_option_cardinality_and_field_order() {
+    let dto = ExecutionValueTypeV3::Record(Box::new([
+        ExecutionRecordFieldV3 {
+            name: "second".to_owned(),
+            value_type: ExecutionValueTypeV3::Optional(Box::new(ExecutionValueTypeV3::Scalar(
+                ExecutionScalarTypeV3::RepoPath,
+            ))),
+        },
+        ExecutionRecordFieldV3 {
+            name: "first".to_owned(),
+            value_type: ExecutionValueTypeV3::Collection {
+                element: Box::new(ExecutionValueTypeV3::Union(Box::new([
+                    ExecutionUnionVariantV3 {
+                        tag: "variant".to_owned(),
+                        value_type: ExecutionValueTypeV3::Null,
+                    },
+                ]))),
+                cardinality: ExecutionCardinalityV3::Sequence,
+            },
+        },
+    ]));
+    let ExecutionValueTypeShapeReadV3::Record(fields) = dto.read_v3().shape() else {
+        panic!("record");
+    };
+    assert_eq!(
+        fields.iter().map(|field| field.name()).collect::<Vec<_>>(),
+        ["second", "first"]
+    );
+    let ExecutionValueTypeShapeReadV3::Optional(inner) =
+        fields.first().expect("optional field").value_type().shape()
+    else {
+        panic!("optional");
+    };
+    assert_eq!(
+        inner.shape(),
+        ExecutionValueTypeShapeReadV3::Scalar(ExecutionScalarTypeV3::RepoPath)
+    );
+    let ExecutionValueTypeShapeReadV3::Collection {
+        element,
+        cardinality,
+    } = fields
+        .get(1)
+        .expect("collection field")
+        .value_type()
+        .shape()
+    else {
+        panic!("collection");
+    };
+    assert_eq!(cardinality, ExecutionCardinalityV3::Sequence);
+    let ExecutionValueTypeShapeReadV3::Union(variants) = element.shape() else {
+        panic!("union");
+    };
+    let variant = variants.first().expect("one variant");
+    assert_eq!(variant.tag(), "variant");
+    assert_eq!(
+        variant.value_type().shape(),
+        ExecutionValueTypeShapeReadV3::Null
+    );
+}
+
+#[test]
 fn sha256_matches_published_empty_vector() {
     assert_eq!(
         ExecutionDigestV3(sha256(b"")).to_hex(),
