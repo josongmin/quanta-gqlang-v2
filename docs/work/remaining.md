@@ -13,10 +13,14 @@ QFC-01/03/06 are retired source tasks. QG-DIAG is the resolved
 [ADR-0008](../adr/0008-private-diagnostics-primary-location-contract.md) contract
 and is not an open repair.
 
-- **QFC-02 / OPEN_DOWNSTREAM / Semantica E13:** reconcile bootstrap full revision
-  `9060e46997dd9c62080a18bdfae06f8c162442e2`, current producer closure (including
-  execution-contract), subtree/vector policy and compatible consumer compile/
-  contract-vector proof. Updating expected pins alone is insufficient.
+- **QFC-02 / RECEIPT_DERIVED / Semantica E13:** the canonical external-workspace
+  `gqlang_v2` full revision must identify the qualified producer, including
+  execution-contract and its complete transitive source closure. The old
+  `9060e469…` observation is historical. Verify the exact clean checkout and
+  compatible consumer compile/contract-vector owner receipts together; updating
+  expected pins alone is insufficient. The Oct-21 rail reconciliation replaces
+  retired V1 witness names with their actual V3 positive/refusal owners. Full
+  installed/product gates and unrelated sibling cohorts remain separate.
 - **QFC-04/05 / RECEIPT_DERIVED:** standalone completion follows the exact current
   committed HEAD's schema-3 receipt under `target/qualification/<HEAD>/` and
   [qualification procedure](../../tools/qualification/README.md). Incoming

@@ -340,7 +340,7 @@ fn relational_limit_preserves_zero_and_full_u64_counts_and_stage_order() {
         };
         assert_eq!(limit.count, count);
         assert!(matches!(limit.input.kind, RelationExprKindV1::Project(_)));
-        assert_eq!(query.body.span.end as usize, text.len());
+        assert_eq!(query.body.span.end, text.len());
         check_tree(HirRootRefV1::Query(&query), text.len())
             .expect("Limit ownership walk is complete");
     }

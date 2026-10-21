@@ -40,8 +40,6 @@ pub struct AdmittedOneLetPlanV3<'authority> {
     result: ResultContractV2,
     cost: SemanticCostV2,
     effects: EffectSummaryV2,
-    producer_policy: PlanPolicyV2,
-    body_policy: PlanPolicyV2,
 }
 
 pub enum AdmittedSourcePlanV3<'authority> {
@@ -53,16 +51,6 @@ impl AdmittedOneLetPlanV3<'_> {
     #[must_use]
     pub fn algebra_v3(&self) -> &AdmittedOneLetAlgebraV3<'_> {
         &self.algebra
-    }
-
-    #[must_use]
-    pub fn producer_policy_v3(&self) -> &PlanPolicyV2 {
-        &self.producer_policy
-    }
-
-    #[must_use]
-    pub fn body_policy_v3(&self) -> &PlanPolicyV2 {
-        &self.body_policy
     }
 
     #[must_use]
@@ -438,17 +426,6 @@ pub fn plan_source_algebra_with_request_owner_v3<'authority>(
             })?;
             let producer = &reads[0];
             let body = &reads[1];
-            let (_, _, _, producer_policy) = derive_scalar_plan_parts_v3(
-                producer.project_output_v3().cardinality(),
-                producer.project_output_v3().effects(),
-                producer.scan_output_v3().effects(),
-                producer.project_expression_keys_v3().map(|key| {
-                    producer
-                        .expression_v3(key)
-                        .map(quanta_gqlang_v2_sema::TypedExprV2::effects)
-                }),
-            )
-            .ok_or(ScalarPlanningRequestErrorV3::UnsupportedShape)?;
             let (result, cost, effects, body_policy) = derive_scalar_plan_parts_v3(
                 body.project_output_v3().cardinality(),
                 body.project_output_v3()
@@ -522,9 +499,8 @@ pub fn plan_source_algebra_with_request_owner_v3<'authority>(
                 ),
             )
             .map_err(invalid_composition)?;
-            let retained_body =
-                crate::composition::CompositionBodyPolicyV2::try_new(body_policy.clone())
-                    .map_err(invalid_composition)?;
+            let retained_body = crate::composition::CompositionBodyPolicyV2::try_new(body_policy)
+                .map_err(invalid_composition)?;
             let policy = PlanPolicyV2::Composition(
                 crate::composition::CompositionPolicyV2::try_new(retention, retained_body)
                     .map_err(invalid_composition)?,
@@ -534,8 +510,6 @@ pub fn plan_source_algebra_with_request_owner_v3<'authority>(
                 result,
                 cost,
                 effects,
-                producer_policy,
-                body_policy,
                 policy,
                 _policy_storage: policy_storage,
                 root_location,

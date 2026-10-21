@@ -503,8 +503,10 @@ fn admitted_onelet_policy_reserves_exact_new_owner_and_refuses_one_short() {
     let planned = plan_source_body_with_request_owner_v3(source, &root, lowered)
         .expect("onelet plan admits its policy storage");
     let reservations = sink.reservations();
-    assert_eq!(&reservations[before..], &[expected_demand as u64]);
-    let charge = expected_demand as u64 + std::mem::size_of::<TracedScalarPermitV3>() as u64;
+    let expected_demand = u64::try_from(expected_demand).expect("policy demand fits u64");
+    assert_eq!(&reservations[before..], &[expected_demand]);
+    let charge = expected_demand
+        + u64::try_from(std::mem::size_of::<TracedScalarPermitV3>()).expect("permit size fits u64");
     assert_eq!(live.load(Ordering::Acquire), pre_plan_live + charge);
     drop(planned);
     assert_eq!(live.load(Ordering::Acquire), 0);

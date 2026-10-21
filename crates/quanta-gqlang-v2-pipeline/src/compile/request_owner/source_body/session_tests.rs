@@ -191,6 +191,11 @@ fn same_root_cross_session_catalog_seal_refuses_before_reservation() {
         }
         let result = a.owner.try_map_v3(
             |(_a_extended, _a_session, _a_assets, _a_topology, a_body), _a_parent| {
+                let a_body = match a_body {
+                    quanta_gqlang_v2_sema::AdmittedSourceBodyV3::Scalar(body) => Some(body),
+                    quanta_gqlang_v2_sema::AdmittedSourceBodyV3::OneLet(_) => None,
+                }
+                .expect("scalar fixture body");
                 b.owner.try_map_v3(
                     |(_b_extended, b_session, _b_assets, b_topology, _b_body), b_parent| {
                         assert_eq!(

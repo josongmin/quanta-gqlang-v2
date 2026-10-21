@@ -307,7 +307,9 @@ fn relation_sequence_field_is_independent_of_row_cardinality() {
         } else {
             sequence
         };
-        assert_eq!(row.fields()[0].value_type(), &expected);
+        assert_eq!(row.fields().len(), 1);
+        let field = row.fields().first().expect("one sequence field");
+        assert_eq!(field.value_type(), &expected);
     }
 }
 

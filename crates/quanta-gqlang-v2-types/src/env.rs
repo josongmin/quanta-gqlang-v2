@@ -358,7 +358,7 @@ fn derive_source_id_v3(
     location: quanta_gqlang_v2_hir::LocatedSpanV2,
 ) -> Result<RelationSourceIdV2, TypeAuthorityDiagnosticV2> {
     RelationSourceIdV2::derive(authority, namespace, qualified_name, binding_identity).map_err(
-        |_| TypeAuthorityDiagnosticV2::InvalidCanonicalName {
+        |_reason| TypeAuthorityDiagnosticV2::InvalidCanonicalName {
             name: diagnostic_name(qualified_name),
             location,
         },

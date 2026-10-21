@@ -1251,7 +1251,7 @@ fn relational_limit_encodes_full_u64_with_a_disjoint_extension_prefix() {
             count(0),
             count(0),
             count(0),
-            seq(&[scan_bytes.clone()]),
+            seq(std::slice::from_ref(&scan_bytes)),
         ]
         .concat();
         let mut actual = Vec::new();

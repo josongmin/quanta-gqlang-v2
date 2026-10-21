@@ -20,6 +20,33 @@ struct ScalarBodyBuffersV3 {
     effects: Vec<ExpressionEffectsV2>,
 }
 
+struct SourceExpressionKeysV3<'a> {
+    producer: std::slice::Iter<'a, (SourceQualifiedNodeIdV2, TypedExprV2)>,
+    body: std::slice::Iter<'a, (SourceQualifiedNodeIdV2, TypedExprV2)>,
+}
+
+impl Iterator for SourceExpressionKeysV3<'_> {
+    type Item = SourceQualifiedNodeIdV2;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.producer
+            .next()
+            .or_else(|| self.body.next())
+            .map(|(key, _)| *key)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let remaining = self.len();
+        (remaining, Some(remaining))
+    }
+}
+
+impl ExactSizeIterator for SourceExpressionKeysV3<'_> {
+    fn len(&self) -> usize {
+        self.producer.len() + self.body.len()
+    }
+}
+
 enum ScalarSourceInputV3<'a> {
     Host(&'a quanta_gqlang_v2_hir::RelationSourceV1),
     Composition {
@@ -208,7 +235,7 @@ fn materialize_scalar_projection_v3(
 /// Types and Modules owners that produced them.
 pub struct AdmittedSourceOneLetBodyV3<'authority> {
     pub(super) _types: AdmittedSourceBodyTypesV3<'authority>,
-    pub(super) producer: TypedRelationV2,
+    pub(super) producer: Box<TypedRelationV2>,
     pub(super) body: TypedRelationV2,
     pub(super) producer_expressions: Vec<(SourceQualifiedNodeIdV2, TypedExprV2)>,
     pub(super) body_expressions: Vec<(SourceQualifiedNodeIdV2, TypedExprV2)>,
@@ -273,13 +300,10 @@ impl AdmittedSourceBodyV3<'_> {
             Self::Scalar(body) => (&[], &body.expressions),
             Self::OneLet(body) => (&body.producer_expressions, &body.body_expressions),
         };
-        (0..self.expression_count_v3()).map(move |index| {
-            if index < producer.len() {
-                producer[index].0
-            } else {
-                body[index - producer.len()].0
-            }
-        })
+        SourceExpressionKeysV3 {
+            producer: producer.iter(),
+            body: body.iter(),
+        }
     }
 }
 
@@ -420,6 +444,7 @@ pub fn materialize_source_one_let_body_with_request_owner_v3<'authority>(
     .ok_or(SourceBodyMaterializationRequestErrorV3::DemandOverflow)?;
     let bytes = producer_bytes
         .checked_add(body_bytes)
+        .and_then(|bytes| bytes.checked_add(std::mem::size_of::<TypedRelationV2>()))
         .ok_or(SourceBodyMaterializationRequestErrorV3::DemandOverflow)?;
     let storage = root
         .reserve_v3(source_id, source, bytes)
@@ -486,6 +511,7 @@ pub fn materialize_source_one_let_body_with_request_owner_v3<'authority>(
     body_buffers
         .expressions
         .sort_unstable_by_key(|(key, _)| *key);
+    let producer = Box::new(producer);
     Ok(AdmittedSourceOneLetBodyV3 {
         _types: typed,
         producer,

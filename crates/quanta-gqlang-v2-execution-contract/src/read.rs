@@ -1,7 +1,16 @@
 //! Allocation-free observations of a retained relation. No view exposes its
 //! cloneable DTO backing; copying a view keeps the original borrow lifetime.
 
-use crate::*;
+use crate::{
+    AlgebraFamilyV2, ExecutionBindingV3, ExecutionCallTargetV3, ExecutionCardinalityV3,
+    ExecutionCorrelationV3, ExecutionExistentialTermV3, ExecutionExistsPolarityV3,
+    ExecutionExpressionShapeV3, ExecutionExpressionV3, ExecutionFieldV3, ExecutionFiniteFloatV3,
+    ExecutionJoinModeV3, ExecutionLiteralV3, ExecutionLogicalQuantifierV3, ExecutionNullOrderV3,
+    ExecutionOperatorV3, ExecutionOrderKeyV3, ExecutionRecordFieldV3, ExecutionRelationAuthorityV3,
+    ExecutionRelationV3, ExecutionRelationalOperatorV3, ExecutionScalarTypeV3, ExecutionSchemaV3,
+    ExecutionSortDirectionV3, ExecutionSourceKindV3, ExecutionSourceV3, ExecutionUnionVariantV3,
+    ExecutionValueTypeV3, SemanticItemIdV2, SourceIdV2, SourceQualifiedNodeIdV2,
+};
 
 macro_rules! read_view {
     ($view:ident, $dto:ident) => {

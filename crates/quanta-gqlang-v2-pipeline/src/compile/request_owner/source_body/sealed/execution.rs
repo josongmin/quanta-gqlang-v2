@@ -277,7 +277,20 @@ fn project_scan_inspection_bytes_v3(
             crate::execution::ExecutionExpressionShapeV3::Path { segments, .. } => {
                 bytes = bytes.checked_add(segments.first().map_or(0, String::len))?;
             }
-            _ => {}
+            crate::execution::ExecutionExpressionShapeV3::Literal(_)
+            | crate::execution::ExecutionExpressionShapeV3::Unary { .. }
+            | crate::execution::ExecutionExpressionShapeV3::Binary { .. }
+            | crate::execution::ExecutionExpressionShapeV3::Call { .. }
+            | crate::execution::ExecutionExpressionShapeV3::Paren(_)
+            | crate::execution::ExecutionExpressionShapeV3::Record(_)
+            | crate::execution::ExecutionExpressionShapeV3::List(_)
+            | crate::execution::ExecutionExpressionShapeV3::BoolValue(_)
+            | crate::execution::ExecutionExpressionShapeV3::Compare { .. }
+            | crate::execution::ExecutionExpressionShapeV3::And { .. }
+            | crate::execution::ExecutionExpressionShapeV3::Or { .. }
+            | crate::execution::ExecutionExpressionShapeV3::Not { .. }
+            | crate::execution::ExecutionExpressionShapeV3::LogicalQuantifier { .. }
+            | crate::execution::ExecutionExpressionShapeV3::RelationExists { .. } => {}
         }
     }
     Some(bytes)
@@ -364,7 +377,8 @@ impl<'a> AdmittedOneLetBindingReadV3<'a> {
             crate::execution::ExecutionCompositionProducerV3::Sample {
                 mode, limit, scope, ..
             } => Some((*mode, *limit, scope.is_some())),
-            _ => None,
+            crate::execution::ExecutionCompositionProducerV3::Relation
+            | crate::execution::ExecutionCompositionProducerV3::Graph { .. } => None,
         }
     }
 }

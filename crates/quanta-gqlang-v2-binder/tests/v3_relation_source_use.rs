@@ -146,7 +146,8 @@ fn composition_exists_sources_keep_exact_resolution_without_row_captures() {
                 | quanta_gqlang_v2_hir::RelationExprKindV1::Filter(_)
                 | quanta_gqlang_v2_hir::RelationExprKindV1::Join(_)
                 | quanta_gqlang_v2_hir::RelationExprKindV1::GroupBy(_)
-                | quanta_gqlang_v2_hir::RelationExprKindV1::OrderBy(_) => unreachable!(),
+                | quanta_gqlang_v2_hir::RelationExprKindV1::OrderBy(_)
+                | quanta_gqlang_v2_hir::RelationExprKindV1::Limit(_) => unreachable!(),
             }, "p"), Some(ResolvedTargetV1::Local(binding))
                 if binding.kind == BinderKindV1::CompositionLet
                     && binding.identity() == (composition.id, 0))

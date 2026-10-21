@@ -31,7 +31,7 @@ fn request_policy_clone_refuses_tree_backing_and_non_expression_columns() -> Res
                 HirNodeIdV1::from_raw(2),
                 0,
                 ResolvedBindingKindV2::Composition,
-                "rows".into(),
+                "rows".to_owned(),
             )
             .map_err(str::to_owned)?,
         )

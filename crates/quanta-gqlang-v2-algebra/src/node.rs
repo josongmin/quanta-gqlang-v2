@@ -592,7 +592,16 @@ impl CheckedAlgebraNodeV2 {
     pub fn limit_count(&self) -> Option<u64> {
         match &self.op {
             AlgebraOpV2::Limit { count, .. } => Some(*count),
-            _ => None,
+            AlgebraOpV2::Scan { .. }
+            | AlgebraOpV2::Filter { .. }
+            | AlgebraOpV2::Project { .. }
+            | AlgebraOpV2::Join { .. }
+            | AlgebraOpV2::Group { .. }
+            | AlgebraOpV2::Aggregate { .. }
+            | AlgebraOpV2::Sort { .. }
+            | AlgebraOpV2::SemiJoin { .. }
+            | AlgebraOpV2::AntiJoin { .. }
+            | AlgebraOpV2::ExistsFilter { .. } => None,
         }
     }
 

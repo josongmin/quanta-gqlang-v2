@@ -940,7 +940,12 @@ impl TypedRelationExprV2 {
     pub const fn limit_count(&self) -> Option<u64> {
         match self {
             Self::Limit(_, count) => Some(*count),
-            _ => None,
+            Self::Scan(_)
+            | Self::Filter(_)
+            | Self::Project(_)
+            | Self::Join(_)
+            | Self::Group(_)
+            | Self::Sort(_) => None,
         }
     }
 
