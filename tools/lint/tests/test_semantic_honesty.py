@@ -107,6 +107,43 @@ class SemanticHonestyTest(unittest.TestCase):
         self.assertIn("SH-05-error-to-ok", self.rules("fn f(x: Result<u8, E>) { match x { Err(_error) => { (Ok(())) }, Ok(value) => Ok(value) } }"))
         self.assertIn("SH-05-error-to-ok", self.rules("fn f(x: Result<u8, E>) { match x { Err(/* c */ _error) => (/* c */ Ok({ let _ = AnalysisStatusV2::Error; () })), Ok(value) => Ok(value) } }"))
 
+    def test_empty_match_has_no_exit_but_scrutinee_returns_remain_visible(self) -> None:
+        infallible = (
+            "fn f(x: Result<u8, std::convert::Infallible>) -> u8 { "
+            "match x { Ok(value) => value, Err(never) => match never {} } }"
+        )
+        self.assertNotIn("SH-11-unsupported-exit", self.rules(infallible))
+        self.assertNotIn("SH-05-error-to-ok", self.rules(infallible))
+        early_success = (
+            "fn f(x: Result<u8, E>) { match x { "
+            "Err(never) => match { return Ok(0); never } {}, "
+            "Ok(value) => Ok(value) } }"
+        )
+        self.assertIn("SH-05-error-to-ok", self.rules(early_success))
+        ordinary_success = (
+            "fn f(x: Result<u8, E>, flag: bool) { match x { "
+            "Err(error) => match flag { true => Ok(0), false => Err(error) }, "
+            "Ok(value) => Ok(value) } }"
+        )
+        self.assertIn("SH-05-error-to-ok", self.rules(ordinary_success))
+        mixed_empty_success = (
+            "fn f(x: Result<u8, std::convert::Infallible>, flag: bool) { match x { "
+            "Err(never) => if flag { match never {} } else { Ok(0) }, "
+            "Ok(value) => Ok(value) } }"
+        )
+        self.assertIn("SH-05-error-to-ok", self.rules(mixed_empty_success))
+
+    def test_malformed_empty_match_body_is_not_a_diverging_proof(self) -> None:
+        for source in ("fn f() { match never { bogus } }", "fn f() { match never { _ => } }"):
+            with self.subTest(source=source):
+                encoded = source.encode()
+                root = self.parser.parse(encoded).root_node
+                match = next(node for node in lint.walk(root) if node.type == "match_expression")
+                with self.assertRaises(lint.UnsupportedExit):
+                    tuple(lint.exit_expressions(encoded, match))
+        missing = "fn f(x: Result<u8, E>) { match x { Err(error) => match error {"
+        self.assertIn("SH-00-parse-error", self.rules(missing))
+
     def test_semantic_field_ok_and_safe_local_ok(self) -> None:
         self.assertIn("SH-07-semantic-ok", self.rules("fn f() { let p = AnalysisPayloadV2 { analysis_status: parse().ok(), diagnostics: vec![] }; }"))
         self.assertNotIn("SH-07-semantic-ok", self.rules("fn f() { let version = source.parse::<u8>().ok(); }"))

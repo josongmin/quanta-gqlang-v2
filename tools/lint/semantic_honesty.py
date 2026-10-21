@@ -493,12 +493,23 @@ def exit_expressions(source: bytes, node):
         return
     if node.type == "match_expression":
         scrutinee = node.child_by_field_name("value")
-        for early in nested_returns(scrutinee) if scrutinee is not None else ():
-            yield from exit_expressions(source, early)
         body = node.child_by_field_name("body")
-        arms = [child for child in body.named_children if child.type == "match_arm"] if body is not None else []
-        if not arms:
-            raise UnsupportedExit("match has no auditable arms")
+        if (
+            scrutinee is None
+            or scrutinee.is_missing
+            or scrutinee.has_error
+            or body is None
+            or body.is_missing
+            or body.has_error
+        ):
+            raise UnsupportedExit("match has no auditable scrutinee or body")
+        for early in nested_returns(scrutinee):
+            yield from exit_expressions(source, early)
+        arms = significant_named_children(body)
+        if any(arm.type != "match_arm" for arm in arms):
+            raise UnsupportedExit("match body has an unauditable member")
+        # A complete empty match has no ordinary exit. Rust's type checker
+        # permits it only when the scrutinee is uninhabited.
         for arm in arms:
             value = arm.child_by_field_name("value")
             if value is None:
