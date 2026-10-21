@@ -178,10 +178,13 @@ recreation controls without relaxing source custody.
 
 ## Retired V1 algebra laws
 
-The open-tagged V1 normalization API and snippets for `normalize_relation`,
+The open-tagged V1 normalization API and its snippets for `normalize_relation`,
 `NormalizeOptionsV1`, `CompositionV1`, `union`, `limit` and `apply` are retired.
 They cannot compile and are not current test templates. The current algebra
 accepts sealed V2 semantic relations through `lower_relation_item` and
 `lower_nested_relation_v2`. Its closed stages are `where`, `project`, `join`,
-`cross`, `group` and `order`; executable surface/algebra suites own their behavior.
+`cross`, `group`, `order` and `limit`; executable surface/algebra suites own their
+behavior. The sealed relational Limit follows the current
+[source contract](../contracts/frontend-execution-v3.md#relational-limit-source-contract);
+the retired V1 snippets do not define that stage.
 The source disposition points here instead of a separate historical Markdown stub.

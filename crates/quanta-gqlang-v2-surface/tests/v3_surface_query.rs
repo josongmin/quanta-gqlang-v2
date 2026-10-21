@@ -234,18 +234,15 @@ fn group_by_with_aggregate_call_projection() {
 #[test]
 fn relation_pipeline_stage_set_is_closed() {
     // The relation pipeline accepts exactly `where | project | join | cross |
-    // group | order` (`surface/src/query.rs::parse_stage`). The retired
-    // open-tagged operators must NOT parse: silently accepting `union`,
-    // `limit`, `sort`, or `apply` would reopen capability the closed HIR can no
-    // longer represent, and their algebra handlers are already unreachable from
-    // public HIR (see docs/adr/0002-test-authority-and-adversarial-oracles.md).
+    // group | order | limit` (`surface/src/query.rs::parse_stage`). Retired
+    // `union`, `sort`, and `apply` must not parse as relation stages.
     let builder = HirBuilderV1::new();
 
-    // STAGE-01: the closed six-token vocabulary owns both parsing and the
+    // STAGE-01: the closed seven-token vocabulary owns both parsing and the
     // diagnostic. Every retired stage asserts the COMPLETE expected message.
     const CLOSED_STAGE_MESSAGE_V1: &str =
         "expected a pipeline stage keyword (where, project, join, cross, group, order, limit)";
-    for removed in ["union", "limit", "sort", "apply"] {
+    for removed in ["union", "sort", "apply"] {
         let src = format!("from users | {removed} 1");
         let err =
             parse_program(&src, &builder).expect_err("a retired relation operator must not parse");
@@ -261,6 +258,7 @@ fn relation_pipeline_stage_set_is_closed() {
         "from a | cross join b",
         "from a | group by k",
         "from a | order by k desc",
+        "from a | limit 1",
     ] {
         parse_program(stage, &builder).expect(stage);
     }
