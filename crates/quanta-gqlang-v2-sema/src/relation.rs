@@ -725,6 +725,33 @@ impl TypedRelationExprV2 {
             output,
         })
     }
+    /// Request-only Filter construction with an already admitted one-slot input.
+    pub(crate) fn filter_with_request_input_v3(
+        key: SourceQualifiedNodeIdV2,
+        location: CheckedLocatedSpanV2,
+        input: Self,
+        predicate: TypedBoolExprV2,
+        output: RelationOutputContractV2,
+        mut inputs: Vec<Self>,
+    ) -> Result<Self, &'static str> {
+        if !inputs.is_empty() || inputs.capacity() != 1 {
+            return Err("request Filter input capacity differs from its admitted single child");
+        }
+        inputs.push(input);
+        Self::try_from_stage(TypedRelationStageInputV2 {
+            key,
+            location,
+            kind: TypedRelationStageKindV2::Filter,
+            inputs,
+            expressions: Vec::new(),
+            predicate: Some(predicate),
+            source: None,
+            join_mode: None,
+            implicit_partition: false,
+            partition_input: Vec::new(),
+            output,
+        })
+    }
     /// Construct a nonempty ordinary projection.
     pub(crate) fn try_project(
         key: SourceQualifiedNodeIdV2,

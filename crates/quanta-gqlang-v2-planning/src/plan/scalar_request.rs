@@ -28,6 +28,7 @@ pub struct AdmittedScalarPlanV3<'authority> {
     effects: EffectSummaryV2,
     policy: PlanPolicyV2,
     root_location: CheckedLocatedSpanV2,
+    has_filter: bool,
 }
 
 /// The Composition policy retains its exact same-request Binder binding in
@@ -155,7 +156,13 @@ impl AdmittedSourcePlanV3<'_> {
     #[must_use]
     pub const fn explain_families_v3(&self) -> &'static [AlgebraFamilyV2] {
         const SCALAR: &[AlgebraFamilyV2] = &[AlgebraFamilyV2::Project, AlgebraFamilyV2::Scan];
+        const FILTERED: &[AlgebraFamilyV2] = &[
+            AlgebraFamilyV2::Project,
+            AlgebraFamilyV2::Filter,
+            AlgebraFamilyV2::Scan,
+        ];
         match self {
+            Self::Scalar(value) if value.has_filter => FILTERED,
             Self::Scalar(_) => SCALAR,
             // The canonical Composition plan is its body's plan. The LET
             // producer is retained as authority, not appended to Explain.
@@ -241,7 +248,11 @@ impl AdmittedScalarPlanV3<'_> {
 
     #[must_use]
     pub const fn policy_node_count_v3(&self) -> usize {
-        2
+        if self.has_filter {
+            3
+        } else {
+            2
+        }
     }
 
     #[must_use]
@@ -261,12 +272,26 @@ impl AdmittedScalarPlanV3<'_> {
 
     #[must_use]
     pub const fn explain_family_count_v3(&self) -> usize {
-        2
+        if self.has_filter {
+            3
+        } else {
+            2
+        }
     }
 
     #[must_use]
-    pub const fn explain_families_v3(&self) -> [AlgebraFamilyV2; 2] {
-        [AlgebraFamilyV2::Project, AlgebraFamilyV2::Scan]
+    pub const fn explain_families_v3(&self) -> &'static [AlgebraFamilyV2] {
+        const SCALAR: &[AlgebraFamilyV2] = &[AlgebraFamilyV2::Project, AlgebraFamilyV2::Scan];
+        const FILTERED: &[AlgebraFamilyV2] = &[
+            AlgebraFamilyV2::Project,
+            AlgebraFamilyV2::Filter,
+            AlgebraFamilyV2::Scan,
+        ];
+        if self.has_filter {
+            FILTERED
+        } else {
+            SCALAR
+        }
     }
 
     #[must_use]
@@ -296,6 +321,7 @@ pub enum ScalarPlanningRequestErrorV3 {
 fn derive_scalar_plan_parts_v3(
     cardinality: CardinalityV1,
     project_effects: ExpressionEffectsV2,
+    filter_effects: Option<ExpressionEffectsV2>,
     scan_effects: ExpressionEffectsV2,
     expression_effects: impl IntoIterator<Item = Option<ExpressionEffectsV2>>,
 ) -> Option<(
@@ -308,6 +334,9 @@ fn derive_scalar_plan_parts_v3(
     for expression in expression_effects {
         joined = joined.join(expression?);
     }
+    if let Some(filter) = filter_effects {
+        joined = joined.join(filter);
+    }
     joined = joined.join(scan_effects);
     let effects = EffectSummaryV2::new(
         joined.purity,
@@ -315,8 +344,12 @@ fn derive_scalar_plan_parts_v3(
         joined.monotonicity,
         joined.aggregation,
     );
-    let facts =
-        relational_facts_from_shape(cardinality, CardinalityClassV2::LinearInInput, 2, effects);
+    let facts = relational_facts_from_shape(
+        cardinality,
+        CardinalityClassV2::LinearInInput,
+        if filter_effects.is_some() { 3 } else { 2 },
+        effects,
+    );
     let (result, cost) = classified_result_and_cost(&facts);
     Some((result, cost, effects, facts.policy))
 }
@@ -332,22 +365,27 @@ pub fn plan_scalar_source_project_with_request_owner_v3<'authority>(
     algebra
         .validate_owner_v3(root, source)
         .map_err(ScalarPlanningRequestErrorV3::Storage)?;
-    let (result, cost, effects, policy, root_location) = {
+    let (result, cost, effects, policy, root_location, has_filter) = {
         let read = algebra
             .scalar_read_v3()
             .ok_or(ScalarPlanningRequestErrorV3::UnsupportedShape)?;
         let limit = read.budget_receipt_v3().max_semantic_steps();
-        if limit < 2 {
+        let required_steps = if read.has_filter_v3() { 3 } else { 2 };
+        if limit < required_steps {
             return Err(ScalarPlanningRequestErrorV3::SemanticSteps(
                 PlanningDiagnosticV1::SemanticStepBudgetExceeded {
                     limit,
-                    span: read.scan_location_v3().clone(),
+                    span: read
+                        .filter_location_v3()
+                        .unwrap_or_else(|| read.scan_location_v3())
+                        .clone(),
                 },
             ));
         }
         let (result, cost, effects, policy) = derive_scalar_plan_parts_v3(
             read.project_cardinality_v3(),
             read.project_effects_v3(),
+            read.filter_effects_v3(),
             read.scan_effects_v3(),
             read.project_expression_effects_v3(),
         )
@@ -358,6 +396,7 @@ pub fn plan_scalar_source_project_with_request_owner_v3<'authority>(
             effects,
             policy,
             read.authored_item_location_v3().clone(),
+            read.has_filter_v3(),
         )
     };
     Ok(AdmittedScalarPlanV3 {
@@ -367,6 +406,7 @@ pub fn plan_scalar_source_project_with_request_owner_v3<'authority>(
         effects,
         policy,
         root_location,
+        has_filter,
     })
 }
 
@@ -431,6 +471,7 @@ pub fn plan_source_algebra_with_request_owner_v3<'authority>(
                 body.project_output_v3()
                     .effects()
                     .join(producer.project_output_v3().effects()),
+                None,
                 body.scan_output_v3()
                     .effects()
                     .join(producer.scan_output_v3().effects()),
@@ -548,6 +589,7 @@ mod tests {
         let (result, cost, effects, policy) = derive_scalar_plan_parts_v3(
             root.output().cardinality(),
             root.output().effects(),
+            None,
             scan.output().effects(),
             root.expressions()
                 .iter()

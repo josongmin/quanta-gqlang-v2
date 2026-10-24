@@ -170,12 +170,30 @@ bounds; allocator metadata and process-wide heap usage are not measured by them.
 
 `compile_scalar_source_with_request_owner_v3(SourceIdV2, &str,
 &ClosedFrontendAuthorityV2, &FrontendRequestMaterializationRootV3)` accepts one
-bare Query in the scalar Source→Project subset. It consumes the parser-issued
+bare Query in the scalar Source→Project or Source→Filter→Project subset. It consumes the parser-issued
 owner through checking, declarations, Modules/Binder/Types, semantic body,
 catalog, normalized algebra, planning, execution projection, and the document
 seal. Other root families return typed `UnsupportedRoot`; unsupported relation
 and expression shapes return the owning stage's typed refusal. No fallback to
 the unrestricted compiler occurs. Inline View staging remains producer-only.
+
+The finite Filter has one checked scalar field/literal comparison and retains
+its Bool predicate, Binder alias, typed expression closure, and inherited Scan
+schema through the same request owners. The sealed relation contains the
+existing Project, Filter, and Scan operator variants; filtering is not discarded
+at admission. Other relation trees and predicate grammars remain typed refusals.
+Source rows may include scalar fields, `Optional(String)`, and
+`Collection(String, Sequence)` while selected Project fields remain scalar.
+The full Scan and retained binding-record schemas preserve those field types,
+names, order, and cardinality rather than flattening or omitting them.
+
+Execution reserves the additional Filter operator/predicate/closure and each
+nested Optional/Collection child before its first DTO birth. Optional and
+Collection children use a boxed one-element array so the pinned stable compiler
+can create them through fallible, exact-capacity Vec storage without unsafe code.
+Their public borrowed value reads and canonical ValueType tags/bytes are
+unchanged; Rust DTO constructors supply `Box::new([child])`. The one-LET
+Composition subset retains its existing scalar-only source contract.
 
 `ParsedRequestSourceV3::root_family_v3` classifies the retained parser owner
 without another parse or reservation.

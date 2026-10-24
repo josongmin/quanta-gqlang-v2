@@ -8,6 +8,7 @@ use super::{
     RelationExprKindV1, ResolutionV1, ResolvedTargetV1, SourceIdV2, SpanV1, ValueExprHirV1,
     ValueExprKindV1, ViewBodyV1,
 };
+use quanta_gqlang_v2_hir::{BoolExprHirV1, BoolExprKindV1, ProjectionV1, RelationSourceV1};
 
 #[cfg(test)]
 #[path = "request_tests.rs"]
@@ -23,6 +24,57 @@ struct RequestProjectDemandV3 {
     local_binding_names: usize,
     references: usize,
     scratch_bytes: usize,
+    filtered: bool,
+}
+
+/// The request path admits a single direct Filter over a host Source. Its
+/// predicate has one alias-qualified scalar field and a scalar literal;
+/// richer boolean trees require their own bounded resolution census.
+fn request_project_source_v3(
+    project: &ProjectionV1,
+) -> Result<(&RelationSourceV1, Option<&BoolExprHirV1>), BinderDeclarationRequestErrorV3> {
+    match &project.input.kind {
+        RelationExprKindV1::Source(source) => Ok((source, None)),
+        RelationExprKindV1::Filter(filter) => {
+            let RelationExprKindV1::Source(source) = &filter.input.kind else {
+                return Err(BinderDeclarationRequestErrorV3::UnsupportedShape);
+            };
+            let Some(alias) = &source.alias else {
+                return Err(BinderDeclarationRequestErrorV3::UnsupportedShape);
+            };
+            let BoolExprKindV1::Compare(compare) = &filter.predicate.kind else {
+                return Err(BinderDeclarationRequestErrorV3::UnsupportedShape);
+            };
+            let ValueExprKindV1::Path(path) = &compare.lhs.kind else {
+                return Err(BinderDeclarationRequestErrorV3::UnsupportedShape);
+            };
+            let [field] = path.segments.as_slice() else {
+                return Err(BinderDeclarationRequestErrorV3::UnsupportedShape);
+            };
+            let ValueExprKindV1::Symbol(base) = &path.base.kind else {
+                return Err(BinderDeclarationRequestErrorV3::UnsupportedShape);
+            };
+            if field.name.is_empty()
+                || base.name != alias.name
+                || !matches!(
+                    &compare.rhs.kind,
+                    ValueExprKindV1::Literal(
+                        quanta_gqlang_v2_hir::LiteralV1::Int(_)
+                            | quanta_gqlang_v2_hir::LiteralV1::Str(_)
+                            | quanta_gqlang_v2_hir::LiteralV1::Bool(_)
+                    )
+                )
+            {
+                return Err(BinderDeclarationRequestErrorV3::UnsupportedShape);
+            }
+            Ok((source, Some(&filter.predicate)))
+        }
+        RelationExprKindV1::Project(_)
+        | RelationExprKindV1::Join(_)
+        | RelationExprKindV1::GroupBy(_)
+        | RelationExprKindV1::OrderBy(_)
+        | RelationExprKindV1::Limit(_) => Err(BinderDeclarationRequestErrorV3::UnsupportedShape),
+    }
 }
 
 struct RequestResolutionDemandV3 {
@@ -334,17 +386,11 @@ impl<G: ModuleGraphViewV1> Binder<G> {
             if let Some(query) = request_query_item_v3(item) {
                 let source = match &query.body.kind {
                     RelationExprKindV1::Source(source) => source,
-                    RelationExprKindV1::Project(project) => match &project.input.kind {
-                        RelationExprKindV1::Source(source) => source,
-                        RelationExprKindV1::Project(_)
-                        | RelationExprKindV1::Filter(_)
-                        | RelationExprKindV1::Join(_)
-                        | RelationExprKindV1::GroupBy(_)
-                        | RelationExprKindV1::OrderBy(_)
-                        | RelationExprKindV1::Limit(_) => {
-                            return Err(BinderDeclarationRequestErrorV3::Phase)
-                        }
-                    },
+                    RelationExprKindV1::Project(project) => {
+                        request_project_source_v3(project)
+                            .map_err(|_shape_error| BinderDeclarationRequestErrorV3::Phase)?
+                            .0
+                    }
                     RelationExprKindV1::Filter(_)
                     | RelationExprKindV1::Join(_)
                     | RelationExprKindV1::GroupBy(_)
@@ -432,17 +478,7 @@ impl<G: ModuleGraphViewV1> Binder<G> {
                 let project = self.request_project_demand_v3(query)?;
                 let source = match &query.body.kind {
                     RelationExprKindV1::Source(source) => source,
-                    RelationExprKindV1::Project(project) => match &project.input.kind {
-                        RelationExprKindV1::Source(source) => source,
-                        RelationExprKindV1::Project(_)
-                        | RelationExprKindV1::Filter(_)
-                        | RelationExprKindV1::Join(_)
-                        | RelationExprKindV1::GroupBy(_)
-                        | RelationExprKindV1::OrderBy(_)
-                        | RelationExprKindV1::Limit(_) => {
-                            return Err(BinderDeclarationRequestErrorV3::UnsupportedShape)
-                        }
-                    },
+                    RelationExprKindV1::Project(project) => request_project_source_v3(project)?.0,
                     RelationExprKindV1::Filter(_)
                     | RelationExprKindV1::Join(_)
                     | RelationExprKindV1::GroupBy(_)
@@ -452,7 +488,11 @@ impl<G: ModuleGraphViewV1> Binder<G> {
                     }
                 };
                 bare_relations = bare_relations
-                    .checked_add(if project.is_some() { 2 } else { 1 })
+                    .checked_add(
+                        project
+                            .as_ref()
+                            .map_or(1, |value| if value.filtered { 3 } else { 2 }),
+                    )
                     .ok_or(BinderDeclarationRequestErrorV3::DemandOverflow)?;
                 if let Some(alias) = &source.alias {
                     aliased_relations = aliased_relations
@@ -468,6 +508,21 @@ impl<G: ModuleGraphViewV1> Binder<G> {
                     );
                 }
                 if let Some(project) = project {
+                    if project.filtered {
+                        // Filter retains the Source alias frame and copies it
+                        // once into its predicate scope before Project enters.
+                        aliased_relations = aliased_relations
+                            .checked_add(2)
+                            .ok_or(BinderDeclarationRequestErrorV3::DemandOverflow)?;
+                        let extra_names = source
+                            .alias
+                            .as_ref()
+                            .map_or(Some(0), |alias| alias.name.len().checked_mul(2))
+                            .ok_or(BinderDeclarationRequestErrorV3::DemandOverflow)?;
+                        alias_name_bytes = alias_name_bytes
+                            .checked_add(extra_names)
+                            .ok_or(BinderDeclarationRequestErrorV3::DemandOverflow)?;
+                    }
                     project_bindings = project_bindings
                         .checked_add(project.width)
                         .ok_or(BinderDeclarationRequestErrorV3::DemandOverflow)?;
@@ -813,9 +868,7 @@ impl<G: ModuleGraphViewV1> Binder<G> {
         let RelationExprKindV1::Project(project) = &query.body.kind else {
             return Ok(None);
         };
-        let RelationExprKindV1::Source(source) = &project.input.kind else {
-            return Err(BinderDeclarationRequestErrorV3::UnsupportedShape);
-        };
+        let (source, predicate) = request_project_source_v3(project)?;
         let width = project.items().len();
         let mut output_names = 0_usize;
         let mut reference_names = 0_usize;
@@ -886,6 +939,8 @@ impl<G: ModuleGraphViewV1> Binder<G> {
         // output, and borrowed-name index vectors are live. An output name
         // lives in one Binding and may be cloned into one duplicate diagnostic.
         let scratch_bytes = alias_frame
+            .checked_add(if predicate.is_some() { alias_frame } else { 0 })
+            .ok_or(BinderDeclarationRequestErrorV3::DemandOverflow)?
             .checked_add(
                 binding_slots
                     .checked_mul(2)
@@ -898,6 +953,23 @@ impl<G: ModuleGraphViewV1> Binder<G> {
                     .and_then(|names| bytes.checked_add(names))
             })
             .ok_or(BinderDeclarationRequestErrorV3::DemandOverflow)?;
+        if let Some(predicate) = predicate {
+            let BoolExprKindV1::Compare(compare) = &predicate.kind else {
+                return Err(BinderDeclarationRequestErrorV3::UnsupportedShape);
+            };
+            let ValueExprKindV1::Path(path) = &compare.lhs.kind else {
+                return Err(BinderDeclarationRequestErrorV3::UnsupportedShape);
+            };
+            let ValueExprKindV1::Symbol(base) = &path.base.kind else {
+                return Err(BinderDeclarationRequestErrorV3::UnsupportedShape);
+            };
+            references = references
+                .checked_add(1)
+                .ok_or(BinderDeclarationRequestErrorV3::DemandOverflow)?;
+            reference_names = reference_names
+                .checked_add(base.name.len())
+                .ok_or(BinderDeclarationRequestErrorV3::DemandOverflow)?;
+        }
         Ok(Some(RequestProjectDemandV3 {
             width,
             output_names,
@@ -905,6 +977,7 @@ impl<G: ModuleGraphViewV1> Binder<G> {
             local_binding_names,
             references,
             scratch_bytes,
+            filtered: predicate.is_some(),
         }))
     }
 }

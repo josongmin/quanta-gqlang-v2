@@ -105,6 +105,23 @@ impl ScalarAlgebraReadV3<'_, '_> {
     }
 
     #[must_use]
+    pub fn filter_location_v3(&self) -> Option<&CheckedLocatedSpanV2> {
+        self.view.filter_location_v3()
+    }
+
+    #[must_use]
+    pub fn has_filter_v3(&self) -> bool {
+        self.view.filter_key_v3().is_some()
+    }
+
+    #[must_use]
+    pub fn filter_effects_v3(&self) -> Option<ExpressionEffectsV2> {
+        self.view
+            .filter_output_v3()
+            .map(RelationOutputContractV2::effects)
+    }
+
+    #[must_use]
     pub fn project_cardinality_v3(&self) -> CardinalityV1 {
         self.view.project_output_v3().cardinality()
     }
@@ -137,7 +154,7 @@ impl AdmittedScalarAlgebraV3<'_> {
         self.semantic.scalar_source_project_read_v3()
     }
 
-    /// Only the checked Project(Scan) shape receives a normalized view.
+    /// Only a checked Project over Scan or one Filter over Scan receives a view.
     #[must_use]
     pub fn scalar_read_v3(&self) -> Option<ScalarAlgebraReadV3<'_, '_>> {
         self.scalar_semantic_read_v3()
@@ -215,6 +232,42 @@ fn checked_scalar_view(
     {
         return Err(ScalarAlgebraRequestErrorV3::UnsupportedShape);
     }
+    let filter = match (
+        view.filter_key_v3(),
+        view.filter_location_v3(),
+        view.filter_output_v3(),
+        view.filter_predicate_key_v3(),
+    ) {
+        (None, None, None, None) => None,
+        (Some(key), Some(location), Some(output), Some(predicate_key))
+            if !composition_source
+                && key.source_id == view.source_id_v3()
+                && location.location().source_id == view.source_id_v3()
+                && output.row() == view.scan_output_v3().row()
+                && output.provenance() == view.scan_output_v3().provenance()
+                && output.columns() == view.scan_output_v3().columns()
+                && output.cardinality() == view.scan_output_v3().cardinality()
+                && output.partition_keys() == view.scan_output_v3().partition_keys()
+                && output.ordering() == view.scan_output_v3().ordering()
+                && finite_output(output, source, true) =>
+        {
+            let predicate = view
+                .expression_v3(predicate_key)
+                .ok_or(ScalarAlgebraRequestErrorV3::UnsupportedShape)?;
+            if predicate.key() != predicate_key
+                || predicate_key.source_id != view.source_id_v3()
+                || !matches!(predicate.type_state(), ExpressionTypeStateV2::Known(value)
+                    if value == &quanta_gqlang_v2_types::ValueTypeV1::bool())
+                || predicate.aggregate_context().aggregation() != AggregationClassV1::Scalar
+                || predicate.resolved_call().is_some()
+                || !matches!(predicate.shape(), TypedExprShapeV2::Compare { .. })
+            {
+                return Err(ScalarAlgebraRequestErrorV3::UnsupportedShape);
+            }
+            Some(output)
+        }
+        _ => return Err(ScalarAlgebraRequestErrorV3::UnsupportedShape),
+    };
     let source_id = view.source_id_v3();
     if view.item_id_v3().source_id() != source_id
         || view.scan_key_v3().source_id != source_id
@@ -222,7 +275,8 @@ fn checked_scalar_view(
         || view.scan_location_v3().location().source_id != source_id
         || view.project_location_v3().location().source_id != source_id
         || !scan_agrees_with_output(view.scan_key_v3(), view.scan_output_v3())
-        || view.scan_output_v3().provenance() != view.project_output_v3().provenance()
+        || filter.unwrap_or_else(|| view.scan_output_v3()).provenance()
+            != view.project_output_v3().provenance()
     {
         return Err(ScalarAlgebraRequestErrorV3::Algebra(
             AlgebraFailureKindV2::InvalidStageContract,
@@ -277,7 +331,8 @@ pub fn lower_scalar_source_project_with_request_owner_v3<'authority>(
     let view = semantic
         .scalar_source_project_read_v3()
         .ok_or(ScalarAlgebraRequestErrorV3::UnsupportedShape)?;
-    if view.budget_receipt_v3().max_semantic_steps() < 2 {
+    let required_steps = if view.filter_key_v3().is_some() { 3 } else { 2 };
+    if view.budget_receipt_v3().max_semantic_steps() < required_steps {
         return Err(ScalarAlgebraRequestErrorV3::SemanticStepLimit);
     }
     checked_scalar_view(&view, false)?;

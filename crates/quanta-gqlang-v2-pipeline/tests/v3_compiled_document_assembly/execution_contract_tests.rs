@@ -1589,9 +1589,9 @@ fn public_optional_relation_field_reaches_the_execution_schema_as_optional() {
     assert_eq!(fields[0].name(), "id");
     assert_eq!(
         fields[0].value_type(),
-        &ExecutionValueTypeV3::Optional(Box::new(ExecutionValueTypeV3::Scalar(
+        &ExecutionValueTypeV3::Optional(Box::new([ExecutionValueTypeV3::Scalar(
             ExecutionScalarTypeV3::Int
-        )))
+        )]))
     );
 }
 
@@ -1624,9 +1624,9 @@ fn source_sort_direction_and_null_placement_reach_execution_unchanged() {
     for key in schema.order() {
         assert_eq!(
             key.value_type(),
-            &ExecutionValueTypeV3::Optional(Box::new(ExecutionValueTypeV3::Scalar(
+            &ExecutionValueTypeV3::Optional(Box::new([ExecutionValueTypeV3::Scalar(
                 ExecutionScalarTypeV3::Int
-            )))
+            )]))
         );
         let expression = relation
             .expressions()

@@ -183,7 +183,7 @@ fn lowered_nine_request<'a>(
     lower_source_body_with_request_owner_v3(source, root, catalog).expect("algebra")
 }
 
-fn planned_nine_request<'a>(
+pub(super) fn planned_nine_request<'a>(
     source: &str,
     authority: &'a ClosedFrontendAuthorityV2,
     root: &FrontendRequestMaterializationRootV3<'_>,

@@ -392,14 +392,20 @@ impl<'a> ExecutionValueTypeReadV3<'a> {
             D::Null => R::Null,
             D::Tuple(items) => R::Tuple(ExecutionValueTypeSliceReadV3(items)),
             D::Record(fields) => R::Record(ExecutionRecordFieldSliceReadV3(fields)),
-            D::Optional(value) => R::Optional(Self(value)),
+            D::Optional(value) => {
+                let [inner] = value.as_ref();
+                R::Optional(Self(inner))
+            }
             D::Collection {
                 element,
                 cardinality,
-            } => R::Collection {
-                element: Self(element),
-                cardinality: *cardinality,
-            },
+            } => {
+                let [inner] = element.as_ref();
+                R::Collection {
+                    element: Self(inner),
+                    cardinality: *cardinality,
+                }
+            }
             D::Union(variants) => R::Union(ExecutionUnionVariantSliceReadV3(variants)),
             D::Unknown => R::Unknown,
         }

@@ -8,8 +8,9 @@ use super::{
 };
 use crate::ty::{RecordFieldTypeV1, RecordFieldV1, ScalarRecordErrorV3};
 use quanta_gqlang_v2_hir::{
-    CatalogPayloadV1, FrontendRequestMaterializationRootV3, FrontendRetainedStoragePermitV3,
-    FrontendStorageRefusalV3, ProgramItemHirV1, QueryHirV1, RelationExprKindV1, SourceIdV2,
+    BoolExprKindV1, CatalogPayloadV1, FrontendRequestMaterializationRootV3,
+    FrontendRetainedStoragePermitV3, FrontendStorageRefusalV3, LiteralV1, ProgramItemHirV1,
+    ProjectionV1, QueryHirV1, RelationExprKindV1, RelationFilterV1, RelationSourceV1, SourceIdV2,
     ViewBodyV1,
 };
 use std::mem::size_of;
@@ -197,21 +198,25 @@ fn scalar_projection_checked_demand_v3(
     if query.result_shape.is_some() {
         return Err(ScalarProjectionCheckRequestErrorV3::UnsupportedShape);
     }
-    let RelationExprKindV1::Project(project) = &query.body.kind else {
-        return Err(ScalarProjectionCheckRequestErrorV3::UnsupportedShape);
-    };
-    let RelationExprKindV1::Source(scan) = &project.input.kind else {
-        return Err(ScalarProjectionCheckRequestErrorV3::UnsupportedShape);
-    };
+    let (project, scan, filter) = request_project_parts_v3(query)
+        .ok_or(ScalarProjectionCheckRequestErrorV3::UnsupportedShape)?;
     let Some(alias) = &scan.alias else {
         return Err(ScalarProjectionCheckRequestErrorV3::UnsupportedShape);
     };
     let schema = source_row.fields();
     if schema.is_empty()
         || project.items().is_empty()
-        || schema
-            .iter()
-            .any(|field| field.value_type().as_type().as_scalar().is_none())
+        || schema.iter().any(|field| {
+            let value = field.value_type();
+            value.as_type().as_scalar().is_none()
+                && !value
+                    .as_optional()
+                    .is_some_and(|optional| optional.inner() == &ValueTypeV1::string())
+                && !value.as_collection().is_some_and(|collection| {
+                    collection.cardinality() == crate::CardinalityV1::Sequence
+                        && collection.element() == &ValueTypeV1::string()
+                })
+        })
     {
         return Err(ScalarProjectionCheckRequestErrorV3::UnsupportedShape);
     }
@@ -241,14 +246,135 @@ fn scalar_projection_checked_demand_v3(
             .checked_add(name.len())
             .ok_or(ScalarProjectionCheckRequestErrorV3::DemandOverflow)?;
     }
-    scalar_projection_type_storage_upper_v3(
+    let base = scalar_projection_type_storage_upper_v3(
         source.len(),
         schema.len(),
         schema_names,
         project.items().len(),
         projection_names,
     )
-    .ok_or(ScalarProjectionCheckRequestErrorV3::DemandOverflow)
+    .ok_or(ScalarProjectionCheckRequestErrorV3::DemandOverflow)?;
+    if let Some(filter) = filter {
+        let BoolExprKindV1::Compare(compare) = &filter.predicate.kind else {
+            return Err(ScalarProjectionCheckRequestErrorV3::UnsupportedShape);
+        };
+        let ValueExprKindV1::Path(path) = &compare.lhs.kind else {
+            return Err(ScalarProjectionCheckRequestErrorV3::UnsupportedShape);
+        };
+        let [field] = path.segments.as_slice() else {
+            return Err(ScalarProjectionCheckRequestErrorV3::UnsupportedShape);
+        };
+        let field_type = source_row
+            .field(&field.name)
+            .ok_or(ScalarProjectionCheckRequestErrorV3::UnsupportedShape)?
+            .value_type();
+        let (literal_type, literal_bytes) = match &compare.rhs.kind {
+            ValueExprKindV1::Literal(LiteralV1::Int(text))
+                if !text.is_empty()
+                    && text.bytes().all(|byte| byte.is_ascii_digit())
+                    && text.parse::<i128>().is_ok() =>
+            {
+                (ValueTypeV1::int(), 0)
+            }
+            ValueExprKindV1::Literal(LiteralV1::Str(text)) => (ValueTypeV1::string(), text.len()),
+            ValueExprKindV1::Literal(LiteralV1::Bool(_)) => (ValueTypeV1::bool(), 0),
+            ValueExprKindV1::Literal(_)
+            | ValueExprKindV1::Symbol(_)
+            | ValueExprKindV1::Path(_)
+            | ValueExprKindV1::Unary(_)
+            | ValueExprKindV1::Binary(_)
+            | ValueExprKindV1::Call(_)
+            | ValueExprKindV1::Paren(_)
+            | ValueExprKindV1::Record(_)
+            | ValueExprKindV1::List(_) => {
+                return Err(ScalarProjectionCheckRequestErrorV3::UnsupportedShape)
+            }
+        };
+        if crate::op::scalar_comparison_overload_v3(&compare.op.symbol, field_type, &literal_type)
+            .is_none()
+        {
+            return Err(ScalarProjectionCheckRequestErrorV3::UnsupportedShape);
+        }
+        scalar_filter_type_storage_upper_v3(base, project.items().len(), literal_bytes)
+            .ok_or(ScalarProjectionCheckRequestErrorV3::DemandOverflow)
+    } else {
+        Ok(base)
+    }
+}
+
+fn request_project_parts_v3(
+    query: &QueryHirV1,
+) -> Option<(&ProjectionV1, &RelationSourceV1, Option<&RelationFilterV1>)> {
+    let RelationExprKindV1::Project(project) = &query.body.kind else {
+        return None;
+    };
+    match &project.input.kind {
+        RelationExprKindV1::Source(scan) => Some((project, scan, None)),
+        RelationExprKindV1::Filter(filter) => {
+            let RelationExprKindV1::Source(scan) = &filter.input.kind else {
+                return None;
+            };
+            let BoolExprKindV1::Compare(compare) = &filter.predicate.kind else {
+                return None;
+            };
+            let ValueExprKindV1::Path(path) = &compare.lhs.kind else {
+                return None;
+            };
+            let [field] = path.segments.as_slice() else {
+                return None;
+            };
+            let ValueExprKindV1::Symbol(base) = &path.base.kind else {
+                return None;
+            };
+            if !matches!(
+                &compare.rhs.kind,
+                ValueExprKindV1::Literal(
+                    LiteralV1::Int(_) | LiteralV1::Str(_) | LiteralV1::Bool(_)
+                )
+            ) {
+                return None;
+            }
+            if scan
+                .alias
+                .as_ref()
+                .map_or(true, |alias| alias.name != base.name)
+                || field.name.is_empty()
+            {
+                return None;
+            }
+            Some((project, scan, Some(filter)))
+        }
+        RelationExprKindV1::Project(_)
+        | RelationExprKindV1::Join(_)
+        | RelationExprKindV1::GroupBy(_)
+        | RelationExprKindV1::OrderBy(_)
+        | RelationExprKindV1::Limit(_) => None,
+    }
+}
+
+/// Extra simultaneous Vec facts/rows for one checked Filter. The existing
+/// scalar upper still accounts for the projected fields and source row.
+#[must_use]
+pub fn scalar_filter_type_storage_upper_v3(
+    base: usize,
+    projection_fields: usize,
+    literal_bytes: usize,
+) -> Option<usize> {
+    let width = |count: usize, slot: usize| count.checked_next_power_of_two()?.checked_mul(slot);
+    let base_facts = width(
+        projection_fields.checked_mul(2)?,
+        size_of::<(SourceQualifiedNodeIdV2, TypedExpressionFactV2)>(),
+    )?;
+    let filtered_facts = width(
+        projection_fields.checked_mul(2)?.checked_add(4)?,
+        size_of::<(SourceQualifiedNodeIdV2, TypedExpressionFactV2)>(),
+    )?;
+    let row_slot = size_of::<(SourceQualifiedNodeIdV2, RecordTypeV1)>();
+    filtered_facts
+        .checked_sub(base_facts)?
+        .checked_add(width(3, row_slot)?.checked_sub(width(2, row_slot)?)?)
+        .and_then(|extra| extra.checked_add(literal_bytes))
+        .and_then(|extra| base.checked_add(extra))
 }
 
 fn finite_scalar_query_v3<'a>(checked: &CheckedHirDocumentV2<'a>) -> Option<&'a QueryHirV1> {
@@ -317,12 +443,8 @@ impl ExpressionTypeKernelV2 {
         if query.result_shape.is_some() {
             return Err(ScalarProjectionRequestErrorV3::UnsupportedShape);
         }
-        let RelationExprKindV1::Project(project) = &query.body.kind else {
-            return Err(ScalarProjectionRequestErrorV3::UnsupportedShape);
-        };
-        let RelationExprKindV1::Source(scan) = &project.input.kind else {
-            return Err(ScalarProjectionRequestErrorV3::UnsupportedShape);
-        };
+        let (project, scan, filter) = request_project_parts_v3(query)
+            .ok_or(ScalarProjectionRequestErrorV3::UnsupportedShape)?;
         let Some(alias) = &scan.alias else {
             return Err(ScalarProjectionRequestErrorV3::UnsupportedShape);
         };
@@ -340,10 +462,94 @@ impl ExpressionTypeKernelV2 {
             items
                 .len()
                 .checked_mul(2)
+                .and_then(|count| count.checked_add(if filter.is_some() { 4 } else { 0 }))
                 .ok_or(ScalarProjectionRequestErrorV3::Storage)?,
         )?;
         let mut output_fields = Vec::new();
         reserve(&mut output_fields, items.len())?;
+        if let Some(filter) = filter {
+            let BoolExprKindV1::Compare(compare) = &filter.predicate.kind else {
+                return Err(ScalarProjectionRequestErrorV3::UnsupportedShape);
+            };
+            let ValueExprKindV1::Path(path) = &compare.lhs.kind else {
+                return Err(ScalarProjectionRequestErrorV3::UnsupportedShape);
+            };
+            let [segment] = path.segments.as_slice() else {
+                return Err(ScalarProjectionRequestErrorV3::UnsupportedShape);
+            };
+            let ValueExprKindV1::Symbol(base) = &path.base.kind else {
+                return Err(ScalarProjectionRequestErrorV3::UnsupportedShape);
+            };
+            if scan
+                .alias
+                .as_ref()
+                .map_or(true, |alias| alias.name != base.name)
+            {
+                return Err(ScalarProjectionRequestErrorV3::UnsupportedShape);
+            }
+            let field = source_row
+                .field(&segment.name)
+                .ok_or(ScalarProjectionRequestErrorV3::UnsupportedShape)?;
+            let (literal_type, literal) = match &compare.rhs.kind {
+                ValueExprKindV1::Literal(LiteralV1::Int(text)) => {
+                    let value = text
+                        .parse::<i128>()
+                        .map_err(|_parse_error| ScalarProjectionRequestErrorV3::UnsupportedShape)?;
+                    (ValueTypeV1::int(), crate::TypedLiteralValueV2::Int(value))
+                }
+                ValueExprKindV1::Literal(LiteralV1::Str(text)) => {
+                    let mut copied = String::new();
+                    copied
+                        .try_reserve_exact(text.len())
+                        .map_err(|_allocation| ScalarProjectionRequestErrorV3::Storage)?;
+                    if copied.capacity() > text.len() {
+                        return Err(ScalarProjectionRequestErrorV3::Storage);
+                    }
+                    copied.push_str(text);
+                    #[cfg(test)]
+                    crate::ty::request_storage_observer::note_string(&copied);
+                    (
+                        ValueTypeV1::string(),
+                        crate::TypedLiteralValueV2::String(copied),
+                    )
+                }
+                ValueExprKindV1::Literal(LiteralV1::Bool(value)) => (
+                    ValueTypeV1::bool(),
+                    crate::TypedLiteralValueV2::Bool(*value),
+                ),
+                ValueExprKindV1::Literal(_)
+                | ValueExprKindV1::Symbol(_)
+                | ValueExprKindV1::Path(_)
+                | ValueExprKindV1::Unary(_)
+                | ValueExprKindV1::Binary(_)
+                | ValueExprKindV1::Call(_)
+                | ValueExprKindV1::Paren(_)
+                | ValueExprKindV1::Record(_)
+                | ValueExprKindV1::List(_) => {
+                    return Err(ScalarProjectionRequestErrorV3::UnsupportedShape)
+                }
+            };
+            let overload = crate::op::scalar_comparison_overload_v3(
+                &compare.op.symbol,
+                field.value_type(),
+                &literal_type,
+            )
+            .ok_or(ScalarProjectionRequestErrorV3::UnsupportedShape)?;
+            let base_type = ValueTypeV1::try_record(source_row.clone())
+                .map_err(ScalarProjectionRequestErrorV3::Diagnostic)?;
+            let pure = ExpressionEffectsV2::pure_scalar();
+            facts.push((key(syntax.source_id, path.base.id), known(base_type, pure)));
+            facts.push((
+                key(syntax.source_id, compare.lhs.id),
+                known(field.value_type().clone(), pure),
+            ));
+            let mut literal_fact = known(literal_type, pure);
+            literal_fact.literal = Some(crate::TypedLiteralFactV2::Value(literal));
+            facts.push((key(syntax.source_id, compare.rhs.id), literal_fact));
+            let mut predicate_fact = known(ValueTypeV1::bool(), overload.effects);
+            predicate_fact.operator_id = Some(overload.id);
+            facts.push((key(syntax.source_id, filter.predicate.id), predicate_fact));
+        }
         for item in items {
             let ValueExprKindV1::Path(path) = &item.value.kind else {
                 return Err(ScalarProjectionRequestErrorV3::UnsupportedShape);
@@ -403,11 +609,17 @@ impl ExpressionTypeKernelV2 {
             },
         )?;
         facts.sort_unstable_by_key(|entry| entry.0);
-        let source_key = key(syntax.source_id, project.input.id);
+        let source_key = key(
+            syntax.source_id,
+            filter.map_or(project.input.id, |filter| filter.input.id),
+        );
         let project_key = key(syntax.source_id, query.body.id);
         let mut rows = Vec::new();
-        reserve(&mut rows, 2)?;
+        reserve(&mut rows, if filter.is_some() { 3 } else { 2 })?;
         rows.push((source_key, source_row.clone()));
+        if filter.is_some() {
+            rows.push((key(syntax.source_id, project.input.id), source_row.clone()));
+        }
         rows.push((project_key, project_row));
         rows.sort_unstable_by_key(|entry| entry.0);
         Ok(TypedExpressionFactsV2 {

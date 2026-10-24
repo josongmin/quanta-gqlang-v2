@@ -15,6 +15,9 @@ use quanta_gqlang_v2_modules::{
 struct ScalarBodyBuffersV3 {
     expressions: Vec<(SourceQualifiedNodeIdV2, TypedExprV2)>,
     source_columns: Vec<OutputColumnContractV2>,
+    filter_inputs: Vec<TypedRelationExprV2>,
+    filter_columns: Vec<OutputColumnContractV2>,
+    prepared_filter_predicate: Option<super::TypedBoolExprV2>,
     columns: Vec<OutputColumnContractV2>,
     keys: Vec<SourceQualifiedNodeIdV2>,
     effects: Vec<ExpressionEffectsV2>,
@@ -57,6 +60,10 @@ enum ScalarSourceInputV3<'a> {
     },
 }
 
+mod demand_v3;
+mod filter_v3;
+mod project_v3;
+
 fn materialize_scalar_projection_v3(
     query: &quanta_gqlang_v2_hir::QueryHirV1,
     project: &quanta_gqlang_v2_hir::ProjectionV1,
@@ -83,12 +90,32 @@ fn materialize_scalar_projection_v3(
                 )
             })
     };
+    let (scan_root, filter) = match &project.input.kind {
+        quanta_gqlang_v2_hir::RelationExprKindV1::Source(_) => (&*project.input, None),
+        quanta_gqlang_v2_hir::RelationExprKindV1::Filter(filter) => (&*filter.input, Some(filter)),
+        quanta_gqlang_v2_hir::RelationExprKindV1::Project(_)
+        | quanta_gqlang_v2_hir::RelationExprKindV1::Join(_)
+        | quanta_gqlang_v2_hir::RelationExprKindV1::GroupBy(_)
+        | quanta_gqlang_v2_hir::RelationExprKindV1::OrderBy(_)
+        | quanta_gqlang_v2_hir::RelationExprKindV1::Limit(_) => {
+            return Err(super::document_failure(
+                "sema.document_validation_failed",
+                source_id,
+                project.input.span,
+                "request projection input is neither Source nor Filter(Source)",
+            ));
+        }
+    };
     // The ordinary relation walk charges Project before visiting its Source.
     steps.charge(source_id, query.span)?;
     steps.charge(source_id, query.body.span)?;
-    steps.charge(source_id, project.input.span)?;
+    if filter.is_some() {
+        steps.charge(source_id, project.input.span)?;
+    }
+    steps.charge(source_id, scan_root.span)?;
     if bound.relation_output(query.body.id).is_none()
         || bound.relation_output(project.input.id).is_none()
+        || bound.relation_output(scan_root.id).is_none()
     {
         return Err(super::document_failure(
             "sema.document_validation_failed",
@@ -99,13 +126,13 @@ fn materialize_scalar_projection_v3(
     }
     let source_key = SourceQualifiedNodeIdV2 {
         source_id,
-        node_id: project.input.id,
+        node_id: scan_root.id,
     };
     let input = match source_input {
         ScalarSourceInputV3::Host(scan) => {
             super::relation_materialization::materialize_host_source_v3(
-                &project.input,
-                checked(project.input.span)?,
+                scan_root,
+                checked(scan_root.span)?,
                 source_key,
                 scan,
                 authority,
@@ -120,8 +147,8 @@ fn materialize_scalar_projection_v3(
             identity,
             previous,
         } => super::relation_materialization::materialize_composition_source_from_prior_v3(
-            &project.input,
-            checked(project.input.span)?,
+            scan_root,
+            checked(scan_root.span)?,
             source_key,
             source,
             target,
@@ -133,102 +160,12 @@ fn materialize_scalar_projection_v3(
             std::mem::take(&mut buffers.source_columns),
         )?,
     };
-    let frame = bound.relation_output(query.body.id).ok_or_else(|| {
-        super::document_failure(
-            "sema.document_validation_failed",
-            source_id,
-            query.body.span,
-            "binder omitted projection output frame",
-        )
-    })?;
-    if frame.len() != project.items().len() {
-        return Err(super::document_failure(
-            "sema.document_validation_failed",
-            source_id,
-            query.body.span,
-            "binder projection output differs from authored item count",
-        ));
-    }
-    for (ordinal, (item, binding)) in project.items().iter().zip(frame).enumerate() {
-        if binding.identity() != (query.body.id, ordinal) {
-            return Err(super::document_failure(
-                "sema.document_validation_failed",
-                source_id,
-                item.value.span,
-                "projection output does not retain its Binder-owned ordinal",
-            ));
-        }
-        let value = super::materialize_declaration_expr(
-            &item.value,
-            source_id,
-            bound,
-            facts,
-            extended,
-            &mut buffers.expressions,
-            steps,
-            super::AggregatePositionV2::Projection,
-        )?;
-        if !matches!(value.type_state(), super::ExpressionTypeStateV2::Known(_)) {
-            return Err(super::document_failure(
-                "sema.unknown_type_in_closed_compile",
-                source_id,
-                item.value.span,
-                "projection field has no concrete value type",
-            ));
-        }
-        let name_span = item
-            .alias
-            .as_ref()
-            .map_or(item.value.span, |alias| alias.span);
-        buffers.columns.push(OutputColumnContractV2::new(
-            binding.name.clone(),
-            super::OutputColumnOriginV2::Expression(value.key()),
-            checked(name_span)?,
-        ));
-        buffers.keys.push(value.key());
-        buffers.effects.push(value.effects());
-    }
-    let project_key = SourceQualifiedNodeIdV2 {
-        source_id,
-        node_id: query.body.id,
+    let input = if let Some(filter) = filter {
+        filter_v3::attach_request_filter_v3(project, filter, input, typed, buffers, steps)?
+    } else {
+        input
     };
-    let row = facts.relation_row(project_key).cloned().ok_or_else(|| {
-        super::document_failure(
-            "sema.document_validation_failed",
-            source_id,
-            query.body.span,
-            "types owner omitted projection row fact",
-        )
-    })?;
-    let root = super::relation_materialization::seal_scalar_project_v3(
-        &query.body,
-        checked(query.body.span)?,
-        project_key,
-        super::relation_materialization::ScalarProjectPartsV3 {
-            input,
-            row,
-            columns: std::mem::take(&mut buffers.columns),
-            keys: std::mem::take(&mut buffers.keys),
-            effects: std::mem::take(&mut buffers.effects),
-        },
-        source_id,
-    )?;
-    let output = root.output().clone();
-    TypedRelationV2::try_new(
-        super::SemanticItemIdV2::new(source_id, query.id),
-        checked(query.span)?,
-        project_key,
-        root,
-        output,
-    )
-    .map_err(|error| {
-        super::document_failure(
-            "sema.document_validation_failed",
-            source_id,
-            query.span,
-            error,
-        )
-    })
+    project_v3::seal_request_project_v3(query, project, input, typed, buffers, steps)
 }
 
 /// The two Query relations of one Binder-identified LET remain under the
@@ -425,6 +362,7 @@ pub fn materialize_source_one_let_body_with_request_owner_v3<'authority>(
             .checked_add(host.id().qualified_name().len())
             .ok_or(SourceBodyMaterializationRequestErrorV3::DemandOverflow)?,
         source.len(),
+        None,
     )
     .ok_or(SourceBodyMaterializationRequestErrorV3::DemandOverflow)?;
     let body_bytes = scalar_projection_body_storage_upper_v3(
@@ -440,6 +378,7 @@ pub fn materialize_source_one_let_body_with_request_owner_v3<'authority>(
             .map_or(0, |alias| alias.name.len()),
         authored.name.len(),
         source.len(),
+        None,
     )
     .ok_or(SourceBodyMaterializationRequestErrorV3::DemandOverflow)?;
     let bytes = producer_bytes
@@ -452,6 +391,9 @@ pub fn materialize_source_one_let_body_with_request_owner_v3<'authority>(
     let mut producer_buffers = ScalarBodyBuffersV3 {
         expressions: reserve_scalar_body_vec_v3(2)?,
         source_columns: reserve_scalar_body_vec_v3(schema.len())?,
+        filter_inputs: Vec::new(),
+        filter_columns: Vec::new(),
+        prepared_filter_predicate: None,
         columns: reserve_scalar_body_vec_v3(1)?,
         keys: reserve_scalar_body_vec_v3(1)?,
         effects: reserve_scalar_body_vec_v3(1)?,
@@ -459,6 +401,9 @@ pub fn materialize_source_one_let_body_with_request_owner_v3<'authority>(
     let mut body_buffers = ScalarBodyBuffersV3 {
         expressions: reserve_scalar_body_vec_v3(2)?,
         source_columns: reserve_scalar_body_vec_v3(1)?,
+        filter_inputs: Vec::new(),
+        filter_columns: Vec::new(),
+        prepared_filter_predicate: None,
         columns: reserve_scalar_body_vec_v3(1)?,
         keys: reserve_scalar_body_vec_v3(1)?,
         effects: reserve_scalar_body_vec_v3(1)?,
@@ -631,8 +576,38 @@ fn scalar_projection_body_storage_upper_v3(
     alias_bytes: usize,
     host_id_bytes: usize,
     source_bytes: usize,
+    filter: Option<(usize, usize)>,
 ) -> Option<usize> {
     let value_nodes = projection_fields.checked_mul(2)?;
+    let filter_extra = if let Some((field_bytes, literal_bytes)) = filter {
+        let expressions_before = request_exact_vec_upper_bytes_v3::<(
+            SourceQualifiedNodeIdV2,
+            TypedExprV2,
+        )>(value_nodes)?;
+        let expressions_after = request_exact_vec_upper_bytes_v3::<(
+            SourceQualifiedNodeIdV2,
+            TypedExprV2,
+        )>(value_nodes.checked_add(4)?)?;
+        let vectors = expressions_after
+            .checked_sub(expressions_before)?
+            .checked_add(request_exact_vec_upper_bytes_v3::<TypedRelationExprV2>(1)?)?
+            .checked_add(request_exact_vec_upper_bytes_v3::<OutputColumnContractV2>(
+                schema_fields,
+            )?)?
+            .checked_add(request_body_push_vec_peak_bytes_v3::<TypedPathSegmentV2>(
+                1,
+            )?)?
+            .checked_add(std::mem::size_of::<TypedPathSegmentV2>())?;
+        let strings = schema_name_bytes
+            .checked_mul(3)?
+            .checked_add(field_bytes.checked_mul(2)?)?
+            .checked_add(literal_bytes.checked_mul(4)?)?
+            .checked_add(alias_bytes)?
+            .checked_add(host_id_bytes.checked_mul(schema_fields.checked_add(1)?)?)?;
+        vectors.checked_add(strings)?
+    } else {
+        0
+    };
     let vectors = [
         request_exact_vec_upper_bytes_v3::<(SourceQualifiedNodeIdV2, TypedExprV2)>(value_nodes)?,
         request_exact_vec_upper_bytes_v3::<OutputColumnContractV2>(schema_fields)?,
@@ -662,7 +637,7 @@ fn scalar_projection_body_storage_upper_v3(
         .checked_add(crate::diagnostic::MAX_MESSAGE_BYTES)?
         .checked_add(source_bytes)?
         .checked_add(host_id_bytes)?;
-    [vectors, strings]
+    [vectors, strings, filter_extra]
         .into_iter()
         .try_fold(0_usize, usize::checked_add)
 }
@@ -807,7 +782,18 @@ pub fn materialize_source_inline_view_with_request_owner_v3<'authority>(
     let quanta_gqlang_v2_hir::RelationExprKindV1::Project(project) = &query.body.kind else {
         return Err(SourceBodyMaterializationRequestErrorV3::UnsupportedShape);
     };
-    let quanta_gqlang_v2_hir::RelationExprKindV1::Source(scan) = &project.input.kind else {
+    let (scan_root, filter) = match &project.input.kind {
+        quanta_gqlang_v2_hir::RelationExprKindV1::Source(_) => (&*project.input, None),
+        quanta_gqlang_v2_hir::RelationExprKindV1::Filter(filter) => (&*filter.input, Some(filter)),
+        quanta_gqlang_v2_hir::RelationExprKindV1::Project(_)
+        | quanta_gqlang_v2_hir::RelationExprKindV1::Join(_)
+        | quanta_gqlang_v2_hir::RelationExprKindV1::GroupBy(_)
+        | quanta_gqlang_v2_hir::RelationExprKindV1::OrderBy(_)
+        | quanta_gqlang_v2_hir::RelationExprKindV1::Limit(_) => {
+            return Err(SourceBodyMaterializationRequestErrorV3::UnsupportedShape)
+        }
+    };
+    let quanta_gqlang_v2_hir::RelationExprKindV1::Source(scan) = &scan_root.kind else {
         return Err(SourceBodyMaterializationRequestErrorV3::UnsupportedShape);
     };
     let Some(host) = authority.relations().get(&scan.name) else {
@@ -816,97 +802,71 @@ pub fn materialize_source_inline_view_with_request_owner_v3<'authority>(
     let Some(alias) = &scan.alias else {
         return Err(SourceBodyMaterializationRequestErrorV3::UnsupportedShape);
     };
-    let steps = project
-        .items()
-        .len()
-        .checked_mul(2)
-        .and_then(|n| n.checked_add(3))
-        .ok_or(SourceBodyMaterializationRequestErrorV3::DemandOverflow)?;
-    let max_steps = usize::try_from(authority.budget().max_semantic_steps())
-        .map_err(|_error| SourceBodyMaterializationRequestErrorV3::DemandOverflow)?;
-    if steps > max_steps {
-        return Err(SourceBodyMaterializationRequestErrorV3::SemanticStepLimit);
-    }
-    let schema = host.relation_type().row().fields();
-    let schema_names = schema
-        .iter()
-        .try_fold(0_usize, |n, field| n.checked_add(field.name().len()))
-        .ok_or(SourceBodyMaterializationRequestErrorV3::DemandOverflow)?;
-    let projection_names = project
-        .items()
-        .iter()
-        .try_fold(0_usize, |n, item| {
-            let name = item.alias.as_ref().map_or_else(
-                || match &item.value.kind {
-                    ValueExprKindV1::Path(path) => path
-                        .segments
-                        .as_slice()
-                        .first()
-                        .map_or("", |field| field.name.as_str()),
-                    ValueExprKindV1::Literal(_)
-                    | ValueExprKindV1::Symbol(_)
-                    | ValueExprKindV1::Unary(_)
-                    | ValueExprKindV1::Binary(_)
-                    | ValueExprKindV1::Call(_)
-                    | ValueExprKindV1::Paren(_)
-                    | ValueExprKindV1::Record(_)
-                    | ValueExprKindV1::List(_) => "",
-                },
-                |alias| alias.name.as_str(),
-            );
-            n.checked_add(name.len())
-        })
-        .ok_or(SourceBodyMaterializationRequestErrorV3::DemandOverflow)?;
-    let path_names = project
-        .items()
-        .iter()
-        .try_fold(0_usize, |n, item| {
-            let ValueExprKindV1::Path(path) = &item.value.kind else {
-                return None;
-            };
-            let [field] = path.segments.as_slice() else {
-                return None;
-            };
-            n.checked_add(field.name.len())
-        })
-        .ok_or(SourceBodyMaterializationRequestErrorV3::UnsupportedShape)?;
-    let host_id = host
-        .id()
-        .namespace()
-        .as_str()
-        .len()
-        .checked_add(host.id().qualified_name().len())
-        .ok_or(SourceBodyMaterializationRequestErrorV3::DemandOverflow)?;
-    let bytes = scalar_projection_body_storage_upper_v3(
-        schema.len(),
-        schema_names,
-        project.items().len(),
-        projection_names,
-        path_names,
+    let bytes = demand_v3::scalar_source_body_demand_v3(
+        project,
+        filter,
+        host,
         alias.name.len(),
-        host_id,
+        authority,
         source.len(),
-    )
-    .ok_or(SourceBodyMaterializationRequestErrorV3::DemandOverflow)?;
+    )?;
+    let schema = host.relation_type().row().fields();
     let storage = root
         .reserve_v3(source_id, source, bytes)
         .map_err(SourceBodyMaterializationRequestErrorV3::Storage)?;
     let item_count = project.items().len();
     let expression_count = item_count
         .checked_mul(2)
+        .and_then(|count| count.checked_add(if filter.is_some() { 4 } else { 0 }))
         .ok_or(SourceBodyMaterializationRequestErrorV3::DemandOverflow)?;
     let expressions = reserve_scalar_body_vec_v3(expression_count)?;
     let source_columns = reserve_scalar_body_vec_v3(schema.len())?;
+    let filter_inputs = if filter.is_some() {
+        reserve_scalar_body_vec_v3(1)?
+    } else {
+        Vec::new()
+    };
+    let filter_columns = if filter.is_some() {
+        reserve_scalar_body_vec_v3(schema.len())?
+    } else {
+        Vec::new()
+    };
     let columns = reserve_scalar_body_vec_v3(item_count)?;
     let keys = reserve_scalar_body_vec_v3(item_count)?;
     let effects = reserve_scalar_body_vec_v3(item_count)?;
     let mut buffers = ScalarBodyBuffersV3 {
         expressions,
         source_columns,
+        filter_inputs,
+        filter_columns,
+        prepared_filter_predicate: None,
         columns,
         keys,
         effects,
     };
+    if let Some(filter) = filter {
+        buffers.prepared_filter_predicate = Some(
+            match filter_v3::prepare_request_filter_predicate_v3(
+                filter,
+                scan_root.id,
+                &typed,
+                &mut buffers.expressions,
+            ) {
+                Ok(value) => value,
+                Err(filter_v3::RequestFilterPrebirthErrorV3::Allocation) => {
+                    return Err(SourceBodyMaterializationRequestErrorV3::FallibleAllocation);
+                }
+                Err(filter_v3::RequestFilterPrebirthErrorV3::Diagnostic(failure)) => {
+                    return Err(SourceBodyMaterializationRequestErrorV3::Diagnostic(
+                        AdmittedSourceBodyMaterializationDiagnosticV3 {
+                            failure,
+                            _storage: storage,
+                        },
+                    ));
+                }
+            },
+        );
+    }
     let relation = match materialize_scalar_projection_v3(
         query,
         project,
@@ -938,52 +898,4 @@ pub fn materialize_source_inline_view_with_request_owner_v3<'authority>(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn admitted_scalar_vec_capacity_fits_prebirth_limit() {
-        fn check<T>(items: usize) {
-            let mut storage: Vec<T> = Vec::new();
-            assert!(storage.try_reserve_exact(items).is_ok());
-            let actual = storage.capacity() * std::mem::size_of::<T>();
-            assert!(
-                request_exact_vec_upper_bytes_v3::<T>(items).is_some_and(|bound| bound >= actual)
-            );
-        }
-        for items in [1, 9] {
-            check::<(SourceQualifiedNodeIdV2, TypedExprV2)>(items * 2);
-            check::<OutputColumnContractV2>(items);
-            check::<SourceQualifiedNodeIdV2>(items);
-            check::<ExpressionEffectsV2>(items);
-        }
-    }
-
-    #[test]
-    fn admitted_scalar_name_copies_fit_source_byte_lengths() {
-        // These are the names and authored source lengths used by the one and
-        // nine column request fixtures. The storage bound counts each name
-        // copy by its source byte length, so allocator capacity must not grow.
-        for name in [
-            "r",
-            "id",
-            "id0",
-            "id1",
-            "id2",
-            "id3",
-            "id4",
-            "id5",
-            "id6",
-            "id7",
-            "id8",
-            "host",
-            "records",
-            "view active | select=from records r | project r.id as id",
-        ] {
-            let owned = name.to_owned();
-            let cloned = owned.clone();
-            assert!(owned.capacity() <= name.len());
-            assert!(cloned.capacity() <= name.len());
-        }
-    }
-}
+mod tests;

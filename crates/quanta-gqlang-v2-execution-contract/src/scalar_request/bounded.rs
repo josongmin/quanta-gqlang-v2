@@ -2,13 +2,14 @@
 
 use super::ScalarProjectionFailureV3;
 use crate::{
-    project_cardinality, project_value_type, ExecutionBindingV3, ExecutionExpressionShapeV3,
-    ExecutionExpressionV3, ExecutionFieldV3, ExecutionRecordFieldV3, ExecutionSchemaV3,
-    ExecutionSourceV3, ExecutionValueTypeV3,
+    project_cardinality, project_value_type, ExecutionBindingV3, ExecutionCardinalityV3,
+    ExecutionExpressionShapeV3, ExecutionExpressionV3, ExecutionFieldV3, ExecutionLiteralV3,
+    ExecutionRecordFieldV3, ExecutionSchemaV3, ExecutionSourceV3, ExecutionValueTypeV3,
 };
 use quanta_gqlang_v2_sema::{
     ExpressionTypeStateV2, RelationOutputContractV2, ResolvedRelationSourceKindV2,
-    ResolvedValueBindingV2, TypedExprShapeV2, TypedExprV2, ValueTypeV1,
+    ResolvedValueBindingV2, TypedExprShapeV2, TypedExprV2, TypedLiteralFactV2, TypedLiteralValueV2,
+    ValueTypeV1,
 };
 
 /// The demand charges `count` slots. Reject an allocator's larger capacity
@@ -44,6 +45,46 @@ fn scalar_value(value: &ValueTypeV1) -> Result<ExecutionValueTypeV3, ScalarProje
     Ok(project_value_type(value))
 }
 
+/// A single admitted Box birth uses the same fallible, exact-capacity slot
+/// constructor as the surrounding execution DTO. The array conversion does
+/// not allocate another singleton.
+fn singleton(
+    value: ExecutionValueTypeV3,
+) -> Result<Box<[ExecutionValueTypeV3; 1]>, ScalarProjectionFailureV3> {
+    let mut values = slots::<ExecutionValueTypeV3>(1)?;
+    values.push(value);
+    values
+        .into_boxed_slice()
+        .try_into()
+        .map_err(|_unexpected_width| ScalarProjectionFailureV3::UnsupportedShape)
+}
+
+fn scan_value(value: &ValueTypeV1) -> Result<ExecutionValueTypeV3, ScalarProjectionFailureV3> {
+    if let Some(optional) = value.as_optional() {
+        if optional.inner().as_type().as_scalar()
+            != Some(&quanta_gqlang_v2_sema::ScalarTyV1::String)
+        {
+            return Err(ScalarProjectionFailureV3::UnsupportedShape);
+        }
+        return Ok(ExecutionValueTypeV3::Optional(singleton(scalar_value(
+            optional.inner(),
+        )?)?));
+    }
+    if let Some(collection) = value.as_collection() {
+        if collection.cardinality() != quanta_gqlang_v2_sema::CardinalityV1::Sequence
+            || collection.element().as_type().as_scalar()
+                != Some(&quanta_gqlang_v2_sema::ScalarTyV1::String)
+        {
+            return Err(ScalarProjectionFailureV3::UnsupportedShape);
+        }
+        return Ok(ExecutionValueTypeV3::Collection {
+            element: singleton(scalar_value(collection.element())?)?,
+            cardinality: ExecutionCardinalityV3::Sequence,
+        });
+    }
+    scalar_value(value)
+}
+
 fn record_value(value: &ValueTypeV1) -> Result<ExecutionValueTypeV3, ScalarProjectionFailureV3> {
     let record = value
         .as_record()
@@ -52,7 +93,7 @@ fn record_value(value: &ValueTypeV1) -> Result<ExecutionValueTypeV3, ScalarProje
     for field in record.fields() {
         fields.push(ExecutionRecordFieldV3 {
             name: string(field.name())?,
-            value_type: scalar_value(field.value_type())?,
+            value_type: scan_value(field.value_type())?,
         });
     }
     Ok(ExecutionValueTypeV3::Record(fields.into_boxed_slice()))
@@ -94,15 +135,53 @@ pub(super) fn expression(
                 },
             )
         }
-        TypedExprShapeV2::Literal(_)
-        | TypedExprShapeV2::Unary { .. }
+        TypedExprShapeV2::Literal(fact) => {
+            let literal = match fact {
+                TypedLiteralFactV2::Value(TypedLiteralValueV2::Int(value)) => {
+                    ExecutionLiteralV3::Int(*value)
+                }
+                TypedLiteralFactV2::Value(TypedLiteralValueV2::Bool(value)) => {
+                    ExecutionLiteralV3::Bool(*value)
+                }
+                TypedLiteralFactV2::Value(TypedLiteralValueV2::String(value)) => {
+                    ExecutionLiteralV3::String(string(value)?)
+                }
+                TypedLiteralFactV2::Value(
+                    TypedLiteralValueV2::Float(_) | TypedLiteralValueV2::Null,
+                )
+                | TypedLiteralFactV2::DeferredI128MinMagnitude => {
+                    return Err(ScalarProjectionFailureV3::UnsupportedShape);
+                }
+            };
+            (
+                scalar_value(value)?,
+                ExecutionExpressionShapeV3::Literal(literal),
+            )
+        }
+        TypedExprShapeV2::Compare { operator, lhs, rhs } => {
+            let symbol = operator
+                .symbol()
+                .ok_or(ScalarProjectionFailureV3::UnsupportedShape)?;
+            let operator = crate::ExecutionOperatorV3 {
+                symbol: string(symbol)?,
+                overload_id: operator.raw(),
+            };
+            (
+                scalar_value(value)?,
+                ExecutionExpressionShapeV3::Compare {
+                    operator,
+                    lhs: *lhs,
+                    rhs: *rhs,
+                },
+            )
+        }
+        TypedExprShapeV2::Unary { .. }
         | TypedExprShapeV2::Binary { .. }
         | TypedExprShapeV2::Call { .. }
         | TypedExprShapeV2::Paren { .. }
         | TypedExprShapeV2::Record(_)
         | TypedExprShapeV2::List(_)
         | TypedExprShapeV2::BoolValue { .. }
-        | TypedExprShapeV2::Compare { .. }
         | TypedExprShapeV2::And { .. }
         | TypedExprShapeV2::Or { .. }
         | TypedExprShapeV2::Not { .. }
@@ -121,6 +200,19 @@ pub(super) fn expression(
 pub(crate) fn schema(
     output: &RelationOutputContractV2,
 ) -> Result<ExecutionSchemaV3, ScalarProjectionFailureV3> {
+    schema_with_mode(output, false)
+}
+
+pub(crate) fn scan_schema(
+    output: &RelationOutputContractV2,
+) -> Result<ExecutionSchemaV3, ScalarProjectionFailureV3> {
+    schema_with_mode(output, true)
+}
+
+fn schema_with_mode(
+    output: &RelationOutputContractV2,
+    scan: bool,
+) -> Result<ExecutionSchemaV3, ScalarProjectionFailureV3> {
     if !output.partition_keys().is_empty() || !output.ordering().is_empty() {
         return Err(ScalarProjectionFailureV3::UnsupportedShape);
     }
@@ -128,7 +220,11 @@ pub(crate) fn schema(
     for field in output.row().fields() {
         fields.push(ExecutionFieldV3 {
             name: string(field.name())?,
-            value_type: scalar_value(field.value_type())?,
+            value_type: if scan {
+                scan_value(field.value_type())?
+            } else {
+                scalar_value(field.value_type())?
+            },
         });
     }
     Ok(ExecutionSchemaV3 {

@@ -90,19 +90,19 @@ fn nested_value_reads_preserve_tags_option_cardinality_and_field_order() {
     let dto = ExecutionValueTypeV3::Record(Box::new([
         ExecutionRecordFieldV3 {
             name: "second".to_owned(),
-            value_type: ExecutionValueTypeV3::Optional(Box::new(ExecutionValueTypeV3::Scalar(
+            value_type: ExecutionValueTypeV3::Optional(Box::new([ExecutionValueTypeV3::Scalar(
                 ExecutionScalarTypeV3::RepoPath,
-            ))),
+            )])),
         },
         ExecutionRecordFieldV3 {
             name: "first".to_owned(),
             value_type: ExecutionValueTypeV3::Collection {
-                element: Box::new(ExecutionValueTypeV3::Union(Box::new([
+                element: Box::new([ExecutionValueTypeV3::Union(Box::new([
                     ExecutionUnionVariantV3 {
                         tag: "variant".to_owned(),
                         value_type: ExecutionValueTypeV3::Null,
                     },
-                ]))),
+                ]))]),
                 cardinality: ExecutionCardinalityV3::Sequence,
             },
         },
@@ -1338,16 +1338,16 @@ fn value_type_projection_covers_every_constructible_arm() {
     let optional = ValueTypeV1::try_optional(ValueTypeV1::bool()).expect("optional scalar");
     assert_eq!(
         project_value_type(&optional),
-        ExecutionValueTypeV3::Optional(Box::new(ExecutionValueTypeV3::Scalar(
+        ExecutionValueTypeV3::Optional(Box::new([ExecutionValueTypeV3::Scalar(
             ExecutionScalarTypeV3::Bool
-        )))
+        )]))
     );
     let collection = ValueTypeV1::try_collection(ValueTypeV1::int(), CardinalityV1::Sequence)
         .expect("sequence collection");
     assert_eq!(
         project_value_type(&collection),
         ExecutionValueTypeV3::Collection {
-            element: Box::new(ExecutionValueTypeV3::Scalar(ExecutionScalarTypeV3::Int)),
+            element: Box::new([ExecutionValueTypeV3::Scalar(ExecutionScalarTypeV3::Int)]),
             cardinality: ExecutionCardinalityV3::Sequence,
         }
     );
@@ -1389,9 +1389,9 @@ fn composite_value_type_arms_encode_distinctly() {
             name: "id".to_owned(),
             value_type: scalar.clone(),
         }])),
-        ExecutionValueTypeV3::Optional(Box::new(scalar.clone())),
+        ExecutionValueTypeV3::Optional(Box::new([scalar.clone()])),
         ExecutionValueTypeV3::Collection {
-            element: Box::new(scalar.clone()),
+            element: Box::new([scalar.clone()]),
             cardinality: ExecutionCardinalityV3::Sequence,
         },
         ExecutionValueTypeV3::Union(Box::new([ExecutionUnionVariantV3 {

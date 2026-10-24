@@ -883,6 +883,7 @@ fn put_value_type(out: &mut impl CanonicalByteSink, value: &ExecutionValueTypeV3
         }
         ExecutionValueTypeV3::Optional(inner) => {
             put_u8(out, 4);
+            let [inner] = inner.as_ref();
             put_value_type(out, inner);
         }
         ExecutionValueTypeV3::Collection {
@@ -890,6 +891,7 @@ fn put_value_type(out: &mut impl CanonicalByteSink, value: &ExecutionValueTypeV3
             cardinality,
         } => {
             put_u8(out, 5);
+            let [element] = element.as_ref();
             put_value_type(out, element);
             put_u8(out, cardinality_tag(*cardinality));
         }

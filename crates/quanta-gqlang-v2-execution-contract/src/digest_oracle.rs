@@ -76,10 +76,10 @@ fn type_cases() -> Vec<(ExecutionValueTypeV3, Vec<u8>)> {
             }])),
             [vec![3], seq(&[[text("é"), vec![1]].concat()])].concat(),
         ),
-        (T::Optional(Box::new(T::Scalar(S::Int))), vec![4, 0, 1]),
+        (T::Optional(Box::new([T::Scalar(S::Int)])), vec![4, 0, 1]),
         (
             T::Collection {
-                element: Box::new(T::Null),
+                element: Box::new([T::Null]),
                 cardinality: ExecutionCardinalityV3::Bag,
             },
             vec![5, 1, 1],

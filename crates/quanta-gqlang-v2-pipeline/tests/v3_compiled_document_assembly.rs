@@ -415,6 +415,12 @@ mod request_body_tests;
 #[path = "v3_compiled_document_assembly/scalar_request_tests.rs"]
 mod scalar_request_tests;
 
+#[path = "v3_compiled_document_assembly/filter_request_tests.rs"]
+mod filter_request_tests;
+
+#[path = "v3_compiled_document_assembly/mixed_schema_request_tests.rs"]
+mod mixed_schema_request_tests;
+
 #[path = "v3_compiled_document_assembly/execution_contract_tests.rs"]
 mod execution_contract_tests;
 

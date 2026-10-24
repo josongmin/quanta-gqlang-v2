@@ -174,6 +174,7 @@ pub struct ScalarSourceProjectReadV3<'read, 'authority> {
     authored_item_location: &'read CheckedLocatedSpanV2,
     budget_receipt: DownstreamBudgetReceiptV2,
     scan: &'read TypedRelationExprV2,
+    filter: Option<&'read TypedRelationExprV2>,
     project: &'read TypedRelationExprV2,
     _authority: std::marker::PhantomData<&'authority ()>,
 }
@@ -210,6 +211,28 @@ impl ScalarSourceProjectReadV3<'_, '_> {
     }
 
     #[must_use]
+    pub fn filter_key_v3(&self) -> Option<SourceQualifiedNodeIdV2> {
+        self.filter.map(TypedRelationExprV2::key)
+    }
+
+    #[must_use]
+    pub fn filter_location_v3(&self) -> Option<&CheckedLocatedSpanV2> {
+        self.filter.map(TypedRelationExprV2::location)
+    }
+
+    #[must_use]
+    pub fn filter_output_v3(&self) -> Option<&RelationOutputContractV2> {
+        self.filter.map(TypedRelationExprV2::output)
+    }
+
+    #[must_use]
+    pub fn filter_predicate_key_v3(&self) -> Option<SourceQualifiedNodeIdV2> {
+        self.filter
+            .and_then(TypedRelationExprV2::predicate)
+            .map(|predicate| predicate.expression().key())
+    }
+
+    #[must_use]
     pub fn scan_location_v3(&self) -> &CheckedLocatedSpanV2 {
         self.scan.location()
     }
@@ -240,6 +263,12 @@ impl ScalarSourceProjectReadV3<'_, '_> {
         self.project.expressions().iter().copied()
     }
 
+    pub fn expression_keys_v3(
+        &self,
+    ) -> impl ExactSizeIterator<Item = SourceQualifiedNodeIdV2> + '_ {
+        self.expressions.iter().map(|(key, _)| *key)
+    }
+
     #[must_use]
     pub fn expression_v3(&self, key: SourceQualifiedNodeIdV2) -> Option<&TypedExprV2> {
         self.expressions
@@ -262,10 +291,25 @@ fn source_project_read_v3<'read, 'authority>(
         return None;
     }
     let mut inputs = project.inputs();
-    let scan = inputs.next()?;
-    if inputs.next().is_some() || !matches!(scan, TypedRelationExprV2::Scan(_)) {
+    let child = inputs.next()?;
+    if inputs.next().is_some() {
         return None;
     }
+    let (scan, filter) = if matches!(child, TypedRelationExprV2::Filter(_)) {
+        let mut filter_inputs = child.inputs();
+        let scan = filter_inputs.next()?;
+        if filter_inputs.next().is_some()
+            || !matches!(scan, TypedRelationExprV2::Scan(_))
+            || child.predicate().is_none()
+        {
+            return None;
+        }
+        (scan, Some(child))
+    } else if matches!(child, TypedRelationExprV2::Scan(_)) {
+        (child, None)
+    } else {
+        return None;
+    };
     Some(ScalarSourceProjectReadV3 {
         relation,
         item_id,
@@ -273,6 +317,7 @@ fn source_project_read_v3<'read, 'authority>(
         authored_item_location,
         budget_receipt,
         scan,
+        filter,
         project,
         _authority: std::marker::PhantomData,
     })

@@ -110,7 +110,18 @@ fn scalar_source_project_shape_v3<'a>(
     let quanta_gqlang_v2_hir::RelationExprKindV1::Project(project) = &query.body.kind else {
         return Err(SourceBodyTypesRequestErrorV3::UnsupportedShape);
     };
-    let quanta_gqlang_v2_hir::RelationExprKindV1::Source(scan) = &project.input.kind else {
+    let (scan_root, filter) = match &project.input.kind {
+        quanta_gqlang_v2_hir::RelationExprKindV1::Source(_) => (&*project.input, None),
+        quanta_gqlang_v2_hir::RelationExprKindV1::Filter(filter) => (&*filter.input, Some(filter)),
+        quanta_gqlang_v2_hir::RelationExprKindV1::Project(_)
+        | quanta_gqlang_v2_hir::RelationExprKindV1::Join(_)
+        | quanta_gqlang_v2_hir::RelationExprKindV1::GroupBy(_)
+        | quanta_gqlang_v2_hir::RelationExprKindV1::OrderBy(_)
+        | quanta_gqlang_v2_hir::RelationExprKindV1::Limit(_) => {
+            return Err(SourceBodyTypesRequestErrorV3::UnsupportedShape)
+        }
+    };
+    let quanta_gqlang_v2_hir::RelationExprKindV1::Source(scan) = &scan_root.kind else {
         return Err(SourceBodyTypesRequestErrorV3::UnsupportedShape);
     };
     let Some(alias) = &scan.alias else {
@@ -127,19 +138,35 @@ fn scalar_source_project_shape_v3<'a>(
     };
     let schema = host.relation_type().row().fields();
     if schema.is_empty()
-        || schema
-            .iter()
-            .any(|field| field.value_type().as_type().as_scalar().is_none())
+        || schema.iter().any(|field| {
+            let value = field.value_type();
+            value.as_type().as_scalar().is_none()
+                && !value.as_optional().is_some_and(|optional| {
+                    optional.inner() == &quanta_gqlang_v2_types::ValueTypeV1::string()
+                })
+                && !value.as_collection().is_some_and(|collection| {
+                    collection.cardinality() == quanta_gqlang_v2_types::CardinalityV1::Sequence
+                        && collection.element() == &quanta_gqlang_v2_types::ValueTypeV1::string()
+                })
+        })
     {
         return Err(SourceBodyTypesRequestErrorV3::UnsupportedShape);
     }
-    let Some([source_binding]) = reader.relation_output(project.input.id) else {
+    let Some([source_binding]) = reader.relation_output(scan_root.id) else {
         return Err(SourceBodyTypesRequestErrorV3::UnsupportedShape);
     };
-    if source_binding.identity() != (project.input.id, 0)
+    if source_binding.identity() != (scan_root.id, 0)
         || source_binding.kind != BinderKindV1::Alias
         || source_binding.name != alias.name
     {
+        return Err(SourceBodyTypesRequestErrorV3::UnsupportedShape);
+    }
+    if filter.is_some_and(|_| {
+        !matches!(reader.relation_output(project.input.id), Some([binding])
+            if binding.identity() == (scan_root.id, 0)
+                && binding.kind == BinderKindV1::Alias
+                && binding.name == alias.name)
+    }) {
         return Err(SourceBodyTypesRequestErrorV3::UnsupportedShape);
     }
     let items = project.items();
@@ -167,7 +194,7 @@ fn scalar_source_project_shape_v3<'a>(
             return Err(SourceBodyTypesRequestErrorV3::UnsupportedShape);
         };
         if base.name != alias.name
-            || target.identity() != (project.input.id, 0)
+            || target.identity() != (scan_root.id, 0)
             || target.kind != BinderKindV1::Alias
             || schema
                 .iter()
@@ -192,7 +219,7 @@ fn scalar_source_project_shape_v3<'a>(
             total.checked_add(field.name().len())
         })
         .ok_or(SourceBodyTypesRequestErrorV3::DemandOverflow)?;
-    let bytes = quanta_gqlang_v2_types::scalar_projection_type_storage_upper_v3(
+    let base_bytes = quanta_gqlang_v2_types::scalar_projection_type_storage_upper_v3(
         source.len(),
         schema.len(),
         schema_name_bytes,
@@ -200,12 +227,42 @@ fn scalar_source_project_shape_v3<'a>(
         projection_name_bytes,
     )
     .ok_or(SourceBodyTypesRequestErrorV3::DemandOverflow)?;
+    let bytes = if let Some(filter) = filter {
+        let quanta_gqlang_v2_hir::BoolExprKindV1::Compare(compare) = &filter.predicate.kind else {
+            return Err(SourceBodyTypesRequestErrorV3::UnsupportedShape);
+        };
+        let literal_bytes = match &compare.rhs.kind {
+            ValueExprKindV1::Literal(quanta_gqlang_v2_hir::LiteralV1::Str(value)) => value.len(),
+            ValueExprKindV1::Literal(
+                quanta_gqlang_v2_hir::LiteralV1::Int(_) | quanta_gqlang_v2_hir::LiteralV1::Bool(_),
+            ) => 0,
+            ValueExprKindV1::Literal(_)
+            | ValueExprKindV1::Symbol(_)
+            | ValueExprKindV1::Path(_)
+            | ValueExprKindV1::Unary(_)
+            | ValueExprKindV1::Binary(_)
+            | ValueExprKindV1::Call(_)
+            | ValueExprKindV1::Paren(_)
+            | ValueExprKindV1::Record(_)
+            | ValueExprKindV1::List(_) => {
+                return Err(SourceBodyTypesRequestErrorV3::UnsupportedShape)
+            }
+        };
+        quanta_gqlang_v2_types::scalar_filter_type_storage_upper_v3(
+            base_bytes,
+            items.len(),
+            literal_bytes,
+        )
+        .ok_or(SourceBodyTypesRequestErrorV3::DemandOverflow)?
+    } else {
+        base_bytes
+    };
     Ok((query, bytes))
 }
 
 /// Produce actual Types facts from the sealed Binder owner. This first source
 /// family is deliberately finite: one bare Query or inline View over an authored
-/// host Source -> Project of scalar one-segment paths. Other families stop before
+/// host Source -> optional single Filter -> Project of scalar one-segment paths. Other families stop before
 /// the first Types allocation and cannot become a generic compile success.
 pub fn type_source_inline_view_with_request_owner_v3<'authority>(
     declared: DeclaredDocumentV2,
@@ -248,7 +305,18 @@ pub fn type_source_inline_view_with_request_owner_v3<'authority>(
     let quanta_gqlang_v2_hir::RelationExprKindV1::Project(project) = &query.body.kind else {
         return Err(SourceBodyTypesRequestErrorV3::UnsupportedShape);
     };
-    let quanta_gqlang_v2_hir::RelationExprKindV1::Source(scan) = &project.input.kind else {
+    let scan_root = match &project.input.kind {
+        quanta_gqlang_v2_hir::RelationExprKindV1::Source(_) => &*project.input,
+        quanta_gqlang_v2_hir::RelationExprKindV1::Filter(filter) => &*filter.input,
+        quanta_gqlang_v2_hir::RelationExprKindV1::Project(_)
+        | quanta_gqlang_v2_hir::RelationExprKindV1::Join(_)
+        | quanta_gqlang_v2_hir::RelationExprKindV1::GroupBy(_)
+        | quanta_gqlang_v2_hir::RelationExprKindV1::OrderBy(_)
+        | quanta_gqlang_v2_hir::RelationExprKindV1::Limit(_) => {
+            return Err(SourceBodyTypesRequestErrorV3::UnsupportedShape)
+        }
+    };
+    let quanta_gqlang_v2_hir::RelationExprKindV1::Source(scan) = &scan_root.kind else {
         return Err(SourceBodyTypesRequestErrorV3::UnsupportedShape);
     };
     let Some(host) = authority.relations().get(&scan.name) else {

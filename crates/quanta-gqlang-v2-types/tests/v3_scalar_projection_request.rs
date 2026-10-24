@@ -6,6 +6,7 @@ use quanta_gqlang_v2_hir::{
     HirBuilderV1, HirDocumentV1, LocatedSpanV2, PathSegmentV1, ProgramItemHirV1, ProjectionItemV1,
     SourceIdV2, SourceRegistrationV2, SourceRegistryViewV2, SpanV1, ViewBodyV1,
 };
+use quanta_gqlang_v2_types::CardinalityV1;
 use quanta_gqlang_v2_types::{
     check_scalar_projection_with_request_owner_v3, scalar_projection_type_storage_upper_v3,
     AdmittedBuiltinRegistryV3, BuiltinRegistryV2, DeferredRelationRowFieldInputV2,
@@ -56,6 +57,220 @@ fn finite_request_scalar_projection_matches_legacy_owner_for_one_and_nine_fields
         compare_projection(count, false);
     }
     compare_projection(1, true);
+}
+
+const HOST_FIELDS: [(&str, bool, bool); 9] = [
+    ("row_kind", false, false),
+    ("scope_id", false, false),
+    ("summary_symbol_id", true, false),
+    ("summary_source_scope", true, false),
+    ("summary_effect_axes", false, true),
+    ("edge_caller_symbol", true, false),
+    ("edge_callee_symbol", true, false),
+    ("edge_effect_axis", true, false),
+    ("degraded_scope", true, false),
+];
+
+#[test]
+fn nine_field_host_scan_preserves_optional_sequence_but_only_selects_scalar() {
+    for (selected, accepted) in [
+        ("row_kind", true),
+        ("summary_effect_axes", false),
+        ("summary_symbol_id", false),
+    ] {
+        let source = "x".repeat(512);
+        let source_id = SourceIdV2::from_raw(if accepted { 201 } else { 202 });
+        let b = HirBuilderV1::new();
+        let span = SpanV1::new(0, 100);
+        let scan = b.relation_source(
+            "effect",
+            SpanV1::new(0, 6),
+            Some(AliasV1 {
+                name: "e".into(),
+                span: SpanV1::new(7, 8),
+            }),
+            span,
+        );
+        let scan_id = scan.id;
+        let base = b.symbol("e", SpanV1::new(10, 11));
+        let path = b
+            .try_path(
+                base.clone(),
+                vec![PathSegmentV1 {
+                    name: selected.into(),
+                    span: SpanV1::new(12, 31),
+                }],
+                SpanV1::new(10, 31),
+            )
+            .unwrap();
+        let path_id = path.id;
+        let project = b
+            .try_project(
+                scan,
+                vec![ProjectionItemV1 {
+                    value: path,
+                    alias: Some(AliasV1 {
+                        name: "kind".into(),
+                        span: SpanV1::new(32, 36),
+                    }),
+                }],
+                span,
+            )
+            .unwrap();
+        let project_id = project.id;
+        let checked = CheckedHirDocumentOwnedV2::try_new(HirDocumentV1 {
+            source_id,
+            source_len: source.len(),
+            items: vec![ProgramItemHirV1::Query(Box::new(
+                b.query(project, None, span),
+            ))],
+        })
+        .unwrap();
+        let extended = SourceRegistryViewV2::try_new(Vec::new())
+            .unwrap()
+            .try_extend_document(SourceRegistrationV2 {
+                source_id,
+                source_len: source.len(),
+            })
+            .unwrap();
+        let location = extended
+            .combined()
+            .try_check_location(LocatedSpanV2 {
+                source_id,
+                span: SpanV1::new(10, 11),
+            })
+            .unwrap();
+        let fields = HOST_FIELDS
+            .into_iter()
+            .map(|(name, optional, sequence)| {
+                let value = if optional {
+                    ValueTypeV1::try_optional(ValueTypeV1::string()).unwrap()
+                } else if sequence {
+                    ValueTypeV1::try_collection(ValueTypeV1::string(), CardinalityV1::Sequence)
+                        .unwrap()
+                } else {
+                    ValueTypeV1::string()
+                };
+                RecordFieldTypeV1::try_new(name, value, location.clone()).unwrap()
+            })
+            .collect();
+        let row = RecordTypeV1::try_new(fields).unwrap();
+        assert_eq!(row.fields().len(), 9);
+        assert_eq!(row.fields().get(4).unwrap().name(), "summary_effect_axes");
+        let ledger = Arc::new(Ledger {
+            live: AtomicU64::new(0),
+        });
+        let sink = Sink(ledger.clone());
+        let root =
+            FrontendRequestMaterializationRootV3::from_issued_sink_v3(source_id, &source, &sink);
+        let parent = root.reserve_v3(source_id, &source, 1).unwrap();
+        let builtins =
+            BuiltinRegistryV2::try_closed_with_request_owner_v3(&root, source_id, &source, &parent)
+                .unwrap();
+        let schema_names = row.fields().iter().map(|field| field.name().len()).sum();
+        // The final parameter is the *output name byte count*, not the two
+        // HIR references. `kind` requires four retained bytes.
+        let demand = scalar_projection_type_storage_upper_v3(
+            source.len(),
+            row.fields().len(),
+            schema_names,
+            1,
+            "kind".len(),
+        )
+        .unwrap();
+        let storage = root.reserve_v3(source_id, &source, demand).unwrap();
+        let result = check_scalar_projection_with_request_owner_v3(
+            &checked.as_checked(),
+            &extended,
+            &row,
+            builtins,
+            storage,
+            &root,
+            source_id,
+            &source,
+        );
+        if accepted {
+            let request = result.unwrap();
+            let key = |node_id| SourceQualifiedNodeIdV2 { source_id, node_id };
+            assert_eq!(request.relation_row(key(scan_id)), Some(&row));
+            assert_eq!(
+                request
+                    .relation_row(key(project_id))
+                    .unwrap()
+                    .fields()
+                    .first()
+                    .unwrap()
+                    .name(),
+                "kind"
+            );
+            assert!(request.get(key(path_id)).is_some());
+            assert!(request.get(key(base.id)).is_some());
+            let source_fields = row
+                .fields()
+                .iter()
+                .enumerate()
+                .map(|(ordinal, field)| {
+                    DeferredRelationRowFieldInputV2::new(
+                        ordinal,
+                        field.name().to_owned(),
+                        location.clone(),
+                        RelationRowFieldSourceV2::Known(field.value_type().clone()),
+                    )
+                })
+                .collect();
+            let project_fields = vec![DeferredRelationRowFieldInputV2::new(
+                0,
+                "kind".to_owned(),
+                location.clone(),
+                RelationRowFieldSourceV2::PriorExpression(key(path_id)),
+            )];
+            let inputs = ResolvedTypeInputsV2::try_new(
+                checked.as_checked(),
+                &extended,
+                vec![ResolvedTypeInputEntryV2 {
+                    key: key(base.id),
+                    value: ResolvedTypeInputValueV2::Binding(
+                        quanta_gqlang_v2_types::ExpressionTypeStateV2::Known(
+                            ValueTypeV1::try_record(row.clone()).unwrap(),
+                        ),
+                    ),
+                }],
+                Vec::new(),
+                vec![
+                    DeferredRelationRowInputV2::known_source(key(scan_id), 9, source_fields),
+                    DeferredRelationRowInputV2::expression_fields(
+                        key(project_id),
+                        1,
+                        project_fields,
+                    ),
+                ],
+            )
+            .unwrap();
+            let ordinary = ExpressionTypeKernelV2::try_closed()
+                .unwrap()
+                .check_document(&inputs)
+                .unwrap();
+            assert_eq!(
+                request.relation_row(key(scan_id)),
+                ordinary.relation_row(key(scan_id))
+            );
+            assert_eq!(
+                request.relation_row(key(project_id)),
+                ordinary.relation_row(key(project_id))
+            );
+            assert_eq!(request.get(key(path_id)), ordinary.get(key(path_id)));
+            drop(parent);
+            assert!(ledger.live.load(Ordering::SeqCst) > 0);
+            drop(request);
+        } else {
+            assert!(
+                result.is_err(),
+                "selected Optional/Sequence must remain non-scalar"
+            );
+            drop(parent);
+        }
+        assert_eq!(ledger.live.load(Ordering::SeqCst), 0);
+    }
 }
 
 fn compare_projection(count: usize, bare_query: bool) {

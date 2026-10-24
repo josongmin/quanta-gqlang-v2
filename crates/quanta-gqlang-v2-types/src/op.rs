@@ -152,6 +152,35 @@ pub struct OperatorRegistryV2 {
 mod tests {
     use super::*;
     #[test]
+    fn admitted_comparison_reuses_closed_registry_ids_and_effects() {
+        let registry = OperatorRegistryV2::try_closed().expect("closed registry");
+        for (symbol, value, expected) in [
+            (">", ValueTypeV1::int(), 220),
+            ("=", ValueTypeV1::string(), 303),
+            ("<", ValueTypeV1::string(), 202),
+            ("=", ValueTypeV1::bool(), 300),
+            ("<>", ValueTypeV1::bool(), 320),
+        ] {
+            let admitted = scalar_comparison_overload_v3(symbol, &value, &value)
+                .expect("known scalar comparison");
+            assert_eq!(admitted.id.raw(), expected);
+            let ordinary = registry
+                .binary_overloads(symbol)
+                .iter()
+                .find(|entry| entry.id == admitted.id)
+                .expect("same closed entry");
+            assert_eq!(&admitted, ordinary);
+        }
+        assert!(
+            scalar_comparison_overload_v3("<", &ValueTypeV1::bool(), &ValueTypeV1::bool())
+                .is_none()
+        );
+        assert!(
+            scalar_comparison_overload_v3("=", &ValueTypeV1::int(), &ValueTypeV1::string())
+                .is_none()
+        );
+    }
+    #[test]
     fn closed_registry_preserves_complete_operator_surface_and_explicit_ids() {
         let registry = OperatorRegistryV2::try_closed().expect("valid static registry");
         for symbol in [
@@ -983,85 +1012,105 @@ fn closed_scalar_binary_entries() -> Vec<(String, BinaryOverloadV1)> {
     binary
 }
 
+const ORDERED_COMPARISONS: [(OperatorSemanticKindV2, u32); 4] = [
+    (OperatorSemanticKindV2::Less, 200),
+    (OperatorSemanticKindV2::LessEqual, 210),
+    (OperatorSemanticKindV2::Greater, 220),
+    (OperatorSemanticKindV2::GreaterEqual, 230),
+];
+const EQUALITY_COMPARISONS: [(OperatorSemanticKindV2, u32); 2] = [
+    (OperatorSemanticKindV2::Equal, 300),
+    (OperatorSemanticKindV2::NotEqual, 320),
+];
+const ORDERED_SCALARS: [crate::ScalarTyV1; 4] = [
+    crate::ScalarTyV1::Int,
+    crate::ScalarTyV1::Float,
+    crate::ScalarTyV1::String,
+    crate::ScalarTyV1::Duration,
+];
+const EQUALITY_SCALARS: [crate::ScalarTyV1; 13] = [
+    crate::ScalarTyV1::Bool,
+    crate::ScalarTyV1::Int,
+    crate::ScalarTyV1::Float,
+    crate::ScalarTyV1::String,
+    crate::ScalarTyV1::Duration,
+    crate::ScalarTyV1::Location,
+    crate::ScalarTyV1::Path,
+    crate::ScalarTyV1::RepoPath,
+    crate::ScalarTyV1::EntityRef,
+    crate::ScalarTyV1::SymbolRef,
+    crate::ScalarTyV1::RuleRef,
+    crate::ScalarTyV1::SourceScope,
+    crate::ScalarTyV1::ProofTree,
+];
+
+fn comparison_entry(
+    kind: OperatorSemanticKindV2,
+    raw_id: u32,
+    operand: ValueTypeV1,
+) -> BinaryOverloadV1 {
+    BinaryOverloadV1 {
+        id: OperatorIdV2(raw_id),
+        kind,
+        lhs: operand.clone(),
+        rhs: operand,
+        result: ValueTypeV1::bool(),
+        effects: operator_effects(kind),
+    }
+}
+
 fn append_comparison_entries(binary: &mut Vec<(String, BinaryOverloadV1)>) {
-    use crate::ScalarTyV1;
-    let duration = || ValueTypeV1::scalar(ScalarTyV1::Duration);
-    for (base, kind) in [
-        (200, OperatorSemanticKindV2::Less),
-        (210, OperatorSemanticKindV2::LessEqual),
-        (220, OperatorSemanticKindV2::Greater),
-        (230, OperatorSemanticKindV2::GreaterEqual),
-    ] {
-        binary.push(b(
-            base,
-            kind,
-            ValueTypeV1::int(),
-            ValueTypeV1::int(),
-            ValueTypeV1::bool(),
-        ));
-        binary.push(b(
-            base + 1,
-            kind,
-            ValueTypeV1::float(),
-            ValueTypeV1::float(),
-            ValueTypeV1::bool(),
-        ));
-        binary.push(b(
-            base + 2,
-            kind,
-            ValueTypeV1::string(),
-            ValueTypeV1::string(),
-            ValueTypeV1::bool(),
-        ));
-        binary.push(b(
-            base + 3,
-            kind,
-            duration(),
-            duration(),
-            ValueTypeV1::bool(),
-        ));
+    for (kind, base) in ORDERED_COMPARISONS {
+        for (scalar, ordinal) in ORDERED_SCALARS.iter().cloned().zip(0_u32..) {
+            binary.push((
+                kind.symbol().to_owned(),
+                comparison_entry(kind, base + ordinal, ValueTypeV1::scalar(scalar)),
+            ));
+        }
     }
 }
 
 fn append_equality_entries(binary: &mut Vec<(String, BinaryOverloadV1)>) {
-    use crate::ScalarTyV1;
-    let scalars = [
-        ScalarTyV1::Bool,
-        ScalarTyV1::Int,
-        ScalarTyV1::Float,
-        ScalarTyV1::String,
-        ScalarTyV1::Duration,
-        ScalarTyV1::Location,
-        ScalarTyV1::Path,
-        ScalarTyV1::RepoPath,
-        ScalarTyV1::EntityRef,
-        ScalarTyV1::SymbolRef,
-        ScalarTyV1::RuleRef,
-        ScalarTyV1::SourceScope,
-        ScalarTyV1::ProofTree,
-    ];
-    let eq_ids = [
-        300, 301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312,
-    ];
-    let ne_ids = [
-        320, 321, 322, 323, 324, 325, 326, 327, 328, 329, 330, 331, 332,
-    ];
-    for ((scalar, eq_id), ne_id) in scalars.into_iter().zip(eq_ids).zip(ne_ids) {
-        binary.push(b(
-            eq_id,
-            OperatorSemanticKindV2::Equal,
-            ValueTypeV1::scalar(scalar.clone()),
-            ValueTypeV1::scalar(scalar.clone()),
-            ValueTypeV1::bool(),
-        ));
-        binary.push(b(
-            ne_id,
-            OperatorSemanticKindV2::NotEqual,
-            ValueTypeV1::scalar(scalar.clone()),
-            ValueTypeV1::scalar(scalar),
-            ValueTypeV1::bool(),
-        ));
+    for (scalar, ordinal) in EQUALITY_SCALARS.iter().cloned().zip(0_u32..) {
+        for (kind, base) in EQUALITY_COMPARISONS {
+            binary.push((
+                kind.symbol().to_owned(),
+                comparison_entry(kind, base + ordinal, ValueTypeV1::scalar(scalar.clone())),
+            ));
+        }
     }
+}
+
+/// Reuse the closed registry's exact comparison entries without allocating a
+/// second registry for an admitted scalar predicate.
+pub(crate) fn scalar_comparison_overload_v3(
+    symbol: &str,
+    lhs: &ValueTypeV1,
+    rhs: &ValueTypeV1,
+) -> Option<BinaryOverloadV1> {
+    let scalar = lhs.as_type().as_scalar()?;
+    if rhs.as_type().as_scalar()? != scalar {
+        return None;
+    }
+    for (kind, base) in ORDERED_COMPARISONS {
+        if symbol == kind.symbol() {
+            let (_, ordinal) = ORDERED_SCALARS
+                .iter()
+                .zip(0_u32..)
+                .find(|(candidate, _)| *candidate == scalar)?;
+            return Some(comparison_entry(kind, base + ordinal, lhs.clone()));
+        }
+    }
+    for (kind, base) in EQUALITY_COMPARISONS {
+        if symbol == kind.symbol() || (symbol == "<>" && kind == OperatorSemanticKindV2::NotEqual) {
+            let (_, ordinal) = EQUALITY_SCALARS
+                .iter()
+                .zip(0_u32..)
+                .find(|(candidate, _)| *candidate == scalar)?;
+            return Some(comparison_entry(kind, base + ordinal, lhs.clone()));
+        }
+    }
+    None
 }
 
 fn u(

@@ -17,8 +17,9 @@ mod scalar_request;
 mod value;
 pub use scalar_request::{
     check_one_let_composition_with_request_owner_v3, check_scalar_projection_with_request_owner_v3,
-    one_let_composition_type_storage_upper_v3, scalar_projection_type_storage_upper_v3,
-    AdmittedScalarProjectionFactsV3, ScalarProjectionCheckRequestErrorV3, TypeFactsReaderV3,
+    one_let_composition_type_storage_upper_v3, scalar_filter_type_storage_upper_v3,
+    scalar_projection_type_storage_upper_v3, AdmittedScalarProjectionFactsV3,
+    ScalarProjectionCheckRequestErrorV3, TypeFactsReaderV3,
 };
 
 mod inputs;

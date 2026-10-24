@@ -96,15 +96,17 @@ pub(super) const fn project_scalar(scalar: &ScalarTyV1) -> ExecutionScalarTypeV3
 
 /// Closed value-type vocabulary. Only record field names and union tags are
 /// open strings; every structural kind is an enum variant.
+/// Singleton child arrays permit fallible boxed-slice construction on the
+/// pinned stable toolchain without changing the canonical value-type encoding.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ExecutionValueTypeV3 {
     Scalar(ExecutionScalarTypeV3),
     Null,
     Tuple(Box<[ExecutionValueTypeV3]>),
     Record(Box<[ExecutionRecordFieldV3]>),
-    Optional(Box<ExecutionValueTypeV3>),
+    Optional(Box<[ExecutionValueTypeV3; 1]>),
     Collection {
-        element: Box<ExecutionValueTypeV3>,
+        element: Box<[ExecutionValueTypeV3; 1]>,
         cardinality: ExecutionCardinalityV3,
     },
     Union(Box<[ExecutionUnionVariantV3]>),
@@ -178,11 +180,11 @@ pub(super) fn project_value_type(value: &ValueTypeV1) -> ExecutionValueTypeV3 {
         );
     }
     if let Some(optional) = value.as_optional() {
-        return ExecutionValueTypeV3::Optional(Box::new(project_value_type(optional.inner())));
+        return ExecutionValueTypeV3::Optional(Box::new([project_value_type(optional.inner())]));
     }
     if let Some(collection) = value.as_collection() {
         return ExecutionValueTypeV3::Collection {
-            element: Box::new(project_value_type(collection.element())),
+            element: Box::new([project_value_type(collection.element())]),
             cardinality: project_cardinality(collection.cardinality()),
         };
     }

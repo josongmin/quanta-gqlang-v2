@@ -1481,12 +1481,16 @@ fn execution_value_type_api(value: &ExecutionValueTypeV3) {
         ExecutionValueTypeV3::Null | ExecutionValueTypeV3::Unknown => {}
         ExecutionValueTypeV3::Tuple(values) => pin(values.as_ref()),
         ExecutionValueTypeV3::Record(fields) => pin(fields.as_ref()),
-        ExecutionValueTypeV3::Optional(value) => pin(value.as_ref()),
+        ExecutionValueTypeV3::Optional(value) => {
+            let [inner] = value.as_ref();
+            pin(inner);
+        }
         ExecutionValueTypeV3::Collection {
             element,
             cardinality,
         } => {
-            pin(element.as_ref());
+            let [inner] = element.as_ref();
+            pin(inner);
             pin(*cardinality);
         }
         ExecutionValueTypeV3::Union(variants) => pin(variants.as_ref()),
