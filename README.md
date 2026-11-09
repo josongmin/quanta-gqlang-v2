@@ -2,23 +2,26 @@
 
 # Quanta GQLang
 
+<p align="center"><a href="#engineering-highlights">Engineering</a> · <a href="#architecture">Architecture</a> · <a href="#try-the-cli">Get started</a> · <a href="#status">Reference</a></p>
+
 The Rust owner repository for the **QGLang v3 language frontend**. It turns source text and explicitly supplied authority into checked syntax, semantic analysis, and a host-independent V3 execution document.
 
 [Language guide](docs/language/README.md) · [Frontend contract](docs/contracts/frontend-execution-v3.md) · [Examples](docs/language/examples_index.md) · [Remaining work](docs/work/remaining.md)
 
-
 ## Engineering highlights
 
-| Mechanism | Engineering purpose |
-| :--- | :--- |
-| **Deterministic frontend stages** | Source syntax, semantic analysis, and normalized IR have separate owning crates and conformance boundaries. |
-| **Checked closed-source compilation** | Caller-sealed authority and original source bytes produce a source-bound V3 execution document. |
-| **Explicit incomplete analysis** | Open analysis reports missing authority as typed incomplete state instead of fabricating a host catalog or executed result. |
-| **Host-neutral public facade** | Downstream consumers use the frontend-contract crate rather than importing internal surface, sema, HIR, or pipeline crates. |
-| **Bounded diagnostic transport** | Read-only NDJSON diagnostics validates exact request fields and rejects unknown or mutating methods. |
+| Mechanism | Engineering purpose | Source |
+| :--- | :--- | :--- |
+| **Deterministic frontend stages** | Source syntax, semantic analysis, and normalized IR have separate owning crates and conformance boundaries. | [Stage ownership](docs/language/README.md) |
+| **Checked closed-source compilation** | Caller-sealed authority and original source bytes produce a source-bound V3 execution document. | [Checked pipeline](crates/quanta-gqlang-v2-pipeline/) |
+| **Explicit incomplete analysis** | Open analysis reports missing authority as typed incomplete state instead of fabricating a host catalog or executed result. | [Public contract](crates/quanta-gqlang-v2-frontend-contract/) |
+| **Host-neutral public facade** | Downstream consumers use the frontend-contract crate rather than importing internal surface, sema, HIR, or pipeline crates. | [Facade](crates/quanta-gqlang-v2-frontend-contract/src/lib.rs) |
+| **Bounded diagnostic transport** | Read-only NDJSON diagnostics validates exact request fields and rejects unknown or mutating methods. | [Diagnostics process](crates/quanta-gqlang-v2-diagnostics-stdio/) |
 
+## Architecture
 
-## Architecture at a glance
+<a id="architecture-at-a-glance"></a>
+<a id="execution-model"></a>
 
 ```mermaid
 flowchart LR
@@ -31,6 +34,8 @@ flowchart LR
     C["CLI / diagnostics stdio"] --> F
 ```
 
+Both CLI/diagnostics and host compilation pass through the frontend contract. Open analysis produces diagnostics; it does not invent a host catalog or authorize execution. Closed source compilation can produce `CompiledSourceDocumentV3` and immutable `ExecutionDocumentV3` from caller-sealed authority and original bytes.
+
 ## Scope
 
 | Owned here | Owned downstream |
@@ -41,18 +46,6 @@ flowchart LR
 | Read-only CLI and diagnostics stdio | Backend/SDK runtime wiring and `quanta-index-sdk` |
 
 Sibling consumers depend only on `quanta-gqlang-v2-frontend-contract`. Internal owner crates such as `surface`, `sema`, `hir`, and `pipeline` are not the external API.
-
-## Execution model
-
-```text
-source + caller authority
-    → syntax / HIR
-    → binding / types / modules
-    → algebra / logic / frontend planning
-    → checked frontend contract
-```
-
-Both CLI/diagnostics and host compilation pass through the frontend contract. Open analysis produces diagnostics; it does not invent a host catalog or authorize execution. Closed source compilation can produce `CompiledSourceDocumentV3` and immutable `ExecutionDocumentV3` from caller-sealed authority and original bytes.
 
 ## Try the CLI
 
@@ -112,3 +105,5 @@ This is a pre-release, read-only v3 frontend. Catalog/presentation families desc
 - [Architecture decisions](docs/adr/README.md)
 - [Release discipline](docs/language/release_discipline.md)
 - [Qualification tools](tools/qualification/README.md)
+
+<p align="center"><sub><a href="https://github.com/josongmin">Project map</a> · <a href="#engineering-highlights">Back to overview</a></sub></p>
