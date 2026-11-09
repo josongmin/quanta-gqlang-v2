@@ -1,8 +1,35 @@
+<p align="center"><img src="readme-banner.svg" alt="QGLang v3 Frontend — Deterministic source analysis and a host-neutral execution document." width="100%"></p>
+
 # Quanta GQLang
 
 The Rust owner repository for the **QGLang v3 language frontend**. It turns source text and explicitly supplied authority into checked syntax, semantic analysis, and a host-independent V3 execution document.
 
 [Language guide](docs/language/README.md) · [Frontend contract](docs/contracts/frontend-execution-v3.md) · [Examples](docs/language/examples_index.md) · [Remaining work](docs/work/remaining.md)
+
+
+## Engineering highlights
+
+| Mechanism | Engineering purpose |
+| :--- | :--- |
+| **Deterministic frontend stages** | Source syntax, semantic analysis, and normalized IR have separate owning crates and conformance boundaries. |
+| **Checked closed-source compilation** | Caller-sealed authority and original source bytes produce a source-bound V3 execution document. |
+| **Explicit incomplete analysis** | Open analysis reports missing authority as typed incomplete state instead of fabricating a host catalog or executed result. |
+| **Host-neutral public facade** | Downstream consumers use the frontend-contract crate rather than importing internal surface, sema, HIR, or pipeline crates. |
+| **Bounded diagnostic transport** | Read-only NDJSON diagnostics validates exact request fields and rejects unknown or mutating methods. |
+
+
+## Architecture at a glance
+
+```mermaid
+flowchart LR
+    S["Source bytes + caller authority"] --> F["Frontend contract facade"]
+    F --> P["Syntax / HIR"]
+    P --> B["Binding, types, modules"]
+    B --> A["Algebra, logic, planning"]
+    A --> V["Checked V3 execution document"]
+    V --> H["Downstream host-owned runtime"]
+    C["CLI / diagnostics stdio"] --> F
+```
 
 ## Scope
 
